@@ -1,6 +1,5 @@
 <x-layouts.app title="Distribution Summary">
 
-@php use Carbon\Carbon; @endphp
 
 {{-- ── Controls ──────────────────────────────────────────────────────────── --}}
 <div class="mb-5 flex flex-wrap items-end gap-3 print:hidden">
@@ -34,11 +33,11 @@
         {{-- Prev / Next navigation --}}
         @php
             $prevRef = $mode === 'weekly'
-                ? Carbon::parse($reference)->subWeek()->toDateString()
-                : Carbon::parse($reference)->subMonth()->toDateString();
+                ? \Carbon\Carbon::parse($reference)->subWeek()->toDateString()
+                : \Carbon\Carbon::parse($reference)->subMonth()->toDateString();
             $nextRef = $mode === 'weekly'
-                ? Carbon::parse($reference)->addWeek()->toDateString()
-                : Carbon::parse($reference)->addMonth()->toDateString();
+                ? \Carbon\Carbon::parse($reference)->addWeek()->toDateString()
+                : \Carbon\Carbon::parse($reference)->addMonth()->toDateString();
         @endphp
         <a href="{{ route('ticket-distribution.summary', ['mode' => $mode, 'ref' => $prevRef]) }}"
            class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50">‹ Prev</a>
