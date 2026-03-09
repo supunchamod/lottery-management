@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\BoardSettlementController;
 use App\Http\Controllers\BoardTransactionController;
 use App\Http\Controllers\DailyRecordController;
@@ -83,6 +84,9 @@ Route::group([], function () {
     Route::get   ('/board-transactions/create',  [BoardTransactionController::class, 'create'])->name('board-transactions.create');
     Route::post  ('/board-transactions',         [BoardTransactionController::class, 'store'])->name('board-transactions.store');
     Route::delete('/board-transactions/{boardTransaction}', [BoardTransactionController::class, 'destroy'])->name('board-transactions.destroy');
+
+    // ── Activity Log ──────────────────────────────────────────────────────────
+    Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
 
     // ── Reports (advanced filter + assistant performance + PDF exports) ─────────
     Route::get('/reports',             [ReportController::class, 'index'])->name('reports.index');
