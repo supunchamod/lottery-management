@@ -26,6 +26,7 @@
     </form>
 
     <div class="ml-auto flex gap-2">
+        @if($assistant)
         <a href="{{ route('ticket-distribution.create', ['assistant_id' => $assistantId, 'date' => $date]) }}"
            class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition">
             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -33,13 +34,14 @@
             </svg>
             Enter / Edit Tickets
         </a>
-        <a href="{{ route('ticket-distribution.sub-sellers.index', $assistantId) }}"
+        <a href="{{ route('ticket-distribution.sub-sellers.index', $assistant->id) }}"
            class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
             Manage Sub-sellers
         </a>
+        @endif
         <button onclick="window.print()"
                 class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition print:hidden">
             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
