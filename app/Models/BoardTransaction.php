@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
 
 class BoardTransaction extends Model
@@ -55,14 +56,23 @@ class BoardTransaction extends Model
     ];
 
     protected $fillable = [
+        'board_settlement_id',
         'date', 'date_02', 'description',
         'ticket_qty', 'ticket_value',
-        'winning_amount', 'cash_amount', 'bank_deposits',
+        'winning_amount', 'nlb_winning', 'dlb_winning',
+        'cash_amount', 'bank_deposits',
         'nlb_tiers', 'dlb_tiers', 'cash_denoms',
         'credit_amount',
         'cr_amount', 'balance',
         'notes',
     ];
+
+    // ── Relationship ───────────────────────────────────────────────────────────
+
+    public function settlement(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\BoardSettlement::class, 'board_settlement_id');
+    }
 
     protected function casts(): array
     {
@@ -71,6 +81,8 @@ class BoardTransaction extends Model
             'date_02'        => 'date',
             'ticket_value'   => 'decimal:2',
             'winning_amount' => 'decimal:2',
+            'nlb_winning'    => 'decimal:2',
+            'dlb_winning'    => 'decimal:2',
             'cash_amount'    => 'decimal:2',
             'bank_deposits'  => 'decimal:2',
             'credit_amount'  => 'decimal:2',

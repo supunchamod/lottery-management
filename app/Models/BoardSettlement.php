@@ -4,10 +4,19 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BoardSettlement extends Model
 {
     use HasFactory;
+
+    // ── Relationship ───────────────────────────────────────────────────────────
+
+    /** Ledger rows auto-posted from this settlement. */
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(BoardTransaction::class);
+    }
 
     // ── NLB denomination → face value ──────────────────────────────────────────
     public const NLB_TIERS = [
