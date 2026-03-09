@@ -10,6 +10,8 @@ class DailySaleRecord extends Model
 {
     use HasFactory;
 
+    protected $table = 'daily_sales_records';
+
     protected $fillable = [
         'date', 'assistant_id',
         'tickets_issued_qty', 'unit_price', 'value',
