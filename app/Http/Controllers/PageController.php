@@ -218,6 +218,20 @@ class PageController extends Controller
         ]);
     }
 
+    public function stockStore(Request $request)
+    {
+        $data = $request->validate([
+            'date'       => ['required', 'date'],
+            'agent_id'   => ['required', 'exists:sales_assistants,id'],
+            'lottery_id' => ['required', 'exists:lotteries,id'],
+            'qty_issued' => ['required', 'integer', 'min:1'],
+        ]);
+
+        LotteryStock::create($data);
+
+        return redirect()->route('stock.index')->with('success', 'Stock issued successfully.');
+    }
+
     // ── Reports ───────────────────────────────────────────────────────────────
 
     public function reportsIndex(Request $request)

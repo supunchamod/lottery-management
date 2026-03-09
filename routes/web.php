@@ -47,8 +47,9 @@ Route::group([], function () {
     Route::get  ('/assistants/{assistant}/ledger',  [PageController::class, 'assistantsLedger'])->name('assistants.ledger');
 
     // Stock
-    Route::get('/stock',        [PageController::class, 'stockIndex'])->name('stock.index');
-    Route::get('/stock/create', [PageController::class, 'stockCreate'])->name('stock.create');
+    Route::get ('/stock',        [PageController::class, 'stockIndex'])->name('stock.index');
+    Route::get ('/stock/create', [PageController::class, 'stockCreate'])->name('stock.create');
+    Route::post('/stock',        [PageController::class, 'stockStore'])->name('stock.store');
 
     // ── Ticket Distribution ────────────────────────────────────────────────────
     Route::get ('/ticket-distribution',        [TicketDistributionController::class, 'index'])->name('ticket-distribution.index');
