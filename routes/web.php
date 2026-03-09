@@ -42,8 +42,9 @@ Route::group([], function () {
     Route::get ('/assistants',                     [PageController::class, 'assistantsIndex'])->name('assistants.index');
     Route::get ('/assistants/create',              [PageController::class, 'assistantsCreate'])->name('assistants.create');
     Route::post('/assistants',                     [PageController::class, 'assistantsStore'])->name('assistants.store');
-    Route::get ('/assistants/{assistant}/edit',    [PageController::class, 'assistantsEdit'])->name('assistants.edit');
-    Route::get ('/assistants/{assistant}/ledger',  [PageController::class, 'assistantsLedger'])->name('assistants.ledger');
+    Route::get  ('/assistants/{assistant}/edit',    [PageController::class, 'assistantsEdit'])->name('assistants.edit');
+    Route::put  ('/assistants/{assistant}',         [PageController::class, 'assistantsUpdate'])->name('assistants.update');
+    Route::get  ('/assistants/{assistant}/ledger',  [PageController::class, 'assistantsLedger'])->name('assistants.ledger');
 
     // Stock
     Route::get('/stock',        [PageController::class, 'stockIndex'])->name('stock.index');

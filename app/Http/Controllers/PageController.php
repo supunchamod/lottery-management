@@ -182,6 +182,19 @@ class PageController extends Controller
         return view('assistants.edit', compact('assistant'));
     }
 
+    public function assistantsUpdate(Request $request, SalesAssistant $assistant)
+    {
+        $data = $request->validate([
+            'name'    => ['required', 'string', 'max:255'],
+            'phone'   => ['required', 'string', 'max:20'],
+            'address' => ['required', 'string'],
+        ]);
+
+        $assistant->update($data);
+
+        return redirect()->route('assistants.index')->with('success', "{$assistant->name} updated.");
+    }
+
     public function assistantsLedger(SalesAssistant $assistant)
     {
         $entries = $assistant->ledgers()->orderByDesc('date')->orderByDesc('id')->paginate(30);
