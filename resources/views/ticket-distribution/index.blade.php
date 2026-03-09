@@ -1,8 +1,7 @@
 <x-layouts.app title="Ticket Distribution">
 
 @php
-    use Carbon\Carbon;
-    $parsedDate  = Carbon::parse($date);
+    $parsedDate  = \Carbon\Carbon::parse($date);
     $prevDate    = $parsedDate->copy()->subDay()->toDateString();
     $nextDate    = $parsedDate->copy()->addDay()->toDateString();
     $isToday     = $parsedDate->isToday();
