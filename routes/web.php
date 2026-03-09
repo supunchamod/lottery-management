@@ -40,6 +40,7 @@ Route::group([], function () {
     // Cheques
     Route::get   ('/cheques',          [PageController::class, 'chequesIndex'])->name('cheques.index');
     Route::get   ('/cheques/create',   [PageController::class, 'chequesCreate'])->name('cheques.create');
+    Route::post  ('/cheques',          [PageController::class, 'chequesStore'])->name('cheques.store');
     Route::patch ('/cheques/{cheque}/clear', [PageController::class, 'chequesClear'])->name('cheques.clear');
 
     // Sales Assistants

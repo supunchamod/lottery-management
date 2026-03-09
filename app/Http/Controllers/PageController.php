@@ -144,6 +144,21 @@ class PageController extends Controller
         return view('cheques.create');
     }
 
+    public function chequesStore(Request $request)
+    {
+        $data = $request->validate([
+            'bank_name' => 'required|string|max:255',
+            'cheque_no' => 'required|string|max:100',
+            'amount'    => 'required|numeric|min:0',
+            'due_date'  => 'required|date',
+            'status'    => 'in:pending,cleared',
+        ]);
+
+        Cheque::create($data);
+
+        return redirect()->route('cheques.index')->with('success', 'Cheque added successfully.');
+    }
+
     public function chequesClear(Cheque $cheque)
     {
         $cheque->update(['status' => 'cleared']);
