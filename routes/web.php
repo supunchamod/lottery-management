@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BoardSettlementController;
+use App\Http\Controllers\BoardTransactionController;
 use App\Http\Controllers\DailyRecordController;
 use App\Http\Controllers\DailySalesController;
 use App\Http\Controllers\DailySummaryController;
@@ -75,6 +76,12 @@ Route::group([], function () {
     // ── Board Settlement (NLB/DLB daily ticket value + winning analysis) ────────
     Route::get ('/board-settlement',  [BoardSettlementController::class, 'index'])->name('board-settlement.index');
     Route::post('/board-settlement',  [BoardSettlementController::class, 'store'])->name('board-settlement.store');
+
+    // ── Board Transaction Ledger ──────────────────────────────────────────────
+    Route::get   ('/board-transactions',         [BoardTransactionController::class, 'index'])->name('board-transactions.index');
+    Route::get   ('/board-transactions/create',  [BoardTransactionController::class, 'create'])->name('board-transactions.create');
+    Route::post  ('/board-transactions',         [BoardTransactionController::class, 'store'])->name('board-transactions.store');
+    Route::delete('/board-transactions/{boardTransaction}', [BoardTransactionController::class, 'destroy'])->name('board-transactions.destroy');
 
     // ── Reports (advanced filter + assistant performance + PDF exports) ─────────
     Route::get('/reports',             [ReportController::class, 'index'])->name('reports.index');
