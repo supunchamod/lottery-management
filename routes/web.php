@@ -5,6 +5,7 @@ use App\Http\Controllers\DailySummaryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\TicketDistributionController;
 use App\Http\Controllers\WinningController;
 use Illuminate\Support\Facades\Route;
 
@@ -47,6 +48,17 @@ Route::group([], function () {
     // Stock
     Route::get('/stock',        [PageController::class, 'stockIndex'])->name('stock.index');
     Route::get('/stock/create', [PageController::class, 'stockCreate'])->name('stock.create');
+
+    // ── Ticket Distribution ────────────────────────────────────────────────────
+    Route::get ('/ticket-distribution',        [TicketDistributionController::class, 'index'])->name('ticket-distribution.index');
+    Route::get ('/ticket-distribution/create', [TicketDistributionController::class, 'create'])->name('ticket-distribution.create');
+    Route::post('/ticket-distribution',        [TicketDistributionController::class, 'store'])->name('ticket-distribution.store');
+
+    // Sub-sellers CRUD (nested under an assistant)
+    Route::get   ('/ticket-distribution/{assistant}/sub-sellers',         [TicketDistributionController::class, 'subSellersIndex'])->name('ticket-distribution.sub-sellers.index');
+    Route::post  ('/ticket-distribution/sub-sellers',                     [TicketDistributionController::class, 'subSellersStore'])->name('ticket-distribution.sub-sellers.store');
+    Route::put   ('/ticket-distribution/sub-sellers/{subSeller}',         [TicketDistributionController::class, 'subSellersUpdate'])->name('ticket-distribution.sub-sellers.update');
+    Route::delete('/ticket-distribution/sub-sellers/{subSeller}/destroy', [TicketDistributionController::class, 'subSellersDestroy'])->name('ticket-distribution.sub-sellers.destroy');
 
     // ── Reports (advanced filter + assistant performance + PDF exports) ─────────
     Route::get('/reports',             [ReportController::class, 'index'])->name('reports.index');

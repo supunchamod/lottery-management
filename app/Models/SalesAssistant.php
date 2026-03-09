@@ -38,4 +38,14 @@ class SalesAssistant extends Model
     {
         return $this->hasMany(Ledger::class, 'assistant_id');
     }
+
+    public function subSellers(): HasMany
+    {
+        return $this->hasMany(SubSeller::class, 'assistant_id');
+    }
+
+    public function ticketDistributions(): HasMany
+    {
+        return $this->hasMany(TicketDistribution::class, 'assistant_id');
+    }
 }
