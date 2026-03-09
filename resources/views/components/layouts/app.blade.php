@@ -44,15 +44,57 @@
         {{-- Navigation --}}
         <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
 
+            {{-- 1. Dashboard --}}
+            <a href="{{ route('dashboard') }}"
+            class="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors
+                    {{ request()->routeIs('dashboard') ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                </svg>
+                Dashboard
+            </a>
+
+            {{-- 2. Lottery Dropdown  --}}
+            <div x-data="{ open: {{ request()->routeIs('lotteries.*') ? 'true' : 'false' }} }" class="pt-1">
+                <button @click="open = !open" 
+                        class="flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm font-medium transition-colors
+                            {{ request()->routeIs('lotteries.*') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                    <div class="flex items-center gap-3">
+                        <svg class="h-5 w-5 shrink-0 {{ request()->routeIs('lotteries.*') ? 'text-blue-400' : '' }}" 
+                            fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                        </svg>
+                        <span>Lottery</span>
+                    </div>
+                    <svg :class="open ? 'rotate-180' : ''" class="h-4 w-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+
+                {{-- Lottery Sub-menu --}}
+                <div x-show="open" x-cloak
+                    x-transition:enter="transition ease-out duration-100"
+                    class="ml-9 mt-1 space-y-1 border-l border-slate-700 pl-3">
+                    
+                    <a href="{{ route('lotteries.index') }}" 
+                    class="block py-2 text-xs transition-colors {{ request()->routeIs('lotteries.index') ? 'text-blue-400 font-semibold' : 'text-slate-500 hover:text-white' }}">
+                        Lottery List
+                    </a>
+                    
+                    <a href="{{ route('lotteries.create') }}" 
+                    class="block py-2 text-xs transition-colors {{ request()->routeIs('lotteries.create') ? 'text-blue-400 font-semibold' : 'text-slate-500 hover:text-white' }}">
+                        Create Lottery
+                    </a>
+                </div>
+            </div>
+
             @php
                 $current = request()->routeIs('*') ? Route::currentRouteName() : '';
                 $navItems = [
-                    ['route'=>'dashboard',      'label'=>'Dashboard',  'icon'=>'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6'],
-                    ['route'=>'stock.index',    'label'=>'Stock',      'icon'=>'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4'],
+                   
                     ['route'=>'assistants.index','label'=>'Assistants','icon'=>'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z'],
                     ['route'=>'daily-sales.index','label'=>'Daily Sales','icon'=>'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01'],
                     ['route'=>'ticket-distribution.index','label'=>'Ticket Dist.','icon'=>'M4 6h16M4 10h16M4 14h16M4 18h16'],
-                    ['route'=>'winnings.index',         'label'=>'Winnings',      'icon'=>'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
                     ['route'=>'board-settlement.index',   'label'=>'Board Settlement', 'icon'=>'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z'],
                     ['route'=>'board-transactions.index', 'label'=>'Board Ledger',    'icon'=>'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 12l2 2 4-4'],
                     ['route'=>'expenses.index',  'label'=>'Expenses',  'icon'=>'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z'],
