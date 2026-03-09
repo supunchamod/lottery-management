@@ -54,3 +54,13 @@
 ::-webkit-scrollbar       { width:5px; height:5px; }
 ::-webkit-scrollbar-track { background:#f1f5f9; }
 ::-webkit-scrollbar-thumb { background:#94a3b8; border-radius:9999px; }
+
+/* ── Print styles (browser print / Ctrl+P) ─────────────────────────────── */
+@media print {
+    aside, header, .print\:hidden { display: none !important; }
+    .ml-64 { margin-left: 0 !important; }
+    body { background: white; }
+    .rounded-xl, .shadow-sm { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }
+    canvas { max-height: 200px !important; }
+    a { color: inherit; text-decoration: none; }
+}

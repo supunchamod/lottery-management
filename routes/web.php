@@ -4,6 +4,7 @@ use App\Http\Controllers\DailyRecordController;
 use App\Http\Controllers\DailySummaryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\WinningController;
 use Illuminate\Support\Facades\Route;
 
@@ -47,8 +48,11 @@ Route::group([], function () {
     Route::get('/stock',        [PageController::class, 'stockIndex'])->name('stock.index');
     Route::get('/stock/create', [PageController::class, 'stockCreate'])->name('stock.create');
 
-    // Reports
-    Route::get('/reports', [PageController::class, 'reportsIndex'])->name('reports.index');
+    // ── Reports (advanced filter + assistant performance + PDF exports) ─────────
+    Route::get('/reports',             [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/assistants',  [ReportController::class, 'assistantPerformance'])->name('reports.assistants');
+    Route::get('/reports/pdf/daily-sales', [ReportController::class, 'pdfDailySales'])->name('reports.pdf.daily-sales');
+    Route::get('/reports/pdf/ledger/{assistant}', [ReportController::class, 'pdfLedger'])->name('reports.pdf.ledger');
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

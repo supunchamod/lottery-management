@@ -171,6 +171,120 @@
         </div>
     </div>
 
+    {{-- ── Cheque Alerts + Top Debtors ───────────────────────────────────────── --}}
+    <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+
+        {{-- Cheque Alert Widget ──────────────────────────────────────────────── --}}
+        <div x-data="{ dismissed: {} }" class="rounded-xl bg-white border border-gray-100 shadow-sm overflow-hidden">
+            <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+                <div class="flex items-center gap-2">
+                    {{-- Pulsing bell if alerts exist --}}
+                    @if($chequeAlerts->count())
+                    <span class="relative flex h-3 w-3">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                        <span class="relative inline-flex h-3 w-3 rounded-full bg-amber-500"></span>
+                    </span>
+                    @endif
+                    <h2 class="text-sm font-semibold text-gray-800">Cheque Alerts</h2>
+                    @if($chequeAlerts->count())
+                        <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">
+                            {{ $chequeAlerts->count() }} due
+                        </span>
+                    @endif
+                </div>
+                <a href="{{ route('cheques.index') }}"
+                   class="text-xs font-medium text-blue-600 hover:text-blue-700">View All →</a>
+            </div>
+
+            <div class="divide-y divide-gray-50">
+                @forelse($chequeAlerts as $alert)
+                    <div x-show="!dismissed[{{ $alert['id'] }}]"
+                         class="flex items-center justify-between px-5 py-3
+                                {{ $alert['overdue'] ? 'bg-red-50/60' : 'bg-amber-50/40' }}">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg
+                                        {{ $alert['overdue'] ? 'bg-red-100' : 'bg-amber-100' }}">
+                                <svg class="h-5 w-5 {{ $alert['overdue'] ? 'text-red-600' : 'text-amber-600' }}"
+                                     fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                          d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold text-gray-800">
+                                    {{ $alert['bank_name'] }}
+                                    <span class="ml-1 font-mono text-xs text-gray-400">#{{ $alert['cheque_no'] }}</span>
+                                </p>
+                                <p class="text-xs text-gray-500">
+                                    Due: {{ \Carbon\Carbon::parse($alert['due_date'])->format('d M Y') }}
+                                    @if($alert['overdue'])
+                                        <span class="ml-1 font-semibold text-red-600">— OVERDUE</span>
+                                    @else
+                                        <span class="ml-1 text-amber-600">— {{ $alert['hours_left'] }}h left</span>
+                                    @endif
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-bold {{ $alert['overdue'] ? 'text-red-700' : 'text-amber-700' }}">
+                                Rs.{{ number_format($alert['amount'], 2) }}
+                            </span>
+                            <button @click="dismissed[{{ $alert['id'] }}] = true"
+                                    class="rounded p-1 text-gray-300 hover:bg-gray-100 hover:text-gray-500">
+                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                @empty
+                    <div class="px-5 py-10 text-center">
+                        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
+                            <svg class="h-6 w-6 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </div>
+                        <p class="mt-2 text-sm font-medium text-gray-600">No cheques due in 48 hours</p>
+                        <p class="text-xs text-gray-400">You're all clear!</p>
+                    </div>
+                @endforelse
+            </div>
+        </div>
+
+        {{-- Top Outstanding Assistants ──────────────────────────────────────── --}}
+        <div class="rounded-xl bg-white border border-gray-100 shadow-sm overflow-hidden">
+            <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+                <h2 class="text-sm font-semibold text-gray-800">Top Outstanding Balances</h2>
+                <a href="{{ route('reports.assistants') }}"
+                   class="text-xs font-medium text-blue-600 hover:text-blue-700">Full Report →</a>
+            </div>
+            <div class="divide-y divide-gray-50">
+                @forelse($topDebtors ?? [] as $debtor)
+                    <div class="flex items-center justify-between px-5 py-3">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-red-100 text-xs font-bold text-red-700">
+                                {{ strtoupper(substr($debtor->name, 0, 2)) }}
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-800">{{ $debtor->name }}</p>
+                                <p class="text-xs text-gray-400">{{ $debtor->phone }}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-bold text-red-600">Rs.{{ number_format($debtor->current_balance, 2) }}</p>
+                            <a href="{{ route('assistants.ledger', $debtor) }}"
+                               class="text-xs text-blue-500 hover:underline">Ledger</a>
+                        </div>
+                    </div>
+                @empty
+                    <div class="px-5 py-10 text-center">
+                        <p class="text-sm text-gray-400">All balances are clear ✓</p>
+                    </div>
+                @endforelse
+            </div>
+        </div>
+    </div>
+
     {{-- ── Recent Sales Table ──────────────────────────────────────────────── --}}
     <div class="mt-6 rounded-xl bg-white border border-gray-100 shadow-sm">
         <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
