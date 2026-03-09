@@ -2,131 +2,80 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DailyTicketStock;
 use App\Models\Lottery;
 use App\Models\SalesAssistant;
 use App\Models\SubSeller;
-use App\Models\TicketDistribution;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class TicketDistributionController extends Controller
 {
+    // ── Main Grid ─────────────────────────────────────────────────────────────
+
     /**
-     * Show the distribution grid for a given assistant + date.
+     * Show the data-entry grid (all assistants × all lotteries) for a given date.
      */
     public function index(Request $request)
     {
+        $date       = $request->input('date', today()->toDateString());
         $assistants = SalesAssistant::orderBy('name')->get();
         $lotteries  = Lottery::orderBy('board')->orderBy('name')->get();
 
-        $assistantId = $request->input('assistant_id', $assistants->first()?->id);
-        $date        = $request->input('date', today()->toDateString());
+        // Load all records for this date, keyed as [assistant_id][lottery_id] => quantity
+        $records = DailyTicketStock::where('date', $date)->get();
+        $grid    = [];
+        foreach ($records as $r) {
+            $grid[$r->assistant_id][$r->lottery_id] = $r->quantity;
+        }
 
-        $assistant = $assistants->firstWhere('id', $assistantId);
-
-        // Sub-sellers belonging to this assistant
-        $subSellers = SubSeller::where('assistant_id', $assistantId)
-            ->active()
-            ->orderBy('name')
-            ->get();
-
-        // All distributions for this assistant + date
-        // Keyed as [sub_seller_id][lottery_id] => qty
-        $distributions = TicketDistribution::where('assistant_id', $assistantId)
-            ->where('date', $date)
-            ->get()
-            ->groupBy('sub_seller_id')
-            ->map(fn ($rows) => $rows->keyBy('lottery_id')->map(fn ($r) => $r->qty));
-
-        // Column totals  [lottery_id => total_qty]
+        // PHP-side totals (also used to seed Alpine state)
         $colTotals = [];
-        foreach ($lotteries as $lottery) {
-            $colTotals[$lottery->id] = $distributions->sum(fn ($row) => $row->get($lottery->id, 0));
+        foreach ($lotteries as $l) {
+            $colTotals[$l->id] = collect($grid)->sum(fn ($row) => $row[$l->id] ?? 0);
         }
-
-        // Row totals  [sub_seller_id => total_qty]
         $rowTotals = [];
-        foreach ($subSellers as $seller) {
-            $rowTotals[$seller->id] = collect($lotteries)->sum(
-                fn ($l) => $distributions->get($seller->id, collect())->get($l->id, 0)
-            );
+        foreach ($assistants as $a) {
+            $rowTotals[$a->id] = collect($grid[$a->id] ?? [])->sum();
         }
-
         $grandTotal = array_sum($colTotals);
 
         return view('ticket-distribution.index', compact(
-            'assistants', 'lotteries', 'assistant', 'assistantId',
-            'date', 'subSellers', 'distributions', 'colTotals', 'rowTotals', 'grandTotal'
+            'date', 'assistants', 'lotteries', 'grid', 'colTotals', 'rowTotals', 'grandTotal'
         ));
     }
 
     /**
-     * Show the blank form to enter a new distribution day.
-     */
-    public function create(Request $request)
-    {
-        $assistants = SalesAssistant::orderBy('name')->get();
-        $lotteries  = Lottery::orderBy('board')->orderBy('name')->get();
-
-        $assistantId = $request->input('assistant_id', $assistants->first()?->id);
-        $date        = $request->input('date', today()->toDateString());
-
-        $subSellers = SubSeller::where('assistant_id', $assistantId)
-            ->active()
-            ->orderBy('name')
-            ->get();
-
-        // Pre-fill with any existing values (for edit-in-place)
-        $existing = TicketDistribution::where('assistant_id', $assistantId)
-            ->where('date', $date)
-            ->get()
-            ->groupBy('sub_seller_id')
-            ->map(fn ($rows) => $rows->keyBy('lottery_id')->map(fn ($r) => $r->qty));
-
-        return view('ticket-distribution.create', compact(
-            'assistants', 'lotteries', 'assistantId', 'date', 'subSellers', 'existing'
-        ));
-    }
-
-    /**
-     * Save (upsert) the bulk distribution grid.
+     * Upsert the full grid for a given date.
+     * Rows with qty = 0 or blank are deleted (keep table clean).
      */
     public function store(Request $request)
     {
         $request->validate([
-            'assistant_id'    => 'required|exists:sales_assistants,id',
-            'date'            => 'required|date',
-            'qty'             => 'nullable|array',
-            'qty.*.*'         => 'nullable|integer|min:0',
+            'date'    => 'required|date',
+            'qty'     => 'nullable|array',
+            'qty.*.*' => 'nullable|integer|min:0',
         ]);
 
-        $assistantId = $request->input('assistant_id');
-        $date        = $request->input('date');
-        $grid        = $request->input('qty', []);  // [sub_seller_id][lottery_id] => qty
+        $date = $request->input('date');
+        $grid = $request->input('qty', []);   // [assistant_id][lottery_id] => qty
 
-        DB::transaction(function () use ($assistantId, $date, $grid) {
-            foreach ($grid as $subSellerId => $lotteryQtys) {
+        DB::transaction(function () use ($date, $grid) {
+            foreach ($grid as $assistantId => $lotteryQtys) {
                 foreach ($lotteryQtys as $lotteryId => $qty) {
                     $qty = (int) ($qty ?? 0);
 
                     if ($qty > 0) {
-                        TicketDistribution::updateOrCreate(
-                            [
-                                'date'          => $date,
-                                'sub_seller_id' => $subSellerId,
-                                'lottery_id'    => $lotteryId,
-                            ],
-                            [
-                                'assistant_id' => $assistantId,
-                                'qty'          => $qty,
-                            ]
+                        DailyTicketStock::updateOrCreate(
+                            ['date' => $date, 'assistant_id' => $assistantId, 'lottery_id' => $lotteryId],
+                            ['quantity' => $qty]
                         );
                     } else {
-                        // Remove zero-qty rows to keep the table clean
-                        TicketDistribution::where([
-                            'date'          => $date,
-                            'sub_seller_id' => $subSellerId,
-                            'lottery_id'    => $lotteryId,
+                        DailyTicketStock::where([
+                            'date'         => $date,
+                            'assistant_id' => $assistantId,
+                            'lottery_id'   => $lotteryId,
                         ])->delete();
                     }
                 }
@@ -134,14 +83,62 @@ class TicketDistributionController extends Controller
         });
 
         return redirect()
-            ->route('ticket-distribution.index', [
-                'assistant_id' => $assistantId,
-                'date'         => $date,
-            ])
-            ->with('success', 'Ticket distribution saved successfully.');
+            ->route('ticket-distribution.index', ['date' => $date])
+            ->with('success', 'Ticket distribution saved for ' . Carbon::parse($date)->format('d M Y') . '.');
     }
 
-    // ── Sub-seller CRUD ────────────────────────────────────────────────────────
+    // ── Summary ───────────────────────────────────────────────────────────────
+
+    /**
+     * Weekly / Monthly aggregation view.
+     */
+    public function summary(Request $request)
+    {
+        $mode      = $request->input('mode', 'weekly');
+        $reference = $request->input('ref', today()->toDateString());
+
+        $refDate = Carbon::parse($reference);
+
+        if ($mode === 'weekly') {
+            $from  = $refDate->copy()->startOfWeek(Carbon::MONDAY);
+            $to    = $refDate->copy()->endOfWeek(Carbon::SUNDAY);
+            $label = 'Week of ' . $from->format('d M') . ' – ' . $to->format('d M Y');
+        } else {
+            $from  = $refDate->copy()->startOfMonth();
+            $to    = $refDate->copy()->endOfMonth();
+            $label = $refDate->format('F Y');
+        }
+
+        $assistants = SalesAssistant::orderBy('name')->get();
+        $lotteries  = Lottery::orderBy('board')->orderBy('name')->get();
+
+        $rows = DailyTicketStock::whereBetween('date', [$from->toDateString(), $to->toDateString()])
+            ->select('assistant_id', 'lottery_id', DB::raw('SUM(quantity) as total_qty'))
+            ->groupBy('assistant_id', 'lottery_id')
+            ->get();
+
+        $summary = [];
+        foreach ($rows as $r) {
+            $summary[$r->assistant_id][$r->lottery_id] = (int) $r->total_qty;
+        }
+
+        $colTotals = [];
+        foreach ($lotteries as $l) {
+            $colTotals[$l->id] = collect($summary)->sum(fn ($row) => $row[$l->id] ?? 0);
+        }
+        $rowTotals = [];
+        foreach ($assistants as $a) {
+            $rowTotals[$a->id] = collect($summary[$a->id] ?? [])->sum();
+        }
+        $grandTotal = array_sum($colTotals);
+
+        return view('ticket-distribution.summary', compact(
+            'mode', 'reference', 'label', 'from', 'to',
+            'assistants', 'lotteries', 'summary', 'colTotals', 'rowTotals', 'grandTotal'
+        ));
+    }
+
+    // ── Sub-seller CRUD (kept intact) ─────────────────────────────────────────
 
     public function subSellersIndex(SalesAssistant $assistant)
     {

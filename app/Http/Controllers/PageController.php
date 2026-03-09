@@ -201,6 +201,53 @@ class PageController extends Controller
         return view('assistants.ledger', compact('assistant', 'entries'));
     }
 
+    // ── Lotteries ─────────────────────────────────────────────────────────────
+
+    public function lotteriesIndex()
+    {
+        return view('lotteries.index', [
+            'lotteries' => \App\Models\Lottery::orderBy('board')->orderBy('name')->get(),
+        ]);
+    }
+
+    public function lotteriesCreate()
+    {
+        return view('lotteries.create');
+    }
+
+    public function lotteriesStore(Request $request)
+    {
+        $data = $request->validate([
+            'name'            => ['required', 'string', 'max:255'],
+            'board'           => ['required', 'in:NLB,DLB'],
+            'unit_price'      => ['required', 'numeric', 'min:0'],
+            'commission_rate' => ['required', 'numeric', 'min:0', 'max:100'],
+        ]);
+
+        \App\Models\Lottery::create($data);
+
+        return redirect()->route('lotteries.index')->with('success', "{$data['name']} added.");
+    }
+
+    public function lotteriesEdit(\App\Models\Lottery $lottery)
+    {
+        return view('lotteries.edit', compact('lottery'));
+    }
+
+    public function lotteriesUpdate(Request $request, \App\Models\Lottery $lottery)
+    {
+        $data = $request->validate([
+            'name'            => ['required', 'string', 'max:255'],
+            'board'           => ['required', 'in:NLB,DLB'],
+            'unit_price'      => ['required', 'numeric', 'min:0'],
+            'commission_rate' => ['required', 'numeric', 'min:0', 'max:100'],
+        ]);
+
+        $lottery->update($data);
+
+        return redirect()->route('lotteries.index')->with('success', "{$lottery->name} updated.");
+    }
+
     // ── Stock ─────────────────────────────────────────────────────────────────
 
     public function stockIndex()

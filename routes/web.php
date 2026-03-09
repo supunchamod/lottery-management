@@ -46,15 +46,22 @@ Route::group([], function () {
     Route::put  ('/assistants/{assistant}',         [PageController::class, 'assistantsUpdate'])->name('assistants.update');
     Route::get  ('/assistants/{assistant}/ledger',  [PageController::class, 'assistantsLedger'])->name('assistants.ledger');
 
+    // Lotteries
+    Route::get ('/lotteries',              [PageController::class, 'lotteriesIndex'])->name('lotteries.index');
+    Route::get ('/lotteries/create',       [PageController::class, 'lotteriesCreate'])->name('lotteries.create');
+    Route::post('/lotteries',              [PageController::class, 'lotteriesStore'])->name('lotteries.store');
+    Route::get ('/lotteries/{lottery}/edit', [PageController::class, 'lotteriesEdit'])->name('lotteries.edit');
+    Route::put ('/lotteries/{lottery}',    [PageController::class, 'lotteriesUpdate'])->name('lotteries.update');
+
     // Stock
     Route::get ('/stock',        [PageController::class, 'stockIndex'])->name('stock.index');
     Route::get ('/stock/create', [PageController::class, 'stockCreate'])->name('stock.create');
     Route::post('/stock',        [PageController::class, 'stockStore'])->name('stock.store');
 
     // ── Ticket Distribution ────────────────────────────────────────────────────
-    Route::get ('/ticket-distribution',        [TicketDistributionController::class, 'index'])->name('ticket-distribution.index');
-    Route::get ('/ticket-distribution/create', [TicketDistributionController::class, 'create'])->name('ticket-distribution.create');
-    Route::post('/ticket-distribution',        [TicketDistributionController::class, 'store'])->name('ticket-distribution.store');
+    Route::get ('/ticket-distribution',          [TicketDistributionController::class, 'index'])->name('ticket-distribution.index');
+    Route::post('/ticket-distribution',          [TicketDistributionController::class, 'store'])->name('ticket-distribution.store');
+    Route::get ('/ticket-distribution/summary',  [TicketDistributionController::class, 'summary'])->name('ticket-distribution.summary');
 
     // Sub-sellers CRUD (nested under an assistant)
     Route::get   ('/ticket-distribution/{assistant}/sub-sellers',         [TicketDistributionController::class, 'subSellersIndex'])->name('ticket-distribution.sub-sellers.index');
