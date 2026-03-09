@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\DailySale;
+use App\Models\DailySaleRecord;
 use App\Models\Ledger;
 use App\Models\SalesAssistant;
 use Illuminate\Support\Facades\DB;
@@ -186,6 +187,67 @@ class LedgerService
                 });
 
             $assistant->update(['current_balance' => $running]);
+        });
+    }
+
+    /**
+     * Post or re-post ledger entries for a DailySaleRecord.
+     * On update (isNew=false) the previous entries for that date are wiped first,
+     * then fresh ones are written, and the running balance is rebuilt.
+     *
+     * Ledger logic for the new model:
+     *   DEBIT  = value (tickets issued)
+     *   CREDIT = cash + total_winning (C+W collected/offset)
+     */
+    public function postOrUpdateDailySaleRecord(
+        SalesAssistant $assistant,
+        DailySaleRecord $record,
+        bool $isNew = true,
+    ): void {
+        DB::transaction(function () use ($assistant, $record, $isNew) {
+            $dateStr = $record->date->toDateString();
+
+            if (! $isNew) {
+                // Remove old entries for this specific date to avoid double-posting.
+                // We rebuild running_balance at the end.
+                $assistant->ledgers()->where('date', $dateStr)->delete();
+            }
+
+            // 1. Debit: tickets issued (value)
+            if ($record->value > 0) {
+                $this->createEntry(
+                    assistant   : $assistant,
+                    date        : $dateStr,
+                    type        : 'debit',
+                    amount      : (float) $record->value,
+                    description : "Tickets issued – sale rec #{$record->id}",
+                );
+            }
+
+            // 2. Credit: cash collected
+            if ($record->cash > 0) {
+                $this->createEntry(
+                    assistant   : $assistant,
+                    date        : $dateStr,
+                    type        : 'credit',
+                    amount      : (float) $record->cash,
+                    description : "Cash collected – sale rec #{$record->id}",
+                );
+            }
+
+            // 3. Credit: winnings paid out
+            if ($record->total_winning > 0) {
+                $this->createEntry(
+                    assistant   : $assistant,
+                    date        : $dateStr,
+                    type        : 'credit',
+                    amount      : (float) $record->total_winning,
+                    description : "Winnings paid (NLB {$record->nlb_winning} + DLB {$record->dlb_winning}) – rec #{$record->id}",
+                );
+            }
+
+            // Rebuild running balance from scratch so the order is consistent
+            $this->recalculateRunningBalance($assistant);
         });
     }
 

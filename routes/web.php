@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DailyRecordController;
+use App\Http\Controllers\DailySalesController;
 use App\Http\Controllers\DailySummaryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PageController;
@@ -20,9 +21,10 @@ Route::group([], function () {
     // Dashboard
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
-    // Daily Sales (Blade UI + form handler)
-    Route::get ('/daily-sales',  [PageController::class, 'dailySalesIndex'])->name('daily-sales.index');
-    Route::post('/daily-sales',  [PageController::class, 'dailySalesStore'])->name('daily-records.store');
+    // Daily Sales — new express-edition grid
+    Route::get ('/daily-sales',          [DailySalesController::class, 'index'])->name('daily-sales.index');
+    Route::post('/daily-sales',          [DailySalesController::class, 'store'])->name('daily-sales.store');
+    Route::get ('/daily-sales/analysis', [DailySalesController::class, 'analysis'])->name('daily-sales.analysis');
 
     // Winnings (Blade UI)
     Route::get ('/winnings',         [PageController::class, 'winningsIndex'])->name('winnings.index');
