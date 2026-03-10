@@ -1,42 +1,65 @@
 <x-layouts.app title="Daily Sales Entry">
 
 @php
-    $parsedDate = \Carbon\Carbon::parse($date);
+    $parsedDate     = \Carbon\Carbon::parse($date);
     $assistantNames = $assistants->pluck('name', 'id')->toArray();
 @endphp
 
-{{-- ══════════════════════════════════════════════════════════════════
-     TOP BAR
-═══════════════════════════════════════════════════════════════════ --}}
+{{-- ══════════════════════════════════════════════════════════════════════
+     TOP BAR — date navigation + actions
+═══════════════════════════════════════════════════════════════════════ --}}
 <div class="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
 
     <div class="flex items-center gap-2">
         <a href="{{ route('daily-sales.index', ['date' => $parsedDate->copy()->subDay()->toDateString()]) }}"
-           class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50">‹</a>
+           class="btn-action rounded-xl border border-slate-200 dark:border-slate-700
+                  bg-white dark:bg-slate-800 px-3 py-2 text-sm
+                  text-slate-600 dark:text-slate-300
+                  hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">‹</a>
+
         <form method="GET" action="{{ route('daily-sales.index') }}">
             <input type="date" name="date" value="{{ $date }}"
                    onchange="this.form.submit()"
                    class="erp-input text-sm h-9 font-semibold">
         </form>
+
         <a href="{{ route('daily-sales.index', ['date' => $parsedDate->copy()->addDay()->toDateString()]) }}"
-           class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50
+           class="btn-action rounded-xl border border-slate-200 dark:border-slate-700
+                  bg-white dark:bg-slate-800 px-3 py-2 text-sm
+                  text-slate-600 dark:text-slate-300
+                  hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors
                   {{ $parsedDate->isToday() ? 'opacity-40 pointer-events-none' : '' }}">›</a>
-        <span class="text-sm font-semibold text-gray-700">{{ $parsedDate->format('l') }}</span>
+
+        <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">
+            {{ $parsedDate->format('l') }}
+        </span>
         @if($parsedDate->isToday())
-            <span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">Today</span>
+            <span class="rounded-full bg-indigo-100 dark:bg-indigo-500/15 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+                Today
+            </span>
         @endif
     </div>
 
     <div class="flex items-center gap-2">
         <a href="{{ route('daily-sales.analysis') }}"
-           class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+           class="btn-action inline-flex items-center gap-1.5 rounded-xl
+                  border border-slate-200 dark:border-slate-700
+                  bg-white dark:bg-slate-800
+                  px-4 py-2 text-sm font-medium
+                  text-slate-700 dark:text-slate-300
+                  hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
             </svg>
             Analysis
         </a>
         <button onclick="window.print()"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                class="btn-action inline-flex items-center gap-1.5 rounded-xl
+                       border border-slate-200 dark:border-slate-700
+                       bg-white dark:bg-slate-800
+                       px-4 py-2 text-sm font-medium
+                       text-slate-700 dark:text-slate-300
+                       hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
             </svg>
@@ -45,51 +68,52 @@
     </div>
 </div>
 
-@if(session('success'))
-    <div class="mb-3 rounded-lg bg-green-50 border border-green-200 px-4 py-2.5 text-sm text-green-700 print:hidden">
-        {{ session('success') }}
-    </div>
-@endif
-
 @if($assistants->isEmpty())
-    <div class="rounded-lg border border-dashed border-gray-300 bg-white py-16 text-center text-sm text-gray-400">
-        No assistants configured.
-        <a href="{{ route('assistants.create') }}" class="text-blue-600 hover:underline">Add assistants →</a>
+    <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700
+                bg-white dark:bg-slate-800/40 py-16 text-center">
+        <div class="mx-auto h-16 w-16 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center mb-4">
+            <svg class="h-8 w-8 text-slate-300 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+        </div>
+        <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">No assistants configured.</p>
+        <p class="text-xs text-slate-400 mt-1">
+            <a href="{{ route('assistants.create') }}" class="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">Add assistants →</a>
+        </p>
     </div>
 @else
 
-{{-- ══════════════════════════════════════════════════════════════════
-     Alpine.js — Sales Grid + Cash Counter Modal
-═══════════════════════════════════════════════════════════════════ --}}
+{{-- Alpine.js — Sales Grid + Cash Counter Modal ──────────────────────────── --}}
 <div x-data="salesGrid({{ json_encode($alpineRows) }}, {{ json_encode($assistantNames) }})"
      @keydown.escape.window="cashModal.open = false">
 
-    {{-- ── Live Day Summary ──────────────────────────────────────────── --}}
+    {{-- ── Live Day Summary Tiles ──────────────────────────────────────────── --}}
     <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-        <div class="rounded-xl bg-gray-900 px-4 py-3 text-white">
-            <p class="text-xs text-gray-400 mb-0.5">Total Value</p>
+        <div class="rounded-2xl bg-slate-800 dark:bg-slate-700/80 px-4 py-3.5 text-white shadow-sm">
+            <p class="text-xs text-slate-400 dark:text-slate-400 mb-1 font-medium">Total Value</p>
             <p class="text-lg font-bold" x-text="'Rs. ' + fmt(totalValue())"></p>
         </div>
-        <div class="rounded-xl bg-emerald-600 px-4 py-3 text-white">
-            <p class="text-xs text-emerald-200 mb-0.5">Total Cash</p>
+        <div class="rounded-2xl bg-emerald-600 dark:bg-emerald-600/80 px-4 py-3.5 text-white shadow-sm">
+            <p class="text-xs text-emerald-200 mb-1 font-medium">Total Cash</p>
             <p class="text-lg font-bold" x-text="'Rs. ' + fmt(totalCash())"></p>
         </div>
-        <div class="rounded-xl bg-violet-600 px-4 py-3 text-white">
-            <p class="text-xs text-violet-200 mb-0.5">Total Winning</p>
+        <div class="rounded-2xl bg-violet-600 dark:bg-violet-600/80 px-4 py-3.5 text-white shadow-sm">
+            <p class="text-xs text-violet-200 mb-1 font-medium">Total Winning</p>
             <p class="text-lg font-bold" x-text="'Rs. ' + fmt(totalWinning())"></p>
         </div>
-        <div class="rounded-xl bg-blue-600 px-4 py-3 text-white">
-            <p class="text-xs text-blue-200 mb-0.5">Total C+W</p>
+        <div class="rounded-2xl bg-indigo-600 dark:bg-indigo-600/80 px-4 py-3.5 text-white shadow-sm">
+            <p class="text-xs text-indigo-200 mb-1 font-medium">Total C+W</p>
             <p class="text-lg font-bold" x-text="'Rs. ' + fmt(totalCW())"></p>
         </div>
-        <div class="rounded-xl px-4 py-3 text-white"
-             :class="totalBalance() > 0 ? 'bg-red-600' : (totalBalance() < 0 ? 'bg-amber-500' : 'bg-gray-500')">
-            <p class="text-xs opacity-75 mb-0.5">Outstanding</p>
+        <div class="rounded-2xl px-4 py-3.5 text-white shadow-sm"
+             :class="totalBalance() > 0 ? 'bg-red-600 dark:bg-red-600/80' : (totalBalance() < 0 ? 'bg-amber-500 dark:bg-amber-500/80' : 'bg-slate-500 dark:bg-slate-600/80')">
+            <p class="text-xs opacity-75 mb-1 font-medium">Outstanding</p>
             <p class="text-lg font-bold" x-text="'Rs. ' + fmt(Math.abs(totalBalance()))"></p>
         </div>
     </div>
 
-    {{-- ── Form ─────────────────────────────────────────────────────── --}}
+    {{-- ── Form ─────────────────────────────────────────────────────────────── --}}
     <form id="sales-form" method="POST" action="{{ route('daily-sales.store') }}">
         @csrf
         <input type="hidden" name="date" value="{{ $date }}">
@@ -110,52 +134,54 @@
         <input type="hidden" :name="`rows[{{ $aid }}][remarks]`"     :value="rows[{{ $aid }}].remarks">
         @endforeach
 
-        {{-- Save button --}}
+        {{-- Save bar --}}
         <div class="mb-3 flex items-center justify-between print:hidden">
-            <span class="text-sm font-semibold text-gray-700">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">
                 {{ $parsedDate->format('Y-m-d') }} — {{ $parsedDate->format('l') }}
             </span>
             <button type="submit"
-                    class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700 transition">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    class="btn-action inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700
+                           px-5 py-2 text-sm font-semibold text-white shadow-md shadow-indigo-900/20 transition-colors">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                 </svg>
                 Save All Records
             </button>
         </div>
 
-        {{-- ── GRID TABLE ───────────────────────────────────────────── --}}
-        <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+        {{-- ── GRID TABLE ───────────────────────────────────────────────────── --}}
+        <div class="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700/60
+                    bg-white dark:bg-slate-800/60 shadow-sm">
             <table class="min-w-full border-collapse text-xs" id="sales-table">
 
-                {{-- Column Headers --}}
-                <thead>
+                {{-- Sticky column headers --}}
+                <thead class="sticky top-0 z-20">
                     <tr style="background:#0f172a;">
                         <th class="sticky left-0 z-20 px-3 py-3 text-left text-white font-medium whitespace-nowrap border-r border-slate-700"
                             style="background:#0f172a; min-width:150px;">#&nbsp; Name</th>
-                        <th class="px-2 py-3 text-center text-blue-300 font-medium whitespace-nowrap" style="min-width:68px;">Amount</th>
+                        <th class="px-2 py-3 text-center text-indigo-300 font-medium whitespace-nowrap" style="min-width:68px;">Amount</th>
                         <th class="px-2 py-3 text-center text-blue-200 font-medium whitespace-nowrap" style="min-width:60px;">Unit<br>Price</th>
                         <th class="px-2 py-3 text-center text-yellow-300 font-medium whitespace-nowrap" style="min-width:72px;">
-                            Value<br><span class="text-gray-500 font-normal" style="font-size:10px;">auto</span>
+                            Value<br><span class="text-slate-500 font-normal" style="font-size:10px;">auto</span>
                         </th>
                         <th class="px-2 py-3 text-center text-emerald-300 font-medium whitespace-nowrap" style="min-width:80px;">
-                            Cash<br><span class="text-gray-500 font-normal" style="font-size:10px;">click to count</span>
+                            Cash<br><span class="text-slate-500 font-normal" style="font-size:10px;">click to count</span>
                         </th>
                         <th class="px-2 py-3 text-center text-violet-300 font-medium whitespace-nowrap" style="min-width:66px;">NLB<br>Winning</th>
                         <th class="px-2 py-3 text-center text-violet-300 font-medium whitespace-nowrap" style="min-width:66px;">DLB<br>Winning</th>
                         <th class="px-2 py-3 text-center text-purple-300 font-medium whitespace-nowrap" style="min-width:62px;">
-                            TW<br><span class="text-gray-500 font-normal" style="font-size:10px;">auto</span>
+                            TW<br><span class="text-slate-500 font-normal" style="font-size:10px;">auto</span>
                         </th>
                         <th class="px-2 py-3 text-center text-cyan-300 font-medium whitespace-nowrap" style="min-width:62px;">
-                            C+W<br><span class="text-gray-500 font-normal" style="font-size:10px;">auto</span>
+                            C+W<br><span class="text-slate-500 font-normal" style="font-size:10px;">auto</span>
                         </th>
                         <th class="px-2 py-3 text-center text-red-300 font-medium whitespace-nowrap" style="min-width:90px;">
-                            Status<br><span class="text-gray-500 font-normal" style="font-size:10px;">Balance</span>
+                            Status<br><span class="text-slate-500 font-normal" style="font-size:10px;">Balance</span>
                         </th>
-                        <th class="px-2 py-3 text-center text-gray-300 font-medium whitespace-nowrap" style="min-width:130px;">Remarks</th>
+                        <th class="px-2 py-3 text-center text-slate-300 font-medium whitespace-nowrap" style="min-width:130px;">Remarks</th>
                     </tr>
 
-                    {{-- Top totals row --}}
+                    {{-- Totals row --}}
                     <tr style="background:#1e293b;" class="border-b-2 border-slate-600">
                         <td class="sticky left-0 z-20 px-3 py-2 text-slate-300 font-semibold text-[11px] border-r border-slate-600"
                             style="background:#1e293b;">Totals ↓</td>
@@ -172,26 +198,29 @@
                     </tr>
                 </thead>
 
-                <tbody class="divide-y divide-gray-100">
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-700/40">
                     @foreach($assistants as $i => $a)
                     @php $aid = $a->id; @endphp
-                    <tr class="{{ $i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50' }}"
-                        :class="activeRow === {{ $aid }} ? 'ring-1 ring-inset ring-blue-300 !bg-blue-50' : ''"
+                    <tr class="{{ $i % 2 === 0
+                                    ? 'bg-white dark:bg-slate-800/40'
+                                    : 'bg-slate-50/50 dark:bg-slate-800/70' }}"
+                        :class="activeRow === {{ $aid }} ? 'ring-1 ring-inset ring-indigo-300 dark:ring-indigo-500/40 !bg-indigo-50 dark:!bg-indigo-900/20' : ''"
                         @mouseenter="activeRow = {{ $aid }}"
                         @mouseleave="activeRow = null">
 
-                        {{-- Sticky name --}}
-                        <td class="sticky left-0 z-10 px-3 py-1.5 font-medium text-gray-700 whitespace-nowrap border-r border-gray-200"
-                            style="{{ $i % 2 === 0 ? 'background:#fff' : 'background:#f9fafb' }}"
-                            :style="activeRow === {{ $aid }} ? 'background:#eff6ff' : ''">
-                            <span class="mr-1 text-gray-400 text-[11px]">{{ $i + 1 }}</span>
+                        {{-- Sticky name cell --}}
+                        <td class="sticky left-0 z-10 px-3 py-1.5 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap border-r border-slate-200 dark:border-slate-700/40"
+                            :style="activeRow === {{ $aid }}
+                                ? (document.documentElement.classList.contains('dark') ? 'background:rgba(99,102,241,0.15)' : 'background:#eff6ff')
+                                : '{{ $i % 2 === 0 ? '' : '' }}'">
+                            <span class="mr-1 text-slate-400 dark:text-slate-500 text-[11px]">{{ $i + 1 }}</span>
                             {{ $a->name }}
                         </td>
 
                         {{-- Amount --}}
                         <td class="p-0">
                             <input type="number" min="0" step="1"
-                                   class="ds-cell w-full h-8 px-1 text-center text-xs border-0 bg-transparent outline-none"
+                                   class="ds-cell w-full h-8 px-1 text-center text-xs border-0 bg-transparent outline-none text-slate-800 dark:text-slate-200"
                                    :value="rows[{{ $aid }}].qty || ''"
                                    @input="rows[{{ $aid }}].qty = parseInt($event.target.value) || 0">
                         </td>
@@ -199,19 +228,22 @@
                         {{-- Unit Price --}}
                         <td class="p-0">
                             <input type="number" min="0" step="0.01"
-                                   class="ds-cell w-full h-8 px-1 text-center text-xs border-0 bg-transparent outline-none"
+                                   class="ds-cell w-full h-8 px-1 text-center text-xs border-0 bg-transparent outline-none text-slate-800 dark:text-slate-200"
                                    :value="rows[{{ $aid }}].unitPrice"
                                    @input="rows[{{ $aid }}].unitPrice = parseFloat($event.target.value) || 0">
                         </td>
 
                         {{-- Value (auto) --}}
-                        <td class="px-2 py-1.5 text-center font-semibold text-yellow-700 bg-yellow-50/50"
+                        <td class="px-2 py-1.5 text-center font-semibold text-yellow-700 dark:text-yellow-400 bg-yellow-50/50 dark:bg-yellow-900/10"
                             x-text="fmt(value({{ $aid }}))"></td>
 
                         {{-- Cash (opens modal) --}}
                         <td class="p-0">
                             <button type="button"
-                                    class="w-full h-8 px-2 text-center text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition cursor-pointer"
+                                    class="btn-action w-full h-8 px-2 text-center text-xs font-semibold
+                                           text-emerald-700 dark:text-emerald-400
+                                           bg-emerald-50 dark:bg-emerald-900/20
+                                           hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors cursor-pointer"
                                     @click="openCashCounter({{ $aid }})"
                                     x-text="hasCash({{ $aid }}) ? fmt(cash({{ $aid }})) : '+ Count'">
                             </button>
@@ -220,7 +252,7 @@
                         {{-- NLB Winning --}}
                         <td class="p-0">
                             <input type="number" min="0" step="0.01"
-                                   class="ds-cell w-full h-8 px-1 text-center text-xs border-0 bg-transparent outline-none"
+                                   class="ds-cell w-full h-8 px-1 text-center text-xs border-0 bg-transparent outline-none text-slate-800 dark:text-slate-200"
                                    :value="rows[{{ $aid }}].nlbWinning || ''"
                                    @input="rows[{{ $aid }}].nlbWinning = parseFloat($event.target.value) || 0">
                         </td>
@@ -228,42 +260,45 @@
                         {{-- DLB Winning --}}
                         <td class="p-0">
                             <input type="number" min="0" step="0.01"
-                                   class="ds-cell w-full h-8 px-1 text-center text-xs border-0 bg-transparent outline-none"
+                                   class="ds-cell w-full h-8 px-1 text-center text-xs border-0 bg-transparent outline-none text-slate-800 dark:text-slate-200"
                                    :value="rows[{{ $aid }}].dlbWinning || ''"
                                    @input="rows[{{ $aid }}].dlbWinning = parseFloat($event.target.value) || 0">
                         </td>
 
                         {{-- TW (auto) --}}
-                        <td class="px-2 py-1.5 text-center text-purple-700 font-medium bg-purple-50/30"
+                        <td class="px-2 py-1.5 text-center text-purple-700 dark:text-purple-400 font-medium bg-purple-50/30 dark:bg-purple-900/10"
                             x-text="fmt(tw({{ $aid }}))"></td>
 
                         {{-- C+W (auto) --}}
-                        <td class="px-2 py-1.5 text-center text-cyan-700 font-semibold bg-cyan-50/30"
+                        <td class="px-2 py-1.5 text-center text-cyan-700 dark:text-cyan-400 font-semibold bg-cyan-50/30 dark:bg-cyan-900/10"
                             x-text="fmt(cw({{ $aid }}))"></td>
 
                         {{-- Status --}}
                         <td class="px-1 py-1.5 text-center">
                             <template x-if="balance({{ $aid }}) > 0">
-                                <div class="rounded-md bg-red-50 border border-red-200 px-1.5 py-0.5 text-center">
-                                    <p class="text-[9px] font-bold text-red-500 uppercase">Outstanding</p>
-                                    <p class="text-xs font-bold text-red-700" x-text="fmt(balance({{ $aid }}))"></p>
+                                <div class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 px-1.5 py-0.5 text-center">
+                                    <p class="text-[9px] font-bold text-red-500 dark:text-red-400 uppercase">Outstanding</p>
+                                    <p class="text-xs font-bold text-red-700 dark:text-red-300" x-text="fmt(balance({{ $aid }}))"></p>
                                 </div>
                             </template>
                             <template x-if="balance({{ $aid }}) < 0">
-                                <div class="rounded-md bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-center">
-                                    <p class="text-[9px] font-bold text-amber-500 uppercase">Credit</p>
-                                    <p class="text-xs font-bold text-amber-700" x-text="fmt(Math.abs(balance({{ $aid }})))"></p>
+                                <div class="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 px-1.5 py-0.5 text-center">
+                                    <p class="text-[9px] font-bold text-amber-500 dark:text-amber-400 uppercase">Credit</p>
+                                    <p class="text-xs font-bold text-amber-700 dark:text-amber-300" x-text="fmt(Math.abs(balance({{ $aid }})))"></p>
                                 </div>
                             </template>
                             <template x-if="balance({{ $aid }}) === 0 && value({{ $aid }}) > 0">
-                                <span class="inline-block rounded-full px-2 py-0.5 text-[10px] font-bold bg-green-100 text-green-700">Balanced</span>
+                                <span class="inline-block rounded-full px-2 py-0.5 text-[10px] font-bold
+                                             bg-emerald-100 dark:bg-emerald-900/25 text-emerald-700 dark:text-emerald-400">
+                                    Balanced
+                                </span>
                             </template>
                         </td>
 
                         {{-- Remarks --}}
                         <td class="p-0">
                             <input type="text"
-                                   class="ds-cell w-full h-8 px-2 text-xs border-0 bg-transparent outline-none"
+                                   class="ds-cell w-full h-8 px-2 text-xs border-0 bg-transparent outline-none text-slate-700 dark:text-slate-300 placeholder-slate-400 dark:placeholder-slate-600"
                                    :value="rows[{{ $aid }}].remarks"
                                    @input="rows[{{ $aid }}].remarks = $event.target.value"
                                    placeholder="Notes…">
@@ -271,32 +306,31 @@
                     </tr>
                     @endforeach
 
-                    {{-- Bottom totals --}}
-                    <tr class="border-t-2 border-gray-300 font-bold" style="background:#f1f5f9;">
-                        <td class="sticky left-0 z-10 px-3 py-2.5 text-gray-700 border-r border-gray-200"
-                            style="background:#f1f5f9;">Totals ↑</td>
-                        <td class="px-2 py-2.5 text-center text-gray-900" x-text="fmtInt(totalQty())"></td>
-                        <td class="px-2 py-2.5 text-center text-gray-400">—</td>
-                        <td class="px-2 py-2.5 text-center text-yellow-700 font-bold"  x-text="fmt(totalValue())"></td>
-                        <td class="px-2 py-2.5 text-center text-emerald-700 font-bold" x-text="fmt(totalCash())"></td>
-                        <td class="px-2 py-2.5 text-center text-violet-700"            x-text="fmt(totalNlb())"></td>
-                        <td class="px-2 py-2.5 text-center text-violet-700"            x-text="fmt(totalDlb())"></td>
-                        <td class="px-2 py-2.5 text-center text-purple-700 font-bold"  x-text="fmt(totalWinning())"></td>
-                        <td class="px-2 py-2.5 text-center text-cyan-700 font-bold"    x-text="fmt(totalCW())"></td>
-                        <td class="px-2 py-2.5 text-center"
-                            :class="totalBalance() > 0 ? 'text-red-700' : (totalBalance() < 0 ? 'text-amber-600' : 'text-green-700')"
+                    {{-- Bottom totals row --}}
+                    <tr class="border-t-2 border-slate-200 dark:border-slate-600 font-bold bg-slate-50 dark:bg-slate-700/40">
+                        <td class="sticky left-0 z-10 px-3 py-2.5 text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-600"
+                            style="background:inherit;">Totals ↑</td>
+                        <td class="px-2 py-2.5 text-center text-slate-900 dark:text-white" x-text="fmtInt(totalQty())"></td>
+                        <td class="px-2 py-2.5 text-center text-slate-400 dark:text-slate-500">—</td>
+                        <td class="px-2 py-2.5 text-center text-yellow-700 dark:text-yellow-400 font-bold" x-text="fmt(totalValue())"></td>
+                        <td class="px-2 py-2.5 text-center text-emerald-700 dark:text-emerald-400 font-bold" x-text="fmt(totalCash())"></td>
+                        <td class="px-2 py-2.5 text-center text-violet-700 dark:text-violet-400" x-text="fmt(totalNlb())"></td>
+                        <td class="px-2 py-2.5 text-center text-violet-700 dark:text-violet-400" x-text="fmt(totalDlb())"></td>
+                        <td class="px-2 py-2.5 text-center text-purple-700 dark:text-purple-400 font-bold" x-text="fmt(totalWinning())"></td>
+                        <td class="px-2 py-2.5 text-center text-cyan-700 dark:text-cyan-400 font-bold" x-text="fmt(totalCW())"></td>
+                        <td class="px-2 py-2.5 text-center font-bold"
+                            :class="totalBalance() > 0 ? 'text-red-700 dark:text-red-400' : (totalBalance() < 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400')"
                             x-text="fmt(Math.abs(totalBalance()))"></td>
                         <td></td>
                     </tr>
                 </tbody>
             </table>
         </div>
-
     </form>
 
-    {{-- ══════════════════════════════════════════════════════════════
+    {{-- ══════════════════════════════════════════════════════════════════════
          CASH COUNTER MODAL
-    ═══════════════════════════════════════════════════════════════ --}}
+    ═══════════════════════════════════════════════════════════════════════ --}}
     <div x-show="cashModal.open"
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0"
@@ -304,25 +338,25 @@
          x-transition:leave="transition ease-in duration-150"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 print:hidden"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 print:hidden"
          @click.self="cashModal.open = false"
          style="display:none;">
 
-        <div class="w-full max-w-sm rounded-2xl bg-white shadow-2xl overflow-hidden"
+        <div class="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-800 shadow-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/5"
              @click.stop
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 scale-95"
              x-transition:enter-end="opacity-100 scale-100">
 
             {{-- Modal header --}}
-            <div class="flex items-center justify-between bg-gray-900 px-5 py-4">
+            <div class="flex items-center justify-between bg-slate-900 dark:bg-slate-950 px-5 py-4">
                 <div>
-                    <p class="text-xs text-gray-400 uppercase tracking-wide">Cash Counter</p>
+                    <p class="text-xs text-slate-400 uppercase tracking-wide font-medium">Cash Counter</p>
                     <p class="font-bold text-white text-sm mt-0.5"
                        x-text="cashModal.assistantId ? (names[cashModal.assistantId] ?? '') : ''"></p>
                 </div>
                 <button type="button" @click="cashModal.open = false"
-                        class="text-gray-400 hover:text-white transition">
+                        class="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
@@ -331,38 +365,45 @@
 
             {{-- Denomination inputs --}}
             <div class="px-5 py-4 space-y-2.5">
-                @foreach([5000 => ['bg-purple-100','text-purple-800'], 1000 => ['bg-blue-100','text-blue-800'], 500 => ['bg-green-100','text-green-800'], 100 => ['bg-yellow-100','text-yellow-800'], 50 => ['bg-orange-100','text-orange-800'], 20 => ['bg-gray-100','text-gray-700']] as $denom => $cls)
+                @foreach([5000 => ['bg-purple-100 dark:bg-purple-900/30','text-purple-800 dark:text-purple-300'], 1000 => ['bg-blue-100 dark:bg-blue-900/30','text-blue-800 dark:text-blue-300'], 500 => ['bg-emerald-100 dark:bg-emerald-900/30','text-emerald-800 dark:text-emerald-300'], 100 => ['bg-yellow-100 dark:bg-yellow-900/30','text-yellow-800 dark:text-yellow-300'], 50 => ['bg-orange-100 dark:bg-orange-900/30','text-orange-800 dark:text-orange-300'], 20 => ['bg-slate-100 dark:bg-slate-700','text-slate-700 dark:text-slate-300']] as $denom => $cls)
                 <div class="flex items-center gap-3">
                     <span class="w-20 flex-shrink-0 rounded-full {{ $cls[0] }} {{ $cls[1] }} px-3 py-1 text-center text-xs font-bold">
                         Rs. {{ number_format($denom) }}
                     </span>
-                    <span class="text-gray-400">×</span>
+                    <span class="text-slate-400 dark:text-slate-500">×</span>
                     <input type="number" min="0" step="1" placeholder="0"
-                           class="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-center font-medium
-                                  focus:outline-none focus:ring-2 focus:ring-blue-400"
+                           class="flex-1 rounded-xl border border-slate-200 dark:border-slate-700
+                                  bg-white dark:bg-slate-700/50
+                                  text-slate-900 dark:text-white
+                                  px-3 py-1.5 text-sm text-center font-medium
+                                  focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500/50"
                            :value="cashModal.denoms[{{ $denom }}]"
                            @input="cashModal.denoms[{{ $denom }}] = parseInt($event.target.value) || 0"
                            @keydown.enter.prevent="applyCash()">
-                    <span class="w-24 flex-shrink-0 text-right text-sm font-semibold text-gray-700"
+                    <span class="w-24 flex-shrink-0 text-right text-sm font-semibold text-slate-700 dark:text-slate-300"
                           x-text="'Rs. ' + ((cashModal.denoms[{{ $denom }}]||0)*{{ $denom }}).toLocaleString()"></span>
                 </div>
                 @endforeach
             </div>
 
             {{-- Total + buttons --}}
-            <div class="border-t border-gray-100 bg-gray-50 px-5 py-4">
+            <div class="border-t border-slate-100 dark:border-slate-700/60
+                        bg-slate-50 dark:bg-slate-900/40 px-5 py-4">
                 <div class="flex items-center justify-between mb-4">
-                    <span class="text-sm font-medium text-gray-600">Total Cash</span>
-                    <span class="text-2xl font-bold text-emerald-700"
+                    <span class="text-sm font-medium text-slate-600 dark:text-slate-400">Total Cash</span>
+                    <span class="text-2xl font-bold text-emerald-700 dark:text-emerald-400"
                           x-text="'Rs. ' + fmt(cashModalTotal())"></span>
                 </div>
                 <div class="flex gap-3">
                     <button type="button" @click="cashModal.open = false"
-                            class="flex-1 rounded-lg border border-gray-300 bg-white py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            class="btn-action flex-1 rounded-xl border border-slate-300 dark:border-slate-600
+                                   bg-white dark:bg-slate-800 py-2.5 text-sm font-medium
+                                   text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                         Cancel
                     </button>
                     <button type="button" @click="applyCash()"
-                            class="flex-1 rounded-lg bg-emerald-600 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition">
+                            class="btn-action flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700
+                                   py-2.5 text-sm font-semibold text-white transition-colors">
                         Apply
                     </button>
                 </div>
@@ -372,17 +413,17 @@
 
 </div>{{-- /x-data --}}
 
-{{-- ══════════════════════════════════════════════════════════════════
+{{-- ══════════════════════════════════════════════════════════════════════
      DATE NAVIGATION BAR
-═══════════════════════════════════════════════════════════════════ --}}
+═══════════════════════════════════════════════════════════════════════ --}}
 <div class="mt-5 flex gap-1.5 overflow-x-auto pb-1 print:hidden">
     @foreach($navDates as $d)
     @php $np = \Carbon\Carbon::parse($d); @endphp
     <a href="{{ route('daily-sales.index', ['date' => $d]) }}"
-       class="flex-shrink-0 rounded-lg px-4 py-2 text-xs font-medium transition text-center
+       class="btn-action flex-shrink-0 rounded-xl px-4 py-2 text-xs font-medium transition-all text-center
               {{ $d === $date
-                 ? 'bg-blue-600 text-white shadow'
-                 : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50' }}">
+                 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-900/20'
+                 : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700' }}">
         <span class="block font-bold">{{ $np->format('d') }}</span>
         <span class="block opacity-75">{{ $np->format('M') }}</span>
         <span class="block" style="font-size:10px;">{{ $np->format('D') }}</span>
@@ -397,8 +438,19 @@
 input.ds-cell::-webkit-outer-spin-button,
 input.ds-cell::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input.ds-cell[type=number] { -moz-appearance: textfield; }
-input.ds-cell:focus { background: #fff !important; box-shadow: inset 0 0 0 2px #3b82f6; border-radius: 2px; }
-@media print { .print\:hidden { display:none !important; } aside, header { display:none !important; } }
+input.ds-cell:focus {
+    background: rgba(99,102,241,0.06) !important;
+    box-shadow: inset 0 0 0 2px #6366f1;
+    border-radius: 3px;
+}
+.dark input.ds-cell:focus {
+    background: rgba(99,102,241,0.15) !important;
+    box-shadow: inset 0 0 0 2px #818cf8;
+}
+@media print {
+    .print\:hidden { display:none !important; }
+    aside, header { display:none !important; }
+}
 </style>
 <script>
 function salesGrid(initialRows, names) {
