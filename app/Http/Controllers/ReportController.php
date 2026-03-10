@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\ReportRangeExport;
 use App\Models\DailySale;
 use App\Models\Expense;
 use App\Models\LotteryStock;
@@ -13,6 +14,7 @@ use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ReportController extends Controller
 {
@@ -24,87 +26,8 @@ class ReportController extends Controller
     {
         [$from, $to, $preset] = $this->resolveDateRange($request);
 
-        // ── Commission by day ────────────────────────────────────────────────
-        $commByDay = LotteryStock::whereBetween('lottery_stocks.date', [$from, $to])
-            ->join('lotteries', 'lotteries.id', '=', 'lottery_stocks.lottery_id')
-            ->selectRaw('
-                DATE(lottery_stocks.date) AS day,
-                SUM(lottery_stocks.qty_issued * lotteries.unit_price
-                    * lotteries.commission_rate / 100)               AS commission,
-                SUM(lottery_stocks.qty_issued * lotteries.unit_price) AS gross_value
-            ')
-            ->groupByRaw('DATE(lottery_stocks.date)')
-            ->pluck(null, 'day')
-            ->map(fn ($r) => ['commission' => (float)$r->commission, 'gross_value' => (float)$r->gross_value]);
-
-        // ── Expenses by day ──────────────────────────────────────────────────
-        $expByDay = Expense::whereBetween('date', [$from, $to])
-            ->selectRaw('DATE(date) AS day, SUM(amount) AS amount')
-            ->groupByRaw('DATE(date)')
-            ->pluck('amount', 'day')
-            ->map(fn ($v) => (float) $v);
-
-        // ── Sales aggregates by day ──────────────────────────────────────────
-        $salesByDay = DailySale::whereBetween('date', [$from, $to])
-            ->selectRaw('
-                DATE(date)              AS day,
-                SUM(tickets_issued_val) AS issued,
-                SUM(returns_val)        AS returns,
-                SUM(winning_val)        AS winnings,
-                SUM(cash_collected)     AS cash,
-                SUM(balance)            AS outstanding,
-                COUNT(*)                AS records
-            ')
-            ->groupByRaw('DATE(date)')
-            ->get()->keyBy('day');
-
-        // ── Winnings by day ──────────────────────────────────────────────────
-        $winByDay = Winning::whereBetween('date', [$from, $to])
-            ->selectRaw('DATE(date) AS day, nlb_total, dlb_total, total_val')
-            ->get()->keyBy('day');
-
-        // ── Build full period rows (fill gaps with zeros) ────────────────────
-        $rows = collect(CarbonPeriod::create($from, $to))
-            ->map(function (Carbon $date) use ($commByDay, $expByDay, $salesByDay, $winByDay) {
-                $d = $date->toDateString();
-                $comm = $commByDay[$d] ?? ['commission' => 0, 'gross_value' => 0];
-                $exp  = $expByDay[$d]  ?? 0;
-                $sale = $salesByDay[$d] ?? null;
-                $win  = $winByDay[$d]   ?? null;
-
-                return [
-                    'date'             => $d,
-                    'gross_value'      => $comm['gross_value'],
-                    'gross_commission' => $comm['commission'],
-                    'total_expenses'   => $exp,
-                    'net_profit'       => $comm['commission'] - $exp,
-                    'issued_val'       => $sale ? (float) $sale->issued    : 0.0,
-                    'returns_val'      => $sale ? (float) $sale->returns   : 0.0,
-                    'winning_val'      => $sale ? (float) $sale->winnings  : 0.0,
-                    'cash_collected'   => $sale ? (float) $sale->cash      : 0.0,
-                    'outstanding'      => $sale ? (float) $sale->outstanding: 0.0,
-                    'records'          => $sale ? (int)   $sale->records   : 0,
-                    'nlb_winning'      => $win  ? (float) $win->nlb_total  : 0.0,
-                    'dlb_winning'      => $win  ? (float) $win->dlb_total  : 0.0,
-                    'total_winning'    => $win  ? (float) $win->total_val  : 0.0,
-                ];
-            });
-
-        $totals = [
-            'gross_value'      => $rows->sum('gross_value'),
-            'gross_commission' => $rows->sum('gross_commission'),
-            'total_expenses'   => $rows->sum('total_expenses'),
-            'net_profit'       => $rows->sum('net_profit'),
-            'issued_val'       => $rows->sum('issued_val'),
-            'returns_val'      => $rows->sum('returns_val'),
-            'winning_val'      => $rows->sum('winning_val'),
-            'cash_collected'   => $rows->sum('cash_collected'),
-            'outstanding'      => $rows->sum('outstanding'),
-            'nlb_winning'      => $rows->sum('nlb_winning'),
-            'dlb_winning'      => $rows->sum('dlb_winning'),
-            'total_winning'    => $rows->sum('total_winning'),
-            'records'          => $rows->sum('records'),
-        ];
+        // ── Build period rows and totals (shared helper) ────────────────────
+        [$rows, $totals] = $this->buildRangeData($from, $to);
 
         // Chart datasets (only days that have data)
         $chartRows  = $rows->filter(fn ($r) => $r['records'] > 0 || $r['gross_commission'] > 0);
@@ -254,8 +177,172 @@ class ReportController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // EXCEL EXPORT  (GET /reports/excel)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Excel: Full P&L for the requested date range.
+     * GET /reports/excel?preset=month  OR  ?from=...&to=...
+     */
+    public function excelExport(Request $request)
+    {
+        [$from, $to] = $this->resolveDateRange($request);
+
+        [$rows, $totals] = $this->buildRangeData($from, $to);
+
+        $filename = 'WRSoysa-PnL-' . $from . '-to-' . $to . '.xlsx';
+
+        return Excel::download(
+            new ReportRangeExport($rows, $totals, $from, $to),
+            $filename,
+        );
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PDF RANGE EXPORT  (GET /reports/pdf/range)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * PDF: Branded summary for a date range.
+     * GET /reports/pdf/range?preset=month  OR  ?from=...&to=...
+     */
+    public function pdfRange(Request $request)
+    {
+        [$from, $to] = $this->resolveDateRange($request);
+
+        [$rows, $totals] = $this->buildRangeData($from, $to);
+
+        // Commission breakdown for the period (grouped by lottery)
+        $commissionByLottery = LotteryStock::whereBetween('lottery_stocks.date', [$from, $to])
+            ->join('lotteries', 'lotteries.id', '=', 'lottery_stocks.lottery_id')
+            ->selectRaw('
+                lotteries.name, lotteries.board,
+                SUM(lottery_stocks.qty_issued) AS total_qty,
+                SUM(lottery_stocks.qty_issued * lotteries.unit_price) AS gross_value,
+                SUM(lottery_stocks.qty_issued * lotteries.unit_price * lotteries.commission_rate / 100) AS commission
+            ')
+            ->groupBy('lotteries.id', 'lotteries.name', 'lotteries.board')
+            ->orderByDesc('gross_value')
+            ->get();
+
+        // Top assistants by cash collected
+        $topAssistants = SalesAssistant::withSum(
+                ['dailySales as total_cash' => fn ($q) => $q->whereBetween('date', [$from, $to])],
+                'cash_collected'
+            )
+            ->withSum(
+                ['dailySales as total_issued' => fn ($q) => $q->whereBetween('date', [$from, $to])],
+                'tickets_issued_val'
+            )
+            ->orderByDesc('total_cash')
+            ->take(10)
+            ->get();
+
+        // Only rows with actual data
+        $activeRows = collect($rows)->filter(
+            fn ($r) => $r['records'] > 0 || $r['gross_commission'] > 0 || $r['total_expenses'] > 0
+        );
+
+        $pdf = Pdf::loadView('reports.pdf.range', compact(
+            'from', 'to', 'rows', 'activeRows', 'totals',
+            'commissionByLottery', 'topAssistants'
+        ))->setPaper('a4', 'portrait');
+
+        return $pdf->download('WRSoysa-PnL-' . $from . '-to-' . $to . '.pdf');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // HELPER
     // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Build the rows + totals arrays for a given date range.
+     * Extracted so excelExport/pdfRange can reuse without duplicating queries.
+     *
+     * @return array{0: \Illuminate\Support\Collection, 1: array}
+     */
+    private function buildRangeData(string $from, string $to): array
+    {
+        $commByDay = LotteryStock::whereBetween('lottery_stocks.date', [$from, $to])
+            ->join('lotteries', 'lotteries.id', '=', 'lottery_stocks.lottery_id')
+            ->selectRaw('
+                DATE(lottery_stocks.date) AS day,
+                SUM(lottery_stocks.qty_issued * lotteries.unit_price
+                    * lotteries.commission_rate / 100)               AS commission,
+                SUM(lottery_stocks.qty_issued * lotteries.unit_price) AS gross_value
+            ')
+            ->groupByRaw('DATE(lottery_stocks.date)')
+            ->get()
+            ->keyBy('day')
+            ->map(fn ($r) => ['commission' => (float)$r->commission, 'gross_value' => (float)$r->gross_value]);
+
+        $expByDay = Expense::whereBetween('date', [$from, $to])
+            ->selectRaw('DATE(date) AS day, SUM(amount) AS amount')
+            ->groupByRaw('DATE(date)')
+            ->pluck('amount', 'day')
+            ->map(fn ($v) => (float) $v);
+
+        $salesByDay = DailySale::whereBetween('date', [$from, $to])
+            ->selectRaw('
+                DATE(date)              AS day,
+                SUM(tickets_issued_val) AS issued,
+                SUM(returns_val)        AS returns,
+                SUM(winning_val)        AS winnings,
+                SUM(cash_collected)     AS cash,
+                SUM(balance)            AS outstanding,
+                COUNT(*)                AS records
+            ')
+            ->groupByRaw('DATE(date)')
+            ->get()->keyBy('day');
+
+        $winByDay = Winning::whereBetween('date', [$from, $to])
+            ->selectRaw('DATE(date) AS day, nlb_total, dlb_total, total_val')
+            ->get()->keyBy('day');
+
+        $rows = collect(CarbonPeriod::create($from, $to))
+            ->map(function (Carbon $date) use ($commByDay, $expByDay, $salesByDay, $winByDay) {
+                $d    = $date->toDateString();
+                $comm = $commByDay[$d] ?? ['commission' => 0, 'gross_value' => 0];
+                $exp  = $expByDay[$d]  ?? 0;
+                $sale = $salesByDay[$d] ?? null;
+                $win  = $winByDay[$d]   ?? null;
+
+                return [
+                    'date'             => $d,
+                    'gross_value'      => $comm['gross_value'],
+                    'gross_commission' => $comm['commission'],
+                    'total_expenses'   => $exp,
+                    'net_profit'       => $comm['commission'] - $exp,
+                    'issued_val'       => $sale ? (float) $sale->issued     : 0.0,
+                    'returns_val'      => $sale ? (float) $sale->returns    : 0.0,
+                    'winning_val'      => $sale ? (float) $sale->winnings   : 0.0,
+                    'cash_collected'   => $sale ? (float) $sale->cash       : 0.0,
+                    'outstanding'      => $sale ? (float) $sale->outstanding : 0.0,
+                    'records'          => $sale ? (int)   $sale->records    : 0,
+                    'nlb_winning'      => $win  ? (float) $win->nlb_total   : 0.0,
+                    'dlb_winning'      => $win  ? (float) $win->dlb_total   : 0.0,
+                    'total_winning'    => $win  ? (float) $win->total_val   : 0.0,
+                ];
+            });
+
+        $totals = [
+            'gross_value'      => $rows->sum('gross_value'),
+            'gross_commission' => $rows->sum('gross_commission'),
+            'total_expenses'   => $rows->sum('total_expenses'),
+            'net_profit'       => $rows->sum('net_profit'),
+            'issued_val'       => $rows->sum('issued_val'),
+            'returns_val'      => $rows->sum('returns_val'),
+            'winning_val'      => $rows->sum('winning_val'),
+            'cash_collected'   => $rows->sum('cash_collected'),
+            'outstanding'      => $rows->sum('outstanding'),
+            'nlb_winning'      => $rows->sum('nlb_winning'),
+            'dlb_winning'      => $rows->sum('dlb_winning'),
+            'total_winning'    => $rows->sum('total_winning'),
+            'records'          => $rows->sum('records'),
+        ];
+
+        return [$rows, $totals];
+    }
 
     /**
      * Resolve from/to dates based on the `preset` or explicit `from`/`to` params.
