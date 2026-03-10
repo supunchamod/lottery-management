@@ -107,6 +107,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/reports/assistants',             [ReportController::class, 'assistantPerformance'])->name('reports.assistants');
         Route::get('/reports/pdf/daily-sales',        [ReportController::class, 'pdfDailySales'])->name('reports.pdf.daily-sales');
         Route::get('/reports/pdf/ledger/{assistant}', [ReportController::class, 'pdfLedger'])->name('reports.pdf.ledger');
+        Route::get('/reports/pdf/range',              [ReportController::class, 'pdfRange'])->name('reports.pdf.range');
+        Route::get('/reports/excel',                  [ReportController::class, 'excelExport'])->name('reports.excel');
 
         // Activity Log
         Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');

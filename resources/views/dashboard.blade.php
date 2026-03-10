@@ -14,8 +14,8 @@
             'growth'        => $profitGrowth,
             'positive_good' => true,
             'accent'        => 'from-emerald-500 to-teal-500',
-            'icon_bg'       => 'bg-emerald-50',
-            'icon_color'    => 'text-emerald-600',
+            'icon_bg'       => 'bg-emerald-50 dark:bg-emerald-500/10',
+            'icon_color'    => 'text-emerald-600 dark:text-emerald-400',
             'icon'          => 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
         ],
         [
@@ -24,9 +24,9 @@
             'sub'           => 'Rs. ' . number_format($todayTicketsVal, 2) . ' value',
             'growth'        => $ticketsGrowth,
             'positive_good' => true,
-            'accent'        => 'from-blue-500 to-indigo-500',
-            'icon_bg'       => 'bg-blue-50',
-            'icon_color'    => 'text-blue-600',
+            'accent'        => 'from-indigo-500 to-blue-500',
+            'icon_bg'       => 'bg-indigo-50 dark:bg-indigo-500/10',
+            'icon_color'    => 'text-indigo-600 dark:text-indigo-400',
             'icon'          => 'M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z',
         ],
         [
@@ -36,8 +36,8 @@
             'growth'        => $boardGrowth,
             'positive_good' => false,
             'accent'        => 'from-violet-500 to-purple-500',
-            'icon_bg'       => 'bg-violet-50',
-            'icon_color'    => 'text-violet-600',
+            'icon_bg'       => 'bg-violet-50 dark:bg-violet-500/10',
+            'icon_color'    => 'text-violet-600 dark:text-violet-400',
             'icon'          => 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z',
         ],
         [
@@ -47,8 +47,8 @@
             'growth'        => $expenseGrowth,
             'positive_good' => false,
             'accent'        => 'from-rose-500 to-pink-500',
-            'icon_bg'       => 'bg-rose-50',
-            'icon_color'    => 'text-rose-600',
+            'icon_bg'       => 'bg-rose-50 dark:bg-rose-500/10',
+            'icon_color'    => 'text-rose-600 dark:text-rose-400',
             'icon'          => 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
         ],
     ];
@@ -59,9 +59,13 @@
         $isUp   = $card['growth'] >= 0;
         $isGood = $card['positive_good'] ? $isUp : !$isUp;
     @endphp
-    <div class="relative rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden
-                hover:shadow-md transition-all duration-200 group">
-        {{-- Top gradient accent line --}}
+    <div class="stat-card relative rounded-2xl
+                bg-white dark:bg-slate-800/60
+                border border-slate-100 dark:border-slate-700/50
+                shadow-sm dark:shadow-slate-900/30
+                overflow-hidden hover:shadow-md dark:hover:shadow-slate-900/50
+                transition-all duration-200 group">
+        {{-- Top gradient accent --}}
         <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r {{ $card['accent'] }}"></div>
         <div class="p-5 pt-6">
             <div class="flex items-start justify-between mb-4">
@@ -72,46 +76,51 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="{{ $card['icon'] }}"/>
                     </svg>
                 </div>
-                {{-- Growth indicator --}}
+                {{-- Growth badge --}}
                 <div class="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold
-                    {{ $isGood ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600' }}">
-                    <svg class="h-3 w-3 transition-transform {{ $isUp ? '' : 'rotate-180' }}"
+                    {{ $isGood
+                        ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                        : 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400' }}">
+                    <svg class="h-3 w-3 {{ $isUp ? '' : 'rotate-180' }}"
                          fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/>
                     </svg>
                     {{ abs($card['growth']) }}%
                 </div>
             </div>
-            <p class="text-2xl font-extrabold text-gray-900 tracking-tight leading-none">
+            <p class="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-none">
                 {{ $card['value'] }}
             </p>
-            <p class="mt-1.5 text-sm font-semibold text-gray-700">{{ $card['title'] }}</p>
-            <p class="mt-0.5 text-xs text-gray-400">{{ $card['sub'] }}</p>
+            <p class="mt-1.5 text-sm font-semibold text-slate-700 dark:text-slate-300">{{ $card['title'] }}</p>
+            <p class="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{{ $card['sub'] }}</p>
         </div>
     </div>
     @endforeach
 </div>
 
 {{-- ══════════════════════════════════════════════════════════════════════════
-     ROW 2 — CHARTS: Area (L) · Doughnut (M) · Inventory Bar (R)
+     ROW 2 — CHARTS
 ════════════════════════════════════════════════════════════════════════════ --}}
 <div class="grid grid-cols-1 gap-5 lg:grid-cols-5 mb-6">
 
-    {{-- Revenue vs Expense — 7-day smooth area chart ────────────────── (3) --}}
-    <div class="lg:col-span-3 rounded-2xl bg-white border border-gray-100 shadow-sm p-6">
+    {{-- Revenue vs Expense — 7-day area chart ───────────────────────── (3) --}}
+    <div class="lg:col-span-3 rounded-2xl
+                bg-white dark:bg-slate-800/60
+                border border-slate-100 dark:border-slate-700/50
+                shadow-sm p-6">
         <div class="flex flex-wrap items-start justify-between gap-3 mb-5">
             <div>
-                <h3 class="text-sm font-bold text-gray-800">Revenue vs Expense</h3>
-                <p class="text-xs text-gray-400 mt-0.5">Last 7 days · commission earned vs costs incurred</p>
+                <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Revenue vs Expense</h3>
+                <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Last 7 days · commission earned vs costs incurred</p>
             </div>
             <div class="flex gap-4 text-xs">
-                <span class="flex items-center gap-1.5 text-gray-500">
-                    <span class="inline-block h-2.5 w-2.5 rounded-full bg-blue-500"></span>Revenue
+                <span class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                    <span class="inline-block h-2.5 w-2.5 rounded-full bg-indigo-500"></span>Revenue
                 </span>
-                <span class="flex items-center gap-1.5 text-gray-500">
+                <span class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
                     <span class="inline-block h-2.5 w-2.5 rounded-full bg-rose-400"></span>Expenses
                 </span>
-                <span class="flex items-center gap-1.5 text-gray-500">
+                <span class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
                     <span class="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500"></span>Profit
                 </span>
             </div>
@@ -122,9 +131,12 @@
     </div>
 
     {{-- NLB vs DLB Doughnut ──────────────────────────────────────────── (1) --}}
-    <div class="lg:col-span-1 rounded-2xl bg-white border border-gray-100 shadow-sm p-5 flex flex-col">
-        <h3 class="text-sm font-bold text-gray-800">Sales Split</h3>
-        <p class="text-xs text-gray-400 mt-0.5 mb-4">NLB vs DLB · {{ now()->format('M Y') }}</p>
+    <div class="lg:col-span-1 rounded-2xl
+                bg-white dark:bg-slate-800/60
+                border border-slate-100 dark:border-slate-700/50
+                shadow-sm p-5 flex flex-col">
+        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Sales Split</h3>
+        <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5 mb-4">NLB vs DLB · {{ now()->format('M Y') }}</p>
         <div class="relative flex-1" style="min-height:150px;">
             <canvas id="doughnutChart"></canvas>
         </div>
@@ -135,90 +147,96 @@
         @endphp
         <div class="mt-4 space-y-2.5">
             <div class="flex items-center justify-between">
-                <span class="flex items-center gap-1.5 text-xs text-gray-600">
-                    <span class="h-2 w-5 rounded bg-blue-500"></span> NLB
+                <span class="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                    <span class="h-2 w-5 rounded bg-indigo-500"></span> NLB
                 </span>
                 <div class="text-right">
-                    <span class="text-xs font-extrabold text-gray-800">{{ $nlbPct }}%</span>
-                    <p class="text-xs text-gray-400">Rs. {{ number_format($nlbMonthly, 0) }}</p>
+                    <span class="text-xs font-extrabold text-slate-800 dark:text-slate-100">{{ $nlbPct }}%</span>
+                    <p class="text-xs text-slate-400 dark:text-slate-500">Rs. {{ number_format($nlbMonthly, 0) }}</p>
                 </div>
             </div>
             <div class="flex items-center justify-between">
-                <span class="flex items-center gap-1.5 text-xs text-gray-600">
+                <span class="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
                     <span class="h-2 w-5 rounded bg-violet-500"></span> DLB
                 </span>
                 <div class="text-right">
-                    <span class="text-xs font-extrabold text-gray-800">{{ $dlbPct }}%</span>
-                    <p class="text-xs text-gray-400">Rs. {{ number_format($dlbMonthly, 0) }}</p>
+                    <span class="text-xs font-extrabold text-slate-800 dark:text-slate-100">{{ $dlbPct }}%</span>
+                    <p class="text-xs text-slate-400 dark:text-slate-500">Rs. {{ number_format($dlbMonthly, 0) }}</p>
                 </div>
             </div>
         </div>
     </div>
 
     {{-- Inventory Health — horizontal bar ───────────────────────────── (1) --}}
-    <div class="lg:col-span-1 rounded-2xl bg-white border border-gray-100 shadow-sm p-5 flex flex-col">
-        <h3 class="text-sm font-bold text-gray-800">Inventory Health</h3>
-        <p class="text-xs text-gray-400 mt-0.5 mb-4">Top 5 · issued this month</p>
+    <div class="lg:col-span-1 rounded-2xl
+                bg-white dark:bg-slate-800/60
+                border border-slate-100 dark:border-slate-700/50
+                shadow-sm p-5 flex flex-col">
+        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Inventory Health</h3>
+        <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5 mb-4">Top 5 · issued this month</p>
         <div class="flex-1" style="min-height:150px; position:relative;">
             <canvas id="inventoryChart"></canvas>
         </div>
         <a href="{{ route('stock.index') }}"
-           class="mt-3 text-center text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline">
+           class="mt-3 text-center text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline">
             View All Stock →
         </a>
     </div>
 </div>
 
 {{-- ══════════════════════════════════════════════════════════════════════════
-     ROW 3 — BOARD STATUS (L) + ASSISTANT PERFORMANCE (R)
+     ROW 3 — BOARD STATUS + ASSISTANT PERFORMANCE
 ════════════════════════════════════════════════════════════════════════════ --}}
 <div class="grid grid-cols-1 gap-5 lg:grid-cols-2 mb-6">
 
-    {{-- Board Status Widget ──────────────────────────────────────────────── --}}
-    <div class="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden">
-        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+    {{-- Board Status ──────────────────────────────────────────────────────── --}}
+    <div class="rounded-2xl bg-white dark:bg-slate-800/60
+                border border-slate-100 dark:border-slate-700/50
+                shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4
+                    border-b border-slate-100 dark:border-slate-700/50">
             <div>
-                <h3 class="text-sm font-bold text-gray-800">Board Status</h3>
-                <p class="text-xs text-gray-400 mt-0.5">NLB · DLB outstanding &amp; monthly settlement</p>
+                <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Board Status</h3>
+                <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">NLB · DLB outstanding &amp; monthly settlement</p>
             </div>
             <a href="{{ route('board-transactions.index') }}"
-               class="text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors">
+               class="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors">
                 Full Ledger →
             </a>
         </div>
 
         <div class="p-5 space-y-4">
-            {{-- Outstanding balance card --}}
+            {{-- Outstanding balance --}}
             <div class="rounded-xl p-4 border
                 {{ $boardStatus['outstanding'] > 0
-                    ? 'bg-gradient-to-r from-red-50 to-rose-50 border-red-100'
+                    ? 'bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20 border-red-100 dark:border-red-800/30'
                     : ($boardStatus['outstanding'] < 0
-                        ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-100'
-                        : 'bg-gray-50 border-gray-100') }}">
+                        ? 'bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border-emerald-100 dark:border-emerald-800/30'
+                        : 'bg-slate-50 dark:bg-slate-700/30 border-slate-100 dark:border-slate-600/30') }}">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-wide
-                            {{ $boardStatus['outstanding'] > 0 ? 'text-red-500'
-                            : ($boardStatus['outstanding'] < 0 ? 'text-emerald-500' : 'text-gray-400') }}">
+                            {{ $boardStatus['outstanding'] > 0 ? 'text-red-500 dark:text-red-400'
+                            : ($boardStatus['outstanding'] < 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-slate-400') }}">
                             Current Outstanding
                         </p>
                         <p class="text-3xl font-extrabold mt-1 tracking-tight
-                            {{ $boardStatus['outstanding'] > 0 ? 'text-red-700'
-                            : ($boardStatus['outstanding'] < 0 ? 'text-emerald-700' : 'text-gray-500') }}">
+                            {{ $boardStatus['outstanding'] > 0 ? 'text-red-700 dark:text-red-300'
+                            : ($boardStatus['outstanding'] < 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-500 dark:text-slate-400') }}">
                             Rs. {{ number_format(abs($boardStatus['outstanding']), 2) }}
                         </p>
                         <p class="text-xs mt-1
-                            {{ $boardStatus['outstanding'] > 0 ? 'text-red-400'
-                            : ($boardStatus['outstanding'] < 0 ? 'text-emerald-400' : 'text-gray-400') }}">
+                            {{ $boardStatus['outstanding'] > 0 ? 'text-red-400 dark:text-red-500'
+                            : ($boardStatus['outstanding'] < 0 ? 'text-emerald-400 dark:text-emerald-500' : 'text-slate-400') }}">
                             {{ $boardStatus['outstanding'] > 0 ? 'Owed to board — settle before next stock issue'
                              : ($boardStatus['outstanding'] < 0 ? 'Agent has excess credit with board' : 'Fully settled') }}
                         </p>
                     </div>
                     <div class="h-14 w-14 rounded-xl flex items-center justify-center shrink-0
-                        {{ $boardStatus['outstanding'] > 0 ? 'bg-red-100'
-                        : ($boardStatus['outstanding'] < 0 ? 'bg-emerald-100' : 'bg-gray-100') }}">
-                        <svg class="h-7 w-7 {{ $boardStatus['outstanding'] > 0 ? 'text-red-600'
-                                             : ($boardStatus['outstanding'] < 0 ? 'text-emerald-600' : 'text-gray-400') }}"
+                        {{ $boardStatus['outstanding'] > 0 ? 'bg-red-100 dark:bg-red-900/30'
+                        : ($boardStatus['outstanding'] < 0 ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-slate-100 dark:bg-slate-700') }}">
+                        <svg class="h-7 w-7 {{ $boardStatus['outstanding'] > 0 ? 'text-red-600 dark:text-red-400'
+                                             : ($boardStatus['outstanding'] < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400') }}"
                              fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round"
                                   d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/>
@@ -227,27 +245,27 @@
                 </div>
             </div>
 
-            {{-- NLB and DLB winning paid this month --}}
+            {{-- NLB and DLB winning paid --}}
             <div class="grid grid-cols-2 gap-3">
-                <div class="rounded-xl bg-blue-50 border border-blue-100 p-3.5">
+                <div class="rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 p-3.5">
                     <div class="flex items-center gap-2 mb-1">
-                        <span class="h-2 w-2 rounded-full bg-blue-500"></span>
-                        <p class="text-xs font-semibold text-blue-600 uppercase tracking-wide">NLB Winning</p>
+                        <span class="h-2 w-2 rounded-full bg-indigo-500"></span>
+                        <p class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">NLB Winning</p>
                     </div>
-                    <p class="text-xl font-extrabold text-blue-800">
+                    <p class="text-xl font-extrabold text-indigo-800 dark:text-indigo-200">
                         Rs. {{ number_format($boardStatus['nlb_winning_month'], 0) }}
                     </p>
-                    <p class="text-xs text-blue-400 mt-0.5">Paid · {{ now()->format('M Y') }}</p>
+                    <p class="text-xs text-indigo-400 dark:text-indigo-500 mt-0.5">Paid · {{ now()->format('M Y') }}</p>
                 </div>
-                <div class="rounded-xl bg-purple-50 border border-purple-100 p-3.5">
+                <div class="rounded-xl bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-500/20 p-3.5">
                     <div class="flex items-center gap-2 mb-1">
                         <span class="h-2 w-2 rounded-full bg-purple-500"></span>
-                        <p class="text-xs font-semibold text-purple-600 uppercase tracking-wide">DLB Winning</p>
+                        <p class="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide">DLB Winning</p>
                     </div>
-                    <p class="text-xl font-extrabold text-purple-800">
+                    <p class="text-xl font-extrabold text-purple-800 dark:text-purple-200">
                         Rs. {{ number_format($boardStatus['dlb_winning_month'], 0) }}
                     </p>
-                    <p class="text-xs text-purple-400 mt-0.5">Paid · {{ now()->format('M Y') }}</p>
+                    <p class="text-xs text-purple-400 dark:text-purple-500 mt-0.5">Paid · {{ now()->format('M Y') }}</p>
                 </div>
             </div>
 
@@ -258,29 +276,30 @@
                     : 0;
             @endphp
             <div>
-                <div class="flex justify-between text-xs text-gray-500 mb-1.5">
+                <div class="flex justify-between text-xs text-slate-500 dark:text-slate-400 mb-1.5">
                     <span class="font-medium">Month Settlement Progress</span>
-                    <span class="font-bold {{ $settledPct >= 100 ? 'text-emerald-600' : ($settledPct >= 60 ? 'text-amber-600' : 'text-red-500') }}">
+                    <span class="font-bold {{ $settledPct >= 100 ? 'text-emerald-600 dark:text-emerald-400' : ($settledPct >= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-red-500 dark:text-red-400') }}">
                         {{ $settledPct }}%
                     </span>
                 </div>
-                <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
                     <div class="h-2.5 rounded-full transition-all duration-700
                         {{ $settledPct >= 100 ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
                          : ($settledPct >= 60  ? 'bg-gradient-to-r from-amber-400 to-yellow-500'
                          : 'bg-gradient-to-r from-red-400 to-rose-500') }}"
                          style="width: {{ $settledPct }}%"></div>
                 </div>
-                <div class="flex justify-between text-xs text-gray-400 mt-1.5">
-                    <span>Paid: <span class="font-medium text-gray-600">Rs. {{ number_format($boardStatus['month_paid'], 0) }}</span></span>
-                    <span>Total: <span class="font-medium text-gray-600">Rs. {{ number_format($boardStatus['month_ticket_val'], 0) }}</span></span>
+                <div class="flex justify-between text-xs text-slate-400 dark:text-slate-500 mt-1.5">
+                    <span>Paid: <span class="font-medium text-slate-600 dark:text-slate-300">Rs. {{ number_format($boardStatus['month_paid'], 0) }}</span></span>
+                    <span>Total: <span class="font-medium text-slate-600 dark:text-slate-300">Rs. {{ number_format($boardStatus['month_ticket_val'], 0) }}</span></span>
                 </div>
             </div>
         </div>
 
         <div class="px-5 pb-5 grid grid-cols-2 gap-3">
             <a href="{{ route('board-settlement.index') }}"
-               class="flex items-center justify-center gap-2 rounded-xl bg-slate-800 hover:bg-slate-700
+               class="btn-action flex items-center justify-center gap-2 rounded-xl
+                      bg-slate-800 dark:bg-indigo-600 hover:bg-slate-700 dark:hover:bg-indigo-700
                       text-white text-xs font-bold py-2.5 transition-colors">
                 <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
@@ -288,92 +307,95 @@
                 New Settlement
             </a>
             <a href="{{ route('board-transactions.index') }}"
-               class="flex items-center justify-center gap-2 rounded-xl border border-gray-200
-                      text-gray-600 text-xs font-bold py-2.5 hover:bg-gray-50 transition-colors">
+               class="btn-action flex items-center justify-center gap-2 rounded-xl
+                      border border-slate-200 dark:border-slate-600
+                      text-slate-600 dark:text-slate-300
+                      text-xs font-bold py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                 <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                 </svg>
                 View Ledger
             </a>
         </div>
     </div>
 
-    {{-- Assistant Performance Table ─────────────────────────────────────── --}}
-    <div class="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden">
-        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+    {{-- Assistant Performance ────────────────────────────────────────────── --}}
+    <div class="rounded-2xl bg-white dark:bg-slate-800/60
+                border border-slate-100 dark:border-slate-700/50
+                shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4
+                    border-b border-slate-100 dark:border-slate-700/50">
             <div>
-                <h3 class="text-sm font-bold text-gray-800">Assistant Performance</h3>
-                <p class="text-xs text-gray-400 mt-0.5">Top sellers · {{ now()->format('F Y') }}</p>
+                <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Assistant Performance</h3>
+                <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Top sellers · {{ now()->format('F Y') }}</p>
             </div>
             <a href="{{ route('reports.assistants') }}"
-               class="text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors">
+               class="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors">
                 Full Report →
             </a>
         </div>
 
-        <div class="divide-y divide-gray-50">
+        <div class="divide-y divide-slate-50 dark:divide-slate-700/40">
             @forelse($topAssistants as $idx => $asst)
             @php
                 $maxSales   = (float) ($topAssistants->max('month_sales') ?: 1);
                 $barPct     = round($asst->month_sales / $maxSales * 100);
                 $rankColors = [
                     'bg-gradient-to-br from-yellow-400 to-amber-500',
-                    'bg-gradient-to-br from-gray-400 to-gray-500',
+                    'bg-gradient-to-br from-slate-400 to-slate-500',
                     'bg-gradient-to-br from-amber-600 to-yellow-700',
                     'bg-gradient-to-br from-slate-300 to-slate-400',
                     'bg-gradient-to-br from-slate-300 to-slate-400',
                 ];
             @endphp
-            <div class="px-5 py-3.5 hover:bg-gray-50/60 transition-colors">
+            <div class="px-5 py-3.5 hover:bg-slate-50/60 dark:hover:bg-slate-700/30 transition-colors">
                 <div class="flex items-center gap-3">
-                    {{-- Rank --}}
                     <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full
-                                {{ $rankColors[$idx] ?? 'bg-gray-200' }} text-white text-xs font-extrabold shadow-sm">
+                                {{ $rankColors[$idx] ?? 'bg-slate-200 dark:bg-slate-700' }} text-white text-xs font-extrabold shadow-sm">
                         {{ $idx + 1 }}
                     </div>
-                    {{-- Avatar --}}
                     <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full
-                                bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xs font-bold shadow-sm">
+                                bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-xs font-bold shadow-sm">
                         {{ strtoupper(mb_substr($asst->name, 0, 2)) }}
                     </div>
-                    {{-- Info --}}
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center justify-between mb-1">
-                            <p class="text-sm font-semibold text-gray-800 truncate">{{ $asst->name }}</p>
-                            <p class="text-sm font-extrabold text-gray-900 ml-2 shrink-0">
+                            <p class="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{{ $asst->name }}</p>
+                            <p class="text-sm font-extrabold text-slate-900 dark:text-white ml-2 shrink-0">
                                 Rs. {{ number_format($asst->month_sales, 0) }}
                             </p>
                         </div>
-                        {{-- Progress bar --}}
                         <div class="flex items-center gap-2">
-                            <div class="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                <div class="h-1.5 rounded-full bg-gradient-to-r from-blue-400 to-indigo-500
-                                            transition-all duration-700"
+                            <div class="flex-1 bg-slate-100 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                                <div class="h-1.5 rounded-full bg-gradient-to-r from-indigo-400 to-violet-500 transition-all duration-700"
                                      style="width: {{ $barPct }}%"></div>
                             </div>
-                            <span class="text-xs text-gray-400 shrink-0 w-6 text-right">{{ $asst->sale_days }}d</span>
+                            <span class="text-xs text-slate-400 dark:text-slate-500 shrink-0 w-6 text-right">{{ $asst->sale_days }}d</span>
                         </div>
                     </div>
                 </div>
-                <div class="mt-1.5 ml-[5.5rem] flex items-center gap-3 text-xs text-gray-400">
+                <div class="mt-1.5 ml-[5.5rem] flex items-center gap-3 text-xs text-slate-400 dark:text-slate-500">
                     <span>Cash collected:
-                        <span class="text-emerald-700 font-semibold">Rs. {{ number_format($asst->month_cash, 0) }}</span>
+                        <span class="text-emerald-700 dark:text-emerald-400 font-semibold">Rs. {{ number_format($asst->month_cash, 0) }}</span>
                     </span>
                     @if($asst->current_balance > 0)
                     <span class="flex items-center gap-1">
                         <span class="h-1.5 w-1.5 rounded-full bg-red-400"></span>
-                        <span class="text-red-500 font-medium">Owes Rs. {{ number_format($asst->current_balance, 0) }}</span>
+                        <span class="text-red-500 dark:text-red-400 font-medium">Owes Rs. {{ number_format($asst->current_balance, 0) }}</span>
                     </span>
                     @endif
                 </div>
             </div>
             @empty
-            <div class="py-14 text-center text-gray-400 text-sm">
-                <svg class="mx-auto h-10 w-10 text-gray-200 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                </svg>
-                No sales recorded this month.
+            <div class="py-14 text-center">
+                <div class="mx-auto h-16 w-16 rounded-2xl bg-slate-50 dark:bg-slate-700/50 flex items-center justify-center mb-3">
+                    <svg class="h-8 w-8 text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                </div>
+                <p class="text-sm font-semibold text-slate-400 dark:text-slate-500">No sales recorded this month.</p>
             </div>
             @endforelse
         </div>
@@ -381,80 +403,85 @@
 </div>
 
 {{-- ══════════════════════════════════════════════════════════════════════════
-     ROW 4 — ACTIVITY FEED (L·L) + CHEQUE ALERTS + QUICK ACTIONS (R)
+     ROW 4 — ACTIVITY FEED + CHEQUE ALERTS + QUICK ACTIONS
 ════════════════════════════════════════════════════════════════════════════ --}}
 <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
 
-    {{-- Recent Activity Feed ─────────────────────────────────────── (span 2) --}}
-    <div class="lg:col-span-2 rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden">
-        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+    {{-- Recent Activity Feed ────────────────────────────────────────── (2) --}}
+    <div class="lg:col-span-2 rounded-2xl bg-white dark:bg-slate-800/60
+                border border-slate-100 dark:border-slate-700/50
+                shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4
+                    border-b border-slate-100 dark:border-slate-700/50">
             <div>
-                <h3 class="text-sm font-bold text-gray-800">Recent Activity</h3>
-                <p class="text-xs text-gray-400 mt-0.5">Latest 10 transactions across all modules</p>
+                <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Recent Activity</h3>
+                <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Latest 10 transactions across all modules</p>
             </div>
             <a href="{{ route('board-transactions.index') }}"
-               class="text-xs font-medium text-blue-600 hover:text-blue-700">Board Ledger →</a>
+               class="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300">
+                Board Ledger →
+            </a>
         </div>
 
-        <div class="divide-y divide-gray-50">
+        <div class="divide-y divide-slate-50 dark:divide-slate-700/40">
             @forelse($recentActivity as $item)
             @php
                 $iconConfig = match($item['type']) {
-                    'board'   => ['bg' => 'bg-blue-50',   'text' => 'text-blue-600',   'path' => 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z'],
-                    'expense' => ['bg' => 'bg-rose-50',   'text' => 'text-rose-600',   'path' => 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z'],
-                    default   => ['bg' => 'bg-indigo-50', 'text' => 'text-indigo-600', 'path' => 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4'],
+                    'board'   => ['bg' => 'bg-indigo-50 dark:bg-indigo-500/10',  'text' => 'text-indigo-600 dark:text-indigo-400',  'path' => 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z'],
+                    'expense' => ['bg' => 'bg-rose-50 dark:bg-rose-500/10',      'text' => 'text-rose-600 dark:text-rose-400',      'path' => 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z'],
+                    default   => ['bg' => 'bg-blue-50 dark:bg-blue-500/10',      'text' => 'text-blue-600 dark:text-blue-400',      'path' => 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4'],
                 };
             @endphp
-            <div class="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/70 transition-colors">
-                {{-- Icon --}}
+            <div class="flex items-center gap-4 px-5 py-3.5 hover:bg-slate-50/70 dark:hover:bg-slate-700/30 transition-colors">
                 <div class="shrink-0 flex h-9 w-9 items-center justify-center rounded-xl {{ $iconConfig['bg'] }}">
-                    <svg class="h-4.5 w-4.5 {{ $iconConfig['text'] }}" fill="none" stroke="currentColor"
+                    <svg class="h-4 w-4 {{ $iconConfig['text'] }}" fill="none" stroke="currentColor"
                          stroke-width="1.75" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="{{ $iconConfig['path'] }}"/>
                     </svg>
                 </div>
-                {{-- Label + badge + meta --}}
                 <div class="flex-1 min-w-0">
                     <div class="flex flex-wrap items-center gap-2">
-                        <p class="text-sm font-semibold text-gray-800 truncate max-w-xs">{{ $item['label'] }}</p>
-                        <span class="shrink-0 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold
-                                     {{ $item['badge']['class'] }}">
+                        <p class="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate max-w-xs">{{ $item['label'] }}</p>
+                        <span class="shrink-0 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold {{ $item['badge']['class'] }}">
                             {{ $item['badge']['text'] }}
                         </span>
                     </div>
-                    <p class="text-xs text-gray-400 mt-0.5">
-                        {{ \Carbon\Carbon::parse($item['date'])->format('d M Y') }}
-                        · {{ $item['sub'] }}
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                        {{ \Carbon\Carbon::parse($item['date'])->format('d M Y') }} · {{ $item['sub'] }}
                     </p>
                 </div>
-                {{-- Amount --}}
                 <div class="shrink-0 text-right">
                     <p class="text-sm font-bold whitespace-nowrap
-                        {{ $item['sign'] === '-' ? 'text-red-600'
-                         : ($item['sign'] === '+' ? 'text-gray-900' : 'text-indigo-700') }}">
+                        {{ $item['sign'] === '-' ? 'text-red-600 dark:text-red-400'
+                         : ($item['sign'] === '+' ? 'text-slate-900 dark:text-white' : 'text-indigo-700 dark:text-indigo-300') }}">
                         {{ $item['sign'] === '-' ? '−' : ($item['sign'] === '+' ? '+' : '') }}Rs.&nbsp;{{ number_format($item['amount'], 2) }}
                     </p>
                 </div>
             </div>
             @empty
-            <div class="py-16 text-center text-gray-400">
-                <svg class="mx-auto h-10 w-10 text-gray-200 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                </svg>
-                <p class="text-sm font-medium">No recent activity.</p>
+            <div class="py-16 text-center">
+                <div class="mx-auto h-16 w-16 rounded-2xl bg-slate-50 dark:bg-slate-700/50 flex items-center justify-center mb-3">
+                    <svg class="h-8 w-8 text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                </div>
+                <p class="text-sm font-semibold text-slate-400 dark:text-slate-500">No recent activity.</p>
             </div>
             @endforelse
         </div>
     </div>
 
-    {{-- Cheque Alerts + Quick Actions ──────────────────────────────── (span 1) --}}
+    {{-- Cheque Alerts + Quick Actions ──────────────────────────────── (1) --}}
     <div class="space-y-5">
 
         {{-- Cheque Alerts --}}
         <div x-data="{ dismissed: {} }"
-             class="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+             class="rounded-2xl bg-white dark:bg-slate-800/60
+                    border border-slate-100 dark:border-slate-700/50
+                    shadow-sm overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-4
+                        border-b border-slate-100 dark:border-slate-700/50">
                 <div class="flex items-center gap-2">
                     @if($chequeAlerts->count())
                     <span class="relative flex h-2.5 w-2.5">
@@ -462,41 +489,45 @@
                         <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500"></span>
                     </span>
                     @endif
-                    <h3 class="text-sm font-bold text-gray-800">Cheque Alerts</h3>
+                    <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Cheque Alerts</h3>
                     @if($chequeAlerts->count())
-                    <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-extrabold text-amber-700">
+                    <span class="rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-xs font-extrabold text-amber-700 dark:text-amber-400">
                         {{ $chequeAlerts->count() }}
                     </span>
                     @endif
                 </div>
                 <a href="{{ route('cheques.index') }}"
-                   class="text-xs font-medium text-blue-600 hover:text-blue-700">View All →</a>
+                   class="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300">
+                    View All →
+                </a>
             </div>
-            <div class="divide-y divide-gray-50">
+            <div class="divide-y divide-slate-50 dark:divide-slate-700/40">
                 @forelse($chequeAlerts as $alert)
                 <div x-show="!dismissed[{{ $alert['id'] }}]"
                      x-transition:leave="transition ease-in duration-200"
                      x-transition:leave-start="opacity-100"
                      x-transition:leave-end="opacity-0"
                      class="flex items-center justify-between px-5 py-3
-                            {{ $alert['overdue'] ? 'bg-red-50/60' : 'bg-amber-50/40' }}">
+                            {{ $alert['overdue']
+                                ? 'bg-red-50/60 dark:bg-red-900/15'
+                                : 'bg-amber-50/40 dark:bg-amber-900/10' }}">
                     <div class="min-w-0">
-                        <p class="text-xs font-semibold text-gray-800 truncate">
+                        <p class="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
                             {{ $alert['bank_name'] }}
-                            <span class="font-mono font-normal text-gray-400 text-[10px]">#{{ $alert['cheque_no'] }}</span>
+                            <span class="font-mono font-normal text-slate-400 dark:text-slate-500 text-[10px]">#{{ $alert['cheque_no'] }}</span>
                         </p>
                         <p class="text-xs font-semibold mt-0.5
-                            {{ $alert['overdue'] ? 'text-red-600' : 'text-amber-600' }}">
+                            {{ $alert['overdue'] ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400' }}">
                             {{ $alert['overdue'] ? 'OVERDUE' : $alert['hours_left'].'h left' }}
                             · {{ \Carbon\Carbon::parse($alert['due_date'])->format('d M') }}
                         </p>
                     </div>
                     <div class="flex items-center gap-1.5 ml-2 shrink-0">
-                        <span class="text-xs font-extrabold {{ $alert['overdue'] ? 'text-red-700' : 'text-amber-700' }}">
+                        <span class="text-xs font-extrabold {{ $alert['overdue'] ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400' }}">
                             Rs.{{ number_format($alert['amount'], 0) }}
                         </span>
                         <button @click="dismissed[{{ $alert['id'] }}] = true"
-                                class="rounded-full p-1 text-gray-300 hover:bg-gray-100 hover:text-gray-500 transition-colors">
+                                class="rounded-full p-1 text-slate-300 dark:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-500 dark:hover:text-slate-400 transition-colors">
                             <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                             </svg>
@@ -505,19 +536,19 @@
                 </div>
                 @empty
                 <div class="py-8 text-center">
-                    <div class="mx-auto h-10 w-10 rounded-full bg-emerald-50 flex items-center justify-center mb-2">
-                        <svg class="h-5 w-5 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <div class="mx-auto h-10 w-10 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center mb-2">
+                        <svg class="h-5 w-5 text-emerald-500 dark:text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                         </svg>
                     </div>
-                    <p class="text-xs font-semibold text-gray-500">All clear — no cheques due</p>
+                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">All clear — no cheques due</p>
                 </div>
                 @endforelse
             </div>
         </div>
 
         {{-- Quick Actions Panel --}}
-        <div class="rounded-2xl bg-gradient-to-b from-slate-800 to-slate-900 p-5 shadow-lg">
+        <div class="rounded-2xl bg-gradient-to-b from-slate-800 to-slate-900 p-5 shadow-lg ring-1 ring-white/5">
             <div class="flex items-center gap-2 mb-4">
                 <div class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></div>
                 <h3 class="text-sm font-bold text-white">Quick Actions</h3>
@@ -525,17 +556,17 @@
             <div class="space-y-2">
                 @php
                 $actions = [
-                    ['route' => 'daily-sales.index',        'label' => 'Enter Daily Sales',   'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01', 'color' => 'hover:bg-blue-600/30 border-blue-500/30 text-blue-300'],
+                    ['route' => 'daily-sales.index',        'label' => 'Enter Daily Sales',   'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01', 'color' => 'hover:bg-indigo-600/30 border-indigo-500/30 text-indigo-300'],
                     ['route' => 'board-settlement.index',   'label' => 'Board Settlement',    'icon' => 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z', 'color' => 'hover:bg-violet-600/30 border-violet-500/30 text-violet-300'],
-                    ['route' => 'board-transactions.index', 'label' => 'Board Ledger',        'icon' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', 'color' => 'hover:bg-indigo-600/30 border-indigo-500/30 text-indigo-300'],
+                    ['route' => 'board-transactions.index', 'label' => 'Board Ledger',        'icon' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', 'color' => 'hover:bg-blue-600/30 border-blue-500/30 text-blue-300'],
                     ['route' => 'expenses.index',           'label' => 'Add Expense',         'icon' => 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z', 'color' => 'hover:bg-rose-600/30 border-rose-500/30 text-rose-300'],
                     ['route' => 'stock.create',             'label' => 'Issue Stock',          'icon' => 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4', 'color' => 'hover:bg-emerald-600/30 border-emerald-500/30 text-emerald-300'],
-                    ['route' => 'reports.index',            'label' => 'View Reports',         'icon' => 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', 'color' => 'hover:bg-gray-600/30 border-gray-500/30 text-gray-300'],
+                    ['route' => 'reports.index',            'label' => 'View Reports',         'icon' => 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', 'color' => 'hover:bg-slate-600/30 border-slate-500/30 text-slate-300'],
                 ];
                 @endphp
                 @foreach($actions as $action)
                 <a href="{{ route($action['route']) }}"
-                   class="flex items-center gap-2.5 w-full rounded-xl border bg-white/5 {{ $action['color'] }}
+                   class="btn-action flex items-center gap-2.5 w-full rounded-xl border bg-white/5 {{ $action['color'] }}
                           px-3.5 py-2.5 text-xs font-semibold transition-all duration-150">
                     <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="{{ $action['icon'] }}"/>
@@ -556,19 +587,18 @@
 
 @push('scripts')
 <script>
-// ── Global chart defaults (Inter font) ──────────────────────────────────────
-Chart.defaults.font.family = "'Inter', sans-serif";
+// ── Global chart defaults (Plus Jakarta Sans) ────────────────────────────────
+const _isDark = document.documentElement.classList.contains('dark');
+Chart.defaults.font.family = "'Plus Jakarta Sans', 'Inter', sans-serif";
 Chart.defaults.font.size   = 11;
-Chart.defaults.color       = '#94a3b8';
+Chart.defaults.color       = _isDark ? '#64748b' : '#94a3b8';
 
 const labels   = @json($chartLabels);
 const revenue  = @json($chartRevenue);
 const expenses = @json($chartExpenses);
 const profit   = @json($chartProfit);
 
-// ════════════════════════════════════════════════════════════════════════════
-// 1. REVENUE VS EXPENSE — smooth area chart
-// ════════════════════════════════════════════════════════════════════════════
+// ── 1. Revenue vs Expense — smooth area chart ────────────────────────────────
 (function () {
     const ctx = document.getElementById('areaChart').getContext('2d');
 
@@ -576,6 +606,8 @@ const profit   = @json($chartProfit);
         const g = ctx.createLinearGradient(0, 0, 0, 210);
         g.addColorStop(0, c1); g.addColorStop(1, c2); return g;
     };
+
+    const gridColor = _isDark ? 'rgba(100,116,139,0.12)' : 'rgba(226,232,240,0.8)';
 
     new Chart(ctx, {
         type: 'line',
@@ -585,33 +617,29 @@ const profit   = @json($chartProfit);
                 {
                     label: 'Revenue',
                     data: revenue,
-                    borderColor: '#3b82f6',
-                    backgroundColor: mkGrad(ctx, 'rgba(59,130,246,0.22)', 'rgba(59,130,246,0)'),
+                    borderColor: '#6366f1',
+                    backgroundColor: mkGrad(ctx, 'rgba(99,102,241,0.20)', 'rgba(99,102,241,0)'),
                     borderWidth: 2.5, fill: true, tension: 0.45,
-                    pointRadius: 4, pointBackgroundColor: '#fff',
-                    pointBorderColor: '#3b82f6', pointBorderWidth: 2,
-                    pointHoverRadius: 6, order: 2,
+                    pointRadius: 4, pointBackgroundColor: _isDark ? '#1e293b' : '#fff',
+                    pointBorderColor: '#6366f1', pointBorderWidth: 2, pointHoverRadius: 6, order: 2,
                 },
                 {
                     label: 'Expenses',
                     data: expenses,
                     borderColor: '#f43f5e',
-                    backgroundColor: mkGrad(ctx, 'rgba(244,63,94,0.18)', 'rgba(244,63,94,0)'),
+                    backgroundColor: mkGrad(ctx, 'rgba(244,63,94,0.15)', 'rgba(244,63,94,0)'),
                     borderWidth: 2, fill: true, tension: 0.45,
-                    pointRadius: 4, pointBackgroundColor: '#fff',
-                    pointBorderColor: '#f43f5e', pointBorderWidth: 2,
-                    pointHoverRadius: 6, order: 3,
+                    pointRadius: 4, pointBackgroundColor: _isDark ? '#1e293b' : '#fff',
+                    pointBorderColor: '#f43f5e', pointBorderWidth: 2, pointHoverRadius: 6, order: 3,
                 },
                 {
                     label: 'Net Profit',
                     data: profit,
                     borderColor: '#10b981',
-                    backgroundColor: mkGrad(ctx, 'rgba(16,185,129,0.18)', 'rgba(16,185,129,0)'),
-                    borderWidth: 2, fill: true, tension: 0.45,
-                    borderDash: [5, 3],
-                    pointRadius: 4, pointBackgroundColor: '#fff',
-                    pointBorderColor: '#10b981', pointBorderWidth: 2,
-                    pointHoverRadius: 6, order: 1,
+                    backgroundColor: mkGrad(ctx, 'rgba(16,185,129,0.15)', 'rgba(16,185,129,0)'),
+                    borderWidth: 2, fill: true, tension: 0.45, borderDash: [5, 3],
+                    pointRadius: 4, pointBackgroundColor: _isDark ? '#1e293b' : '#fff',
+                    pointBorderColor: '#10b981', pointBorderWidth: 2, pointHoverRadius: 6, order: 1,
                 },
             ],
         },
@@ -621,9 +649,9 @@ const profit   = @json($chartProfit);
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: '#1e293b', titleColor: '#94a3b8',
-                    bodyColor: '#f1f5f9', borderColor: '#334155',
-                    borderWidth: 1, padding: 12, cornerRadius: 10,
+                    backgroundColor: '#0f172a', titleColor: '#64748b',
+                    bodyColor: '#f1f5f9', borderColor: '#1e293b',
+                    borderWidth: 1, padding: 12, cornerRadius: 12,
                     callbacks: {
                         label: c => ` Rs.${Number(c.parsed.y).toLocaleString('en-LK', { minimumFractionDigits: 2 })}`,
                     },
@@ -636,7 +664,7 @@ const profit   = @json($chartProfit);
                     ticks: { font: { size: 10 } },
                 },
                 y: {
-                    grid: { color: '#f1f5f9' },
+                    grid: { color: gridColor },
                     border: { display: false, dash: [3, 3] },
                     ticks: {
                         callback: v => v >= 1000 ? 'Rs.' + (v / 1000).toFixed(0) + 'k' : 'Rs.' + v,
@@ -647,9 +675,7 @@ const profit   = @json($chartProfit);
     });
 })();
 
-// ════════════════════════════════════════════════════════════════════════════
-// 2. NLB vs DLB DOUGHNUT
-// ════════════════════════════════════════════════════════════════════════════
+// ── 2. NLB vs DLB Doughnut ───────────────────────────────────────────────────
 (function () {
     const ctx = document.getElementById('doughnutChart').getContext('2d');
     new Chart(ctx, {
@@ -658,9 +684,10 @@ const profit   = @json($chartProfit);
             labels: ['NLB', 'DLB'],
             datasets: [{
                 data: [{{ $nlbMonthly ?: 1 }}, {{ $dlbMonthly ?: 1 }}],
-                backgroundColor: ['#3b82f6', '#8b5cf6'],
-                hoverBackgroundColor: ['#2563eb', '#7c3aed'],
-                borderWidth: 3, borderColor: '#fff',
+                backgroundColor: ['#6366f1', '#8b5cf6'],
+                hoverBackgroundColor: ['#4f46e5', '#7c3aed'],
+                borderWidth: 3,
+                borderColor: _isDark ? '#1e293b' : '#fff',
                 hoverOffset: 6,
             }],
         },
@@ -669,8 +696,8 @@ const profit   = @json($chartProfit);
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: '#1e293b', bodyColor: '#f1f5f9',
-                    padding: 10, cornerRadius: 8,
+                    backgroundColor: '#0f172a', bodyColor: '#f1f5f9',
+                    padding: 10, cornerRadius: 10,
                     callbacks: {
                         label: c => ` Rs.${Number(c.parsed).toLocaleString('en-LK', { minimumFractionDigits: 2 })}`,
                     },
@@ -680,9 +707,7 @@ const profit   = @json($chartProfit);
     });
 })();
 
-// ════════════════════════════════════════════════════════════════════════════
-// 3. INVENTORY HEALTH — horizontal bar
-// ════════════════════════════════════════════════════════════════════════════
+// ── 3. Inventory Health — horizontal bar ─────────────────────────────────────
 (function () {
     const ctx = document.getElementById('inventoryChart').getContext('2d');
     new Chart(ctx, {
@@ -701,8 +726,8 @@ const profit   = @json($chartProfit);
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: '#1e293b', bodyColor: '#f1f5f9',
-                    padding: 10, cornerRadius: 8,
+                    backgroundColor: '#0f172a', bodyColor: '#f1f5f9',
+                    padding: 10, cornerRadius: 10,
                     callbacks: {
                         label: c => ` ${Number(c.parsed.x).toLocaleString()} tickets`,
                     },
