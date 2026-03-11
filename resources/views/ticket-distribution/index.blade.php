@@ -337,9 +337,12 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
                 this.fetchDefaults();
             } else {
                 // Still fetch the day name for UI labels
-                axios.get(defaultsUrl, { params: { date: currentDate } })
-                    .then(r => { this.dayName = r.data.day_name; this.defaultsChecked = true; })
-                    .catch(() => {});
+                fetch(defaultsUrl + '?date=' + encodeURIComponent(currentDate), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+                })
+                .then(r => r.json())
+                .then(data => { this.dayName = data.day_name; this.defaultsChecked = true; })
+                .catch(() => {});
             }
         },
 
@@ -350,38 +353,40 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
             this.defaultsApplied = false;
             this.defaultsChecked = false;
 
-            axios.get(defaultsUrl, { params: { date: currentDate } })
-                .then(response => {
-                    const data = response.data;
-                    this.dayName = data.day_name;
+            fetch(defaultsUrl + '?date=' + encodeURIComponent(currentDate), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            })
+            .then(r => r.json())
+            .then(data => {
+                this.dayName = data.day_name;
 
-                    // Merge defaults into the grid
-                    const defaults = data.defaults || {};
-                    let applied = false;
+                // Merge defaults into the grid
+                const defaults = data.defaults || {};
+                let applied = false;
 
-                    for (const [aId, lotteries] of Object.entries(defaults)) {
-                        for (const [lId, qty] of Object.entries(lotteries)) {
-                            if (qty > 0) {
-                                if (!this.grid[aId]) this.grid[aId] = {};
-                                this.grid[aId][lId] = qty;
+                for (const [aId, lotteries] of Object.entries(defaults)) {
+                    for (const [lId, qty] of Object.entries(lotteries)) {
+                        if (qty > 0) {
+                            if (!this.grid[aId]) this.grid[aId] = {};
+                            this.grid[aId][lId] = qty;
 
-                                // Track which cells came from defaults
-                                if (!this.defaultsGrid[aId]) this.defaultsGrid[aId] = {};
-                                this.defaultsGrid[aId][lId] = qty;
-                                applied = true;
-                            }
+                            // Track which cells came from defaults
+                            if (!this.defaultsGrid[aId]) this.defaultsGrid[aId] = {};
+                            this.defaultsGrid[aId][lId] = qty;
+                            applied = true;
                         }
                     }
+                }
 
-                    this.defaultsApplied = applied;
-                })
-                .catch(() => {
-                    // Silently ignore; user can still fill manually
-                })
-                .finally(() => {
-                    this.defaultsLoading = false;
-                    this.defaultsChecked = true;
-                });
+                this.defaultsApplied = applied;
+            })
+            .catch(() => {
+                // Silently ignore; user can still fill manually
+            })
+            .finally(() => {
+                this.defaultsLoading = false;
+                this.defaultsChecked = true;
+            });
         },
 
         // ── Cell helpers ───────────────────────────────────────────────────
@@ -442,10 +447,18 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
             try {
                 // 1. If "Save as Default" is checked, persist defaults first via AJAX
                 if (this.saveAsDefault) {
-                    await axios.post(saveDefaultsUrl, {
-                        date: currentDate,
-                        qty:  this.grid,
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                    const response  = await fetch(saveDefaultsUrl, {
+                        method:  'POST',
+                        headers: {
+                            'Content-Type':     'application/json',
+                            'Accept':           'application/json',
+                            'X-CSRF-TOKEN':     csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: JSON.stringify({ date: currentDate, qty: this.grid }),
                     });
+                    if (!response.ok) throw new Error('Server error ' + response.status);
                 }
 
                 // 2. Submit the main distribution form
