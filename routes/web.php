@@ -78,6 +78,10 @@ Route::middleware('auth')->group(function () {
     Route::get ('/stock/create', [PageController::class, 'stockCreate'])->name('stock.create');
     Route::post('/stock',        [PageController::class, 'stockStore'])->name('stock.store');
 
+    // Bundle Counter
+    Route::get ('/bundle-counter',      [PageController::class, 'bundleCounterIndex'])->name('bundle-counter.index');
+    Route::post('/bundle-counter/save', [PageController::class, 'bundleCounterStore'])->name('bundle-counter.store');
+
     // Ticket Distribution
     Route::get ('/ticket-distribution',         [TicketDistributionController::class, 'index'])->name('ticket-distribution.index');
     Route::post('/ticket-distribution',         [TicketDistributionController::class, 'store'])->name('ticket-distribution.store');

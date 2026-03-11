@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BundleLog;
 use App\Models\Cheque;
 use App\Models\DailySale;
 use App\Models\Expense;
@@ -292,6 +293,37 @@ class PageController extends Controller
         LotteryStock::create($data);
 
         return redirect()->route('stock.index')->with('success', 'Stock issued successfully.');
+    }
+
+    // ── Bundle Counter ────────────────────────────────────────────────────────
+
+    public function bundleCounterIndex()
+    {
+        $logs = BundleLog::with('savedBy')
+            ->orderByDesc('session_date')
+            ->orderByDesc('created_at')
+            ->take(20)
+            ->get();
+
+        return view('bundle-counter.index', compact('logs'));
+    }
+
+    public function bundleCounterStore(Request $request)
+    {
+        $data = $request->validate([
+            'session_date'     => ['required', 'date'],
+            'total_bundles'    => ['required', 'integer', 'min:0'],
+            'total_tickets'    => ['required', 'integer', 'min:0'],
+            'scanned_barcodes' => ['nullable', 'array'],
+            'scanned_barcodes.*' => ['string'],
+            'notes'            => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $data['saved_by'] = auth()->id();
+
+        BundleLog::create($data);
+
+        return response()->json(['message' => 'Session saved successfully.']);
     }
 
     // ── Reports ───────────────────────────────────────────────────────────────
