@@ -23,12 +23,6 @@
         <a href="{{ route('ticket-distribution.index', ['date' => $prevDate]) }}"
            class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50">‹</a>
 
-        {{--
-            Date picker: when the user picks a date we do NOT submit the navigation
-            form immediately. Instead, we navigate programmatically via JS so we
-            can keep the Alpine component in sync (the component will re-initialise
-            after navigation).
-        --}}
         <input type="date"
                id="date-picker"
                value="{{ $date }}"
@@ -82,9 +76,124 @@
 @else
 
 {{-- ══════════════════════════════════════════════════════════════════════════
+     PRINT-ONLY STATIC TABLES — hidden on screen, visible on print
+     26 assistants per page, pure PHP (no Alpine dependency)
+     ══════════════════════════════════════════════════════════════════════════ --}}
+@php $chunks = $assistants->chunk(26); $totalPages = $chunks->count(); @endphp
+
+<div id="print-tables" style="display:none;">
+    @foreach($chunks as $pageNum => $chunk)
+    <div style="page-break-after: {{ $loop->last ? 'auto' : 'always' }}; padding: 10px; font-family: Arial, sans-serif;">
+
+        {{-- Page header --}}
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; border-bottom:2px solid #0f172a; padding-bottom:6px;">
+            <div>
+                <div style="font-size:13pt; font-weight:bold; color:#0f172a;">Ticket Distribution</div>
+                <div style="font-size:10pt; color:#475569; margin-top:2px;">{{ $parsedDate->format('l, d F Y') }}</div>
+            </div>
+            <div style="text-align:right; font-size:8.5pt; color:#64748b; line-height:1.6;">
+                <div>Page {{ $pageNum + 1 }} of {{ $totalPages }}</div>
+                <div>Grand Total: <strong style="color:#1d4ed8;">{{ number_format($grandTotal) }}</strong></div>
+                <div>Printed: {{ now()->format('d M Y H:i') }}</div>
+            </div>
+        </div>
+
+        {{-- Table --}}
+        <table style="width:100%; border-collapse:collapse; font-size:8pt;">
+            <thead>
+                {{-- Lottery header --}}
+                <tr style="background:#0f172a;">
+                    <th style="padding:5px 6px; text-align:left; color:white; white-space:nowrap; min-width:130px; border-right:1px solid #334155;">
+                        # &nbsp; Assistant
+                    </th>
+                    @foreach($lotteries as $l)
+                        <th style="padding:5px 3px; text-align:center; white-space:nowrap; min-width:42px;
+                                   color:{{ $l->board === 'NLB' ? '#93c5fd' : '#fdba74' }};">
+                            {{ $l->name }}
+                            <span style="display:block; font-size:7pt; color:#94a3b8; font-weight:normal;">
+                                Rs.{{ number_format($l->unit_price, 0) }}
+                            </span>
+                        </th>
+                    @endforeach
+                    <th style="padding:5px 6px; text-align:center; color:#fde68a; white-space:nowrap;">
+                        Total
+                    </th>
+                </tr>
+
+                {{-- Column totals — top --}}
+                <tr style="background:#1e293b; border-bottom:2px solid #475569;">
+                    <td style="padding:4px 6px; color:#94a3b8; font-size:7.5pt; font-weight:600; border-right:1px solid #475569;">
+                        Col. Total ↓
+                    </td>
+                    @foreach($lotteries as $l)
+                        <td style="padding:4px 3px; text-align:center; color:#f1f5f9; font-weight:bold;">
+                            {{ $colTotals[$l->id] > 0 ? number_format($colTotals[$l->id]) : '—' }}
+                        </td>
+                    @endforeach
+                    <td style="padding:4px 6px; text-align:center; color:#fde68a; font-weight:bold;">
+                        {{ number_format($grandTotal) }}
+                    </td>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach($chunk as $i => $a)
+                    @php
+                        $globalIndex = $pageNum * 26 + $i;
+                        $bg = $i % 2 === 0 ? '#ffffff' : '#f8fafc';
+                        $rowTot = $rowTotals[$a->id] ?? 0;
+                    @endphp
+                    <tr style="background:{{ $bg }}; border-bottom:1px solid #e2e8f0;">
+                        <td style="padding:4px 6px; font-weight:500; color:#1e293b; white-space:nowrap; border-right:1px solid #e2e8f0;">
+                            <span style="color:#94a3b8; font-size:7.5pt; margin-right:4px;">{{ $globalIndex + 1 }}</span>
+                            {{ $a->name }}
+                        </td>
+                        @foreach($lotteries as $l)
+                            @php $qty = $grid[$a->id][$l->id] ?? 0; @endphp
+                            <td style="padding:4px 3px; text-align:center;
+                                       font-weight:{{ $qty > 0 ? '600' : '400' }};
+                                       color:{{ $qty > 0 ? '#1e40af' : '#cbd5e1' }};">
+                                {{ $qty > 0 ? number_format($qty) : '—' }}
+                            </td>
+                        @endforeach
+                        <td style="padding:4px 6px; text-align:center; font-weight:bold;
+                                   color:{{ $rowTot > 0 ? '#1d4ed8' : '#cbd5e1' }};">
+                            {{ $rowTot > 0 ? number_format($rowTot) : '—' }}
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+
+            {{-- Column totals — bottom --}}
+            <tfoot>
+                <tr style="background:#f1f5f9; border-top:2px solid #94a3b8;">
+                    <td style="padding:5px 6px; font-weight:bold; color:#374151; border-right:1px solid #cbd5e1;">
+                        Col. Total ↑
+                    </td>
+                    @foreach($lotteries as $l)
+                        <td style="padding:5px 3px; text-align:center; font-weight:bold; color:#111827;">
+                            {{ $colTotals[$l->id] > 0 ? number_format($colTotals[$l->id]) : '—' }}
+                        </td>
+                    @endforeach
+                    <td style="padding:5px 6px; text-align:center; font-weight:bold; color:#1d4ed8;">
+                        {{ number_format($grandTotal) }}
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+
+        {{-- Page footer --}}
+        <div style="margin-top:6px; font-size:7.5pt; color:#94a3b8; display:flex; justify-content:space-between;">
+            <span>Assistants {{ $pageNum * 26 + 1 }}–{{ min(($pageNum + 1) * 26, $assistants->count()) }} of {{ $assistants->count() }}</span>
+            <span>{{ config('app.name') }} — Confidential</span>
+        </div>
+
+    </div>
+    @endforeach
+</div>
+
+{{-- ══════════════════════════════════════════════════════════════════════════
      Alpine.js Data-Entry Grid — with Smart Default Quantity
-     ══════════════════════════════════════════════════════════════════════════
-     distGrid(initialGrid, date, defaultsUrl, saveDefaultsUrl)
      ══════════════════════════════════════════════════════════════════════════ --}}
 <div x-data="distGrid(
         {{ json_encode($alpineGrid) }},
@@ -93,12 +202,12 @@
         '{{ route('api.ticket-distribution.defaults.save') }}'
      )"
      x-init="init()"
-     @keydown.window="handleArrow($event)">
+     @keydown.window="handleArrow($event)"
+     class="print:hidden">
 
-    {{-- ── Smart Default banner (shown while loading / after defaults loaded) --}}
-    <div class="mb-3 print:hidden">
+    {{-- ── Smart Default banner ──────────────────────────────────────────── --}}
+    <div class="mb-3">
 
-        {{-- Loading indicator --}}
         <div x-show="defaultsLoading"
              x-transition
              class="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-700">
@@ -109,7 +218,6 @@
             Loading smart defaults for <span x-text="dayName" class="font-semibold ml-1"></span>…
         </div>
 
-        {{-- Defaults applied notice --}}
         <div x-show="defaultsApplied && !defaultsLoading"
              x-transition
              class="flex items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
@@ -119,14 +227,11 @@
                 </svg>
                 Smart defaults pre-filled for <strong x-text="dayName"></strong>. Change any value or click Save.
             </span>
-            <button type="button"
-                    @click="clearGrid()"
-                    class="text-xs text-emerald-700 underline hover:no-underline">
+            <button type="button" @click="clearGrid()" class="text-xs text-emerald-700 underline hover:no-underline">
                 Clear all
             </button>
         </div>
 
-        {{-- No defaults available notice --}}
         <div x-show="defaultsChecked && !defaultsApplied && !defaultsLoading && gridIsEmpty()"
              x-transition
              class="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700">
@@ -151,8 +256,8 @@
             @endforeach
         @endforeach
 
-        {{-- ── Toolbar row: totals + Save as Default + Save button ─────────── --}}
-        <div class="mb-3 flex flex-wrap items-center justify-between gap-3 print:hidden">
+        {{-- ── Toolbar ──────────────────────────────────────────────────── --}}
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-3">
                 <span class="text-sm font-semibold text-gray-700">
                     {{ $parsedDate->format('Y-m-d') }} — {{ $parsedDate->format('l') }}
@@ -163,7 +268,6 @@
             </div>
 
             <div class="flex items-center gap-3">
-                {{-- Save as Default checkbox --}}
                 <label class="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-600
                               rounded-lg border border-gray-200 bg-white px-3 py-1.5 hover:bg-gray-50 transition"
                        title="Overwrite the stored defaults for {{ $parsedDate->format('l') }} with the current grid values">
@@ -173,7 +277,6 @@
                     <span>Save as Default <span class="font-semibold text-blue-600">({{ $parsedDate->format('l') }})</span></span>
                 </label>
 
-                {{-- Primary Save button --}}
                 <button type="button"
                         @click="submitForm()"
                         :disabled="saving"
@@ -190,11 +293,10 @@
             </div>
         </div>
 
-        {{-- Scrollable grid --}}
+        {{-- ── Scrollable grid ──────────────────────────────────────────── --}}
         <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
             <table class="min-w-full border-collapse text-xs" id="dist-table">
 
-                {{-- ── HEADER ─────────────────────────────────────────────── --}}
                 <thead>
                     <tr style="background:#0f172a;">
                         <th class="sticky left-0 z-20 px-3 py-3 text-left text-white font-medium whitespace-nowrap border-r border-slate-700"
@@ -216,7 +318,6 @@
                         </th>
                     </tr>
 
-                    {{-- ── TOP TOTALS ROW ──────────────────────────────────── --}}
                     <tr class="border-b-2 border-slate-600" style="background:#1e293b;">
                         <td class="sticky left-0 z-20 px-3 py-2 text-slate-300 font-semibold text-[11px] border-r border-slate-600"
                             style="background:#1e293b;">Column Total ↓</td>
@@ -229,7 +330,6 @@
                     </tr>
                 </thead>
 
-                {{-- ── BODY ────────────────────────────────────────────────── --}}
                 <tbody class="divide-y divide-gray-100">
                     @foreach($assistants as $i => $a)
                         <tr class="{{ $i % 2 === 0 ? 'bg-white' : 'bg-gray-50/60' }}"
@@ -237,7 +337,6 @@
                             @mouseenter="hoveredRow = {{ $a->id }}"
                             @mouseleave="hoveredRow = null">
 
-                            {{-- Sticky name cell --}}
                             <td class="sticky left-0 z-10 px-3 py-1.5 font-medium text-gray-700 whitespace-nowrap border-r border-gray-200"
                                 style="{{ $i % 2 === 0 ? 'background:#fff' : 'background:#f9fafb' }}"
                                 x-bind:style="hoveredRow === {{ $a->id }} ? 'background:#eff6ff' : ''">
@@ -245,7 +344,6 @@
                                 {{ $a->name }}
                             </td>
 
-                            {{-- Input cells --}}
                             @foreach($lotteries as $j => $l)
                                 <td class="p-0 relative"
                                     x-bind:class="hoveredCol === {{ $l->id }} ? 'bg-blue-50' : ''">
@@ -263,14 +361,12 @@
                                 </td>
                             @endforeach
 
-                            {{-- Row total --}}
                             <td class="px-3 py-1.5 text-center font-bold"
                                 x-bind:class="rowTotal({{ $a->id }}) > 0 ? 'text-blue-700' : 'text-gray-300'"
                                 x-text="rowTotal({{ $a->id }}).toLocaleString()"></td>
                         </tr>
                     @endforeach
 
-                    {{-- ── BOTTOM TOTALS ROW ───────────────────────────────── --}}
                     <tr class="border-t-2 border-gray-300 font-bold" style="background:#f1f5f9;">
                         <td class="sticky left-0 z-10 px-3 py-2.5 text-gray-700 border-r border-gray-200"
                             style="background:#f1f5f9;">Column Total ↑</td>
@@ -302,15 +398,27 @@
 input.dist-cell::-webkit-outer-spin-button,
 input.dist-cell::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input.dist-cell[type=number] { -moz-appearance: textfield; }
-
 input.dist-cell::placeholder { color: #d1d5db; }
 input.dist-cell:focus { background: #fff; box-shadow: inset 0 0 0 2px #3b82f6; border-radius: 2px; }
 
+/* ── PRINT STYLES ─────────────────────────────────────────────────────── */
 @media print {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+
+    /* Hide all screen-only UI */
     .print\:hidden { display: none !important; }
-    aside, header, nav { display: none !important; }
-    .overflow-x-auto { overflow: visible !important; }
-    input.dist-cell { border: none; }
+    aside, header, nav, [class*="sidebar"] { display: none !important; }
+    body, html { margin: 0 !important; padding: 0 !important; }
+
+    /* Hide the Alpine interactive grid */
+    #dist-form  { display: none !important; }
+
+    /* Show the static PHP-rendered print tables */
+    #print-tables { display: block !important; }
+
+    /* Ensure page breaks work correctly */
+    @page { margin: 10mm; size: A4 landscape; }
 }
 </style>
 
@@ -318,25 +426,22 @@ input.dist-cell:focus { background: #fff; box-shadow: inset 0 0 0 2px #3b82f6; b
 function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
     return {
         // ── State ──────────────────────────────────────────────────────────
-        grid:           initialGrid,   // [assistantId][lotteryId] = qty
-        defaultsGrid:   {},            // mirror of grid that came from defaults
-        hoveredRow:     null,
-        hoveredCol:     null,
-        saveAsDefault:  false,
+        grid:            initialGrid,
+        defaultsGrid:    {},
+        hoveredRow:      null,
+        hoveredCol:      null,
+        saveAsDefault:   false,
         defaultsLoading: false,
         defaultsApplied: false,
         defaultsChecked: false,
-        dayName:        '',
-        saving:         false,
+        dayName:         '',
+        saving:          false,
 
         // ── Lifecycle ──────────────────────────────────────────────────────
         init() {
-            // If the page already has data (navigated to a date with saved
-            // records) skip auto-loading defaults; just fetch day name.
             if (this.grandTotal() === 0) {
                 this.fetchDefaults();
             } else {
-                // Still fetch the day name for UI labels
                 fetch(defaultsUrl + '?date=' + encodeURIComponent(currentDate), {
                     headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
                 })
@@ -347,7 +452,6 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
         },
 
         // ── Smart Defaults ─────────────────────────────────────────────────
-
         fetchDefaults() {
             this.defaultsLoading = true;
             this.defaultsApplied = false;
@@ -359,8 +463,6 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
             .then(r => r.json())
             .then(data => {
                 this.dayName = data.day_name;
-
-                // Merge defaults into the grid
                 const defaults = data.defaults || {};
                 let applied = false;
 
@@ -369,20 +471,15 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
                         if (qty > 0) {
                             if (!this.grid[aId]) this.grid[aId] = {};
                             this.grid[aId][lId] = qty;
-
-                            // Track which cells came from defaults
                             if (!this.defaultsGrid[aId]) this.defaultsGrid[aId] = {};
                             this.defaultsGrid[aId][lId] = qty;
                             applied = true;
                         }
                     }
                 }
-
                 this.defaultsApplied = applied;
             })
-            .catch(() => {
-                // Silently ignore; user can still fill manually
-            })
+            .catch(() => {})
             .finally(() => {
                 this.defaultsLoading = false;
                 this.defaultsChecked = true;
@@ -390,11 +487,6 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
         },
 
         // ── Cell helpers ───────────────────────────────────────────────────
-
-        /**
-         * Returns true if the cell's current value equals what was loaded
-         * from defaults (i.e. user has not changed it yet).
-         */
         isDefault(aId, lId) {
             const defVal = (this.defaultsGrid[aId] ?? {})[lId] ?? 0;
             const curVal = (this.grid[aId] ?? {})[lId] ?? 0;
@@ -413,39 +505,31 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
                     this.grid[aId][lId] = 0;
                 }
             }
-            this.defaultsGrid   = {};
+            this.defaultsGrid    = {};
             this.defaultsApplied = false;
         },
 
-        gridIsEmpty() {
-            return this.grandTotal() === 0;
-        },
+        gridIsEmpty() { return this.grandTotal() === 0; },
 
         // ── Totals ─────────────────────────────────────────────────────────
-
         rowTotal(assistantId) {
             const row = this.grid[assistantId] ?? {};
             return Object.values(row).reduce((s, v) => s + (parseInt(v) || 0), 0);
         },
 
         colTotal(lotteryId) {
-            return Object.values(this.grid).reduce((s, row) => {
-                return s + (parseInt(row[lotteryId]) || 0);
-            }, 0);
+            return Object.values(this.grid).reduce((s, row) => s + (parseInt(row[lotteryId]) || 0), 0);
         },
 
         grandTotal() {
-            return Object.values(this.grid).reduce((s, row) => {
-                return s + Object.values(row).reduce((rs, v) => rs + (parseInt(v) || 0), 0);
-            }, 0);
+            return Object.values(this.grid).reduce((s, row) =>
+                s + Object.values(row).reduce((rs, v) => rs + (parseInt(v) || 0), 0), 0);
         },
 
         // ── Form submission ────────────────────────────────────────────────
-
         async submitForm() {
             this.saving = true;
             try {
-                // 1. If "Save as Default" is checked, persist defaults first via AJAX
                 if (this.saveAsDefault) {
                     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
                     const response  = await fetch(saveDefaultsUrl, {
@@ -460,8 +544,6 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
                     });
                     if (!response.ok) throw new Error('Server error ' + response.status);
                 }
-
-                // 2. Submit the main distribution form
                 document.getElementById('dist-form').submit();
             } catch (err) {
                 this.saving = false;
@@ -470,7 +552,6 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
         },
 
         // ── Keyboard navigation ────────────────────────────────────────────
-
         handleArrow(e) {
             const el = document.activeElement;
             if (!el || !el.classList.contains('dist-cell')) return;
