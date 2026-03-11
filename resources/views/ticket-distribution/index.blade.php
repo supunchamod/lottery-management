@@ -243,6 +243,43 @@
 
     </div>
 
+    {{-- ── Adjustment Mode Panel ─────────────────────────────────────────── --}}
+    <div x-show="adjustMode"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 -translate-y-1"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 -translate-y-1"
+         class="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="flex items-start gap-2.5 min-w-0">
+                <svg class="h-5 w-5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/>
+                </svg>
+                <div>
+                    <p class="text-sm font-semibold text-amber-800">Adjustment Mode Active</p>
+                    <p class="text-xs text-amber-700 mt-0.5">
+                        Enter the actual quantities received from the Board in the <strong>Board Received Qty</strong> row above the Column Total.
+                        Click <strong>Auto-Adjust</strong> to proportionally redistribute. Use the
+                        <svg class="inline h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"/></svg>
+                        lock icon on any assistant's row to protect their allocation.
+                        <span class="inline-block w-3 h-3 rounded-sm bg-amber-200 border border-amber-400 align-middle mx-0.5"></span>
+                        Amber cells indicate auto-adjusted values.
+                    </p>
+                </div>
+            </div>
+            <button type="button"
+                    @click="autoAdjust()"
+                    class="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-600 active:bg-amber-700 transition whitespace-nowrap shrink-0">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Auto-Adjust Distribution
+            </button>
+        </div>
+    </div>
+
     <form id="dist-form" method="POST" action="{{ route('ticket-distribution.store') }}">
         @csrf
         <input type="hidden" name="date" value="{{ $date }}">
@@ -268,6 +305,20 @@
             </div>
 
             <div class="flex items-center gap-3">
+                {{-- Adjustment Mode Toggle --}}
+                <button type="button"
+                        @click="toggleAdjustMode()"
+                        :class="adjustMode
+                            ? 'bg-amber-100 border-amber-400 text-amber-800 hover:bg-amber-200'
+                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'"
+                        class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition"
+                        title="Toggle adjustment mode to reconcile Board received quantities">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/>
+                    </svg>
+                    <span x-text="adjustMode ? 'Exit Adjust Mode' : 'Adjustment Mode'"></span>
+                </button>
+
                 <label class="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-600
                               rounded-lg border border-gray-200 bg-white px-3 py-1.5 hover:bg-gray-50 transition"
                        title="Overwrite the stored defaults for {{ $parsedDate->format('l') }} with the current grid values">
@@ -318,6 +369,30 @@
                         </th>
                     </tr>
 
+                    {{-- ── Board Received Qty row (Adjustment Mode only) ── --}}
+                    <tr x-show="adjustMode" style="background:#fffbeb; border-bottom: 2px solid #fcd34d;">
+                        <td class="sticky left-0 z-20 px-3 py-2 font-semibold text-[11px] border-r border-amber-300 whitespace-nowrap"
+                            style="background:#fffbeb; color:#92400e;">
+                            <div class="flex items-center gap-1.5">
+                                <svg class="h-3.5 w-3.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18M10 3v18M14 3v18"/>
+                                </svg>
+                                Board Received Qty
+                            </div>
+                        </td>
+                        @foreach($lotteries as $l)
+                            <td class="px-1 py-1.5 text-center">
+                                <input type="number" min="0" step="1"
+                                       x-model="boardQty[{{ $l->id }}]"
+                                       class="board-qty-cell w-full h-7 px-1 text-center text-xs font-semibold border border-amber-300 rounded bg-white focus:ring-1 focus:ring-amber-500 focus:border-amber-500 focus:outline-none text-amber-900 placeholder-amber-300"
+                                       placeholder="—">
+                            </td>
+                        @endforeach
+                        <td class="px-3 py-1.5 text-center text-xs font-bold text-amber-700">
+                            <span x-text="boardGrandTotal().toLocaleString() || '—'"></span>
+                        </td>
+                    </tr>
+
                     <tr class="border-b-2 border-slate-600" style="background:#1e293b;">
                         <td class="sticky left-0 z-20 px-3 py-2 text-slate-300 font-semibold text-[11px] border-r border-slate-600"
                             style="background:#1e293b;">Column Total ↓</td>
@@ -333,25 +408,52 @@
                 <tbody class="divide-y divide-gray-100">
                     @foreach($assistants as $i => $a)
                         <tr class="{{ $i % 2 === 0 ? 'bg-white' : 'bg-gray-50/60' }}"
-                            x-bind:class="hoveredRow === {{ $a->id }} ? 'ring-1 ring-inset ring-blue-300 bg-blue-50' : ''"
+                            x-bind:class="{
+                                'ring-1 ring-inset ring-blue-300 bg-blue-50': hoveredRow === {{ $a->id }} && !isLocked({{ $a->id }}),
+                                'ring-1 ring-inset ring-amber-400 bg-amber-50': isLocked({{ $a->id }})
+                            }"
                             @mouseenter="hoveredRow = {{ $a->id }}"
                             @mouseleave="hoveredRow = null">
 
                             <td class="sticky left-0 z-10 px-3 py-1.5 font-medium text-gray-700 whitespace-nowrap border-r border-gray-200"
                                 style="{{ $i % 2 === 0 ? 'background:#fff' : 'background:#f9fafb' }}"
-                                x-bind:style="hoveredRow === {{ $a->id }} ? 'background:#eff6ff' : ''">
-                                <span class="mr-1.5 text-gray-400 text-[11px]">{{ $i + 1 }}</span>
-                                {{ $a->name }}
+                                x-bind:style="isLocked({{ $a->id }}) ? 'background:#fffbeb' : (hoveredRow === {{ $a->id }} ? 'background:#eff6ff' : '')">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-gray-400 text-[11px] shrink-0">{{ $i + 1 }}</span>
+                                    <span class="truncate">{{ $a->name }}</span>
+                                    {{-- Lock button — only visible in Adjustment Mode --}}
+                                    <button type="button"
+                                            x-show="adjustMode"
+                                            @click.stop="toggleLock({{ $a->id }})"
+                                            :title="isLocked({{ $a->id }}) ? 'Unlock row — auto-adjust will include this assistant' : 'Lock row — auto-adjust will skip this assistant'"
+                                            :class="isLocked({{ $a->id }}) ? 'text-amber-600 hover:text-amber-700' : 'text-gray-300 hover:text-amber-500'"
+                                            class="ml-auto shrink-0 transition-colors">
+                                        {{-- Locked icon --}}
+                                        <svg x-show="isLocked({{ $a->id }})" class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{-- Unlocked icon --}}
+                                        <svg x-show="!isLocked({{ $a->id }})" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+                                        </svg>
+                                    </button>
+                                </div>
                             </td>
 
                             @foreach($lotteries as $j => $l)
                                 <td class="p-0 relative"
-                                    x-bind:class="hoveredCol === {{ $l->id }} ? 'bg-blue-50' : ''">
+                                    x-bind:class="{
+                                        'bg-blue-50': hoveredCol === {{ $l->id }} && !isAdjusted({{ $a->id }}, {{ $l->id }}),
+                                        'bg-amber-100': isAdjusted({{ $a->id }}, {{ $l->id }})
+                                    }">
                                     <input
                                         type="number" min="0" step="1"
                                         class="dist-cell w-full h-8 px-1 text-center text-xs font-medium border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-400 focus:z-10 relative outline-none"
                                         :value="grid[{{ $a->id }}][{{ $l->id }}] || ''"
-                                        :class="isDefault({{ $a->id }}, {{ $l->id }}) ? 'text-emerald-700' : ''"
+                                        :class="{
+                                            'text-emerald-700': isDefault({{ $a->id }}, {{ $l->id }}) && !isAdjusted({{ $a->id }}, {{ $l->id }}),
+                                            'text-amber-800 font-semibold is-adjusted': isAdjusted({{ $a->id }}, {{ $l->id }})
+                                        }"
                                         @focus="hoveredCol = {{ $l->id }}"
                                         @blur="hoveredCol = null"
                                         @input="onCellInput({{ $a->id }}, {{ $l->id }}, $event.target.value)"
@@ -388,6 +490,8 @@
 <p class="mt-2 text-xs text-gray-400 print:hidden">
     <span class="inline-block w-3 h-3 rounded-sm bg-emerald-100 border border-emerald-300 mr-1"></span>
     Green values were pre-filled from saved defaults for this day of the week.
+    <span class="inline-block w-3 h-3 rounded-sm bg-amber-100 border border-amber-400 mr-1 ml-4"></span>
+    Amber values were automatically adjusted to match Board received quantities.
 </p>
 
 @endif
@@ -400,6 +504,12 @@ input.dist-cell::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0
 input.dist-cell[type=number] { -moz-appearance: textfield; }
 input.dist-cell::placeholder { color: #d1d5db; }
 input.dist-cell:focus { background: #fff; box-shadow: inset 0 0 0 2px #3b82f6; border-radius: 2px; }
+input.dist-cell.is-adjusted:focus { background: #fef3c7 !important; box-shadow: inset 0 0 0 2px #d97706 !important; border-radius: 2px; }
+
+/* Board Received Qty row inputs — remove spinners */
+input.board-qty-cell::-webkit-outer-spin-button,
+input.board-qty-cell::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input.board-qty-cell[type=number] { -moz-appearance: textfield; }
 
 /* ── PRINT STYLES ─────────────────────────────────────────────────────── */
 @media print {
@@ -436,6 +546,12 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
         defaultsChecked: false,
         dayName:         '',
         saving:          false,
+
+        // ── Adjustment Mode ────────────────────────────────────────────────
+        adjustMode:     false,
+        boardQty:       {},   // { [lotteryId]: raw input value }
+        adjustedCells:  {},   // { [aId]: { [lId]: true } }
+        lockedRows:     {},   // { [aId]: true }
 
         // ── Lifecycle ──────────────────────────────────────────────────────
         init() {
@@ -497,6 +613,8 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
             const qty = parseInt(rawValue) || 0;
             if (!this.grid[aId]) this.grid[aId] = {};
             this.grid[aId][lId] = qty;
+            // Clear adjustment highlight when user manually edits the cell
+            if (this.adjustedCells[aId]) delete this.adjustedCells[aId][lId];
         },
 
         clearGrid() {
@@ -507,6 +625,8 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
             }
             this.defaultsGrid    = {};
             this.defaultsApplied = false;
+            this.adjustedCells   = {};
+            this.boardQty        = {};
         },
 
         gridIsEmpty() { return this.grandTotal() === 0; },
@@ -524,6 +644,10 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
         grandTotal() {
             return Object.values(this.grid).reduce((s, row) =>
                 s + Object.values(row).reduce((rs, v) => rs + (parseInt(v) || 0), 0), 0);
+        },
+
+        boardGrandTotal() {
+            return Object.values(this.boardQty).reduce((s, v) => s + (parseInt(v) || 0), 0);
         },
 
         // ── Form submission ────────────────────────────────────────────────
@@ -582,7 +706,113 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
                 `.dist-cell[data-row="${targetRow}"][data-col="${targetCol}"]`
             );
             if (next) { next.focus(); next.select(); }
-        }
+        },
+
+        // ── Adjustment Mode ────────────────────────────────────────────────
+        toggleAdjustMode() {
+            this.adjustMode = !this.adjustMode;
+            if (!this.adjustMode) {
+                this.adjustedCells = {};
+                this.boardQty      = {};
+                this.lockedRows    = {};
+            }
+        },
+
+        isLocked(aId) {
+            return !!this.lockedRows[aId];
+        },
+
+        toggleLock(aId) {
+            this.lockedRows[aId] = !this.lockedRows[aId];
+        },
+
+        isAdjusted(aId, lId) {
+            return !!((this.adjustedCells[aId] || {})[lId]);
+        },
+
+        autoAdjust() {
+            for (const lId of Object.keys(this.boardQty)) {
+                // Skip columns where board qty was not entered
+                const rawVal = this.boardQty[lId];
+                if (rawVal === null || rawVal === undefined || rawVal === '') continue;
+
+                const target  = parseInt(rawVal) || 0;
+                const current = this.colTotal(parseInt(lId));
+                const diff    = target - current;
+
+                if (diff === 0) continue;
+
+                // Collect unlocked assistants with their current qty for this lottery
+                const candidates = Object.keys(this.grid)
+                    .filter(aId => !this.lockedRows[aId])
+                    .map(aId => ({
+                        aId,
+                        qty: parseInt((this.grid[aId] || {})[lId]) || 0
+                    }));
+
+                if (candidates.length === 0) continue;
+
+                const totalUnlocked = candidates.reduce((s, c) => s + c.qty, 0);
+
+                // Cannot reduce when all unlocked assistants already have 0
+                if (diff < 0 && totalUnlocked === 0) continue;
+
+                // Compute per-assistant adjustments using the largest-remainder method
+                // so the sum of floor adjustments exactly equals diff.
+                let fractionals;
+                if (totalUnlocked > 0) {
+                    fractionals = candidates.map(c => {
+                        const exact = (c.qty / totalUnlocked) * diff;
+                        return {
+                            aId:   c.aId,
+                            qty:   c.qty,
+                            floor: Math.trunc(exact),          // truncate toward zero
+                            frac:  exact - Math.trunc(exact),  // fractional remainder
+                        };
+                    });
+                } else {
+                    // All unlocked have 0 qty — distribute increase evenly
+                    fractionals = candidates.map(c => {
+                        const exact = diff / candidates.length;
+                        return {
+                            aId:   c.aId,
+                            qty:   c.qty,
+                            floor: Math.trunc(exact),
+                            frac:  exact - Math.trunc(exact),
+                        };
+                    });
+                }
+
+                // Distribute the integer remainder to candidates with largest fractional parts
+                let remainder = diff - fractionals.reduce((s, f) => s + f.floor, 0);
+
+                if (remainder > 0) {
+                    // Positive remainder: give +1 to those with highest positive fraction
+                    fractionals.sort((a, b) => b.frac - a.frac);
+                    for (let i = 0; remainder > 0; i++, remainder--) {
+                        fractionals[i % fractionals.length].floor += 1;
+                    }
+                } else if (remainder < 0) {
+                    // Negative remainder: give -1 to those with most negative fraction
+                    fractionals.sort((a, b) => a.frac - b.frac);
+                    for (let i = 0; remainder < 0; i++, remainder++) {
+                        fractionals[i % fractionals.length].floor -= 1;
+                    }
+                }
+
+                // Apply adjustments (clamp at 0 — never go negative)
+                for (const { aId, qty, floor: adj } of fractionals) {
+                    if (adj === 0) continue;
+                    const newQty = Math.max(0, qty + adj);
+                    if (newQty !== qty) {
+                        if (!this.grid[aId]) this.grid[aId] = {};
+                        this.grid[aId][lId] = newQty;
+                        if (!this.adjustedCells[aId]) this.adjustedCells[aId] = {};
+                        this.adjustedCells[aId][lId] = true;
+                    }
+                }
+            }
+        },
     };
 }
 </script>
