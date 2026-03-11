@@ -23,11 +23,17 @@
         <a href="{{ route('ticket-distribution.index', ['date' => $prevDate]) }}"
            class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50">‹</a>
 
-        <form method="GET" action="{{ route('ticket-distribution.index') }}">
-            <input type="date" name="date" value="{{ $date }}"
-                   onchange="this.form.submit()"
-                   class="erp-input text-sm h-9 font-semibold">
-        </form>
+        {{--
+            Date picker: when the user picks a date we do NOT submit the navigation
+            form immediately. Instead, we navigate programmatically via JS so we
+            can keep the Alpine component in sync (the component will re-initialise
+            after navigation).
+        --}}
+        <input type="date"
+               id="date-picker"
+               value="{{ $date }}"
+               onchange="window.location.href = '{{ route('ticket-distribution.index') }}?date=' + this.value"
+               class="erp-input text-sm h-9 font-semibold">
 
         <a href="{{ route('ticket-distribution.index', ['date' => $nextDate]) }}"
            class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50 {{ $isToday ? 'opacity-40 pointer-events-none' : '' }}">›</a>
@@ -76,12 +82,61 @@
 @else
 
 {{-- ══════════════════════════════════════════════════════════════════════════
-     Alpine.js Data-Entry Grid
-     grid[assistantId][lotteryId] = qty (integer)
-     All totals computed reactively.
-══════════════════════════════════════════════════════════════════════════ --}}
-<div x-data="distGrid({{ json_encode($alpineGrid) }})"
+     Alpine.js Data-Entry Grid — with Smart Default Quantity
+     ══════════════════════════════════════════════════════════════════════════
+     distGrid(initialGrid, date, defaultsUrl, saveDefaultsUrl)
+     ══════════════════════════════════════════════════════════════════════════ --}}
+<div x-data="distGrid(
+        {{ json_encode($alpineGrid) }},
+        '{{ $date }}',
+        '{{ route('api.ticket-distribution.defaults.get') }}',
+        '{{ route('api.ticket-distribution.defaults.save') }}'
+     )"
+     x-init="init()"
      @keydown.window="handleArrow($event)">
+
+    {{-- ── Smart Default banner (shown while loading / after defaults loaded) --}}
+    <div class="mb-3 print:hidden">
+
+        {{-- Loading indicator --}}
+        <div x-show="defaultsLoading"
+             x-transition
+             class="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-700">
+            <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+            </svg>
+            Loading smart defaults for <span x-text="dayName" class="font-semibold ml-1"></span>…
+        </div>
+
+        {{-- Defaults applied notice --}}
+        <div x-show="defaultsApplied && !defaultsLoading"
+             x-transition
+             class="flex items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
+            <span>
+                <svg class="inline h-4 w-4 mr-1 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Smart defaults pre-filled for <strong x-text="dayName"></strong>. Change any value or click Save.
+            </span>
+            <button type="button"
+                    @click="clearGrid()"
+                    class="text-xs text-emerald-700 underline hover:no-underline">
+                Clear all
+            </button>
+        </div>
+
+        {{-- No defaults available notice --}}
+        <div x-show="defaultsChecked && !defaultsApplied && !defaultsLoading && gridIsEmpty()"
+             x-transition
+             class="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            No defaults saved for <span x-text="dayName" class="font-semibold mx-1"></span> yet. Fill in the grid and check <em>Save as Default</em> before saving.
+        </div>
+
+    </div>
 
     <form id="dist-form" method="POST" action="{{ route('ticket-distribution.store') }}">
         @csrf
@@ -96,8 +151,8 @@
             @endforeach
         @endforeach
 
-        {{-- Save button (sticky top-right) --}}
-        <div class="mb-3 flex items-center justify-between print:hidden">
+        {{-- ── Toolbar row: totals + Save as Default + Save button ─────────── --}}
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-3 print:hidden">
             <div class="flex items-center gap-3">
                 <span class="text-sm font-semibold text-gray-700">
                     {{ $parsedDate->format('Y-m-d') }} — {{ $parsedDate->format('l') }}
@@ -106,13 +161,33 @@
                     Grand Total: <span x-text="grandTotal().toLocaleString()" class="text-blue-700"></span>
                 </span>
             </div>
-            <button type="submit"
-                    class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700 transition">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                </svg>
-                Save Distribution
-            </button>
+
+            <div class="flex items-center gap-3">
+                {{-- Save as Default checkbox --}}
+                <label class="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-600
+                              rounded-lg border border-gray-200 bg-white px-3 py-1.5 hover:bg-gray-50 transition"
+                       title="Overwrite the stored defaults for {{ $parsedDate->format('l') }} with the current grid values">
+                    <input type="checkbox"
+                           x-model="saveAsDefault"
+                           class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                    <span>Save as Default <span class="font-semibold text-blue-600">({{ $parsedDate->format('l') }})</span></span>
+                </label>
+
+                {{-- Primary Save button --}}
+                <button type="button"
+                        @click="submitForm()"
+                        :disabled="saving"
+                        class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700 transition disabled:opacity-60">
+                    <svg x-show="!saving" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    <svg x-show="saving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                    </svg>
+                    <span x-text="saving ? 'Saving…' : 'Save Distribution'"></span>
+                </button>
+            </div>
         </div>
 
         {{-- Scrollable grid --}}
@@ -178,9 +253,10 @@
                                         type="number" min="0" step="1"
                                         class="dist-cell w-full h-8 px-1 text-center text-xs font-medium border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-400 focus:z-10 relative outline-none"
                                         :value="grid[{{ $a->id }}][{{ $l->id }}] || ''"
+                                        :class="isDefault({{ $a->id }}, {{ $l->id }}) ? 'text-emerald-700' : ''"
                                         @focus="hoveredCol = {{ $l->id }}"
                                         @blur="hoveredCol = null"
-                                        @input="grid[{{ $a->id }}][{{ $l->id }}] = parseInt($event.target.value) || 0"
+                                        @input="onCellInput({{ $a->id }}, {{ $l->id }}, $event.target.value)"
                                         data-row="{{ $i }}"
                                         data-col="{{ $j }}"
                                         placeholder="">
@@ -212,6 +288,12 @@
     </form>
 </div>
 
+{{-- Legend --}}
+<p class="mt-2 text-xs text-gray-400 print:hidden">
+    <span class="inline-block w-3 h-3 rounded-sm bg-emerald-100 border border-emerald-300 mr-1"></span>
+    Green values were pre-filled from saved defaults for this day of the week.
+</p>
+
 @endif
 
 @push('head')
@@ -233,11 +315,108 @@ input.dist-cell:focus { background: #fff; box-shadow: inset 0 0 0 2px #3b82f6; b
 </style>
 
 <script>
-function distGrid(initialGrid) {
+function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
     return {
-        grid: initialGrid,
-        hoveredRow: null,
-        hoveredCol: null,
+        // ── State ──────────────────────────────────────────────────────────
+        grid:           initialGrid,   // [assistantId][lotteryId] = qty
+        defaultsGrid:   {},            // mirror of grid that came from defaults
+        hoveredRow:     null,
+        hoveredCol:     null,
+        saveAsDefault:  false,
+        defaultsLoading: false,
+        defaultsApplied: false,
+        defaultsChecked: false,
+        dayName:        '',
+        saving:         false,
+
+        // ── Lifecycle ──────────────────────────────────────────────────────
+        init() {
+            // If the page already has data (navigated to a date with saved
+            // records) skip auto-loading defaults; just fetch day name.
+            if (this.grandTotal() === 0) {
+                this.fetchDefaults();
+            } else {
+                // Still fetch the day name for UI labels
+                axios.get(defaultsUrl, { params: { date: currentDate } })
+                    .then(r => { this.dayName = r.data.day_name; this.defaultsChecked = true; })
+                    .catch(() => {});
+            }
+        },
+
+        // ── Smart Defaults ─────────────────────────────────────────────────
+
+        fetchDefaults() {
+            this.defaultsLoading = true;
+            this.defaultsApplied = false;
+            this.defaultsChecked = false;
+
+            axios.get(defaultsUrl, { params: { date: currentDate } })
+                .then(response => {
+                    const data = response.data;
+                    this.dayName = data.day_name;
+
+                    // Merge defaults into the grid
+                    const defaults = data.defaults || {};
+                    let applied = false;
+
+                    for (const [aId, lotteries] of Object.entries(defaults)) {
+                        for (const [lId, qty] of Object.entries(lotteries)) {
+                            if (qty > 0) {
+                                if (!this.grid[aId]) this.grid[aId] = {};
+                                this.grid[aId][lId] = qty;
+
+                                // Track which cells came from defaults
+                                if (!this.defaultsGrid[aId]) this.defaultsGrid[aId] = {};
+                                this.defaultsGrid[aId][lId] = qty;
+                                applied = true;
+                            }
+                        }
+                    }
+
+                    this.defaultsApplied = applied;
+                })
+                .catch(() => {
+                    // Silently ignore; user can still fill manually
+                })
+                .finally(() => {
+                    this.defaultsLoading = false;
+                    this.defaultsChecked = true;
+                });
+        },
+
+        // ── Cell helpers ───────────────────────────────────────────────────
+
+        /**
+         * Returns true if the cell's current value equals what was loaded
+         * from defaults (i.e. user has not changed it yet).
+         */
+        isDefault(aId, lId) {
+            const defVal = (this.defaultsGrid[aId] ?? {})[lId] ?? 0;
+            const curVal = (this.grid[aId] ?? {})[lId] ?? 0;
+            return defVal > 0 && defVal === curVal;
+        },
+
+        onCellInput(aId, lId, rawValue) {
+            const qty = parseInt(rawValue) || 0;
+            if (!this.grid[aId]) this.grid[aId] = {};
+            this.grid[aId][lId] = qty;
+        },
+
+        clearGrid() {
+            for (const aId of Object.keys(this.grid)) {
+                for (const lId of Object.keys(this.grid[aId])) {
+                    this.grid[aId][lId] = 0;
+                }
+            }
+            this.defaultsGrid   = {};
+            this.defaultsApplied = false;
+        },
+
+        gridIsEmpty() {
+            return this.grandTotal() === 0;
+        },
+
+        // ── Totals ─────────────────────────────────────────────────────────
 
         rowTotal(assistantId) {
             const row = this.grid[assistantId] ?? {};
@@ -255,6 +434,29 @@ function distGrid(initialGrid) {
                 return s + Object.values(row).reduce((rs, v) => rs + (parseInt(v) || 0), 0);
             }, 0);
         },
+
+        // ── Form submission ────────────────────────────────────────────────
+
+        async submitForm() {
+            this.saving = true;
+            try {
+                // 1. If "Save as Default" is checked, persist defaults first via AJAX
+                if (this.saveAsDefault) {
+                    await axios.post(saveDefaultsUrl, {
+                        date: currentDate,
+                        qty:  this.grid,
+                    });
+                }
+
+                // 2. Submit the main distribution form
+                document.getElementById('dist-form').submit();
+            } catch (err) {
+                this.saving = false;
+                alert('Failed to save defaults. Please try again.');
+            }
+        },
+
+        // ── Keyboard navigation ────────────────────────────────────────────
 
         handleArrow(e) {
             const el = document.activeElement;

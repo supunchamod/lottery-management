@@ -128,6 +128,10 @@ Route::middleware('auth')->group(function () {
 // ═════════════════════════════════════════════════════════════════════════════
 Route::prefix('api')->name('api.')->middleware('auth')->group(function () {
 
+    // Smart Default Quantity  (Ticket Distribution)
+    Route::get ('/ticket-distribution/defaults', [TicketDistributionController::class, 'getDefaults'])->name('api.ticket-distribution.defaults.get');
+    Route::post('/ticket-distribution/defaults', [TicketDistributionController::class, 'saveDefaults'])->name('api.ticket-distribution.defaults.save');
+
     // Daily P&L summary
     Route::get('/daily-summary',       [DailySummaryController::class, 'show'])->name('daily-summary');
     Route::get('/daily-summary/range', [DailySummaryController::class, 'range'])->name('daily-summary.range');
