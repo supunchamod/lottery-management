@@ -381,10 +381,14 @@
                             </div>
                         </td>
                         @foreach($lotteries as $l)
-                            <td class="px-1 py-1.5 text-center">
+                            <td class="px-1 py-1.5 text-center col-cell-transition"
+                                :class="isMismatch({{ $l->id }}) ? 'bg-red-50' : ''">
                                 <input type="number" min="0" step="1"
                                        x-model="boardQty[{{ $l->id }}]"
-                                       class="board-qty-cell w-full h-7 px-1 text-center text-xs font-semibold border border-amber-300 rounded bg-white focus:ring-1 focus:ring-amber-500 focus:border-amber-500 focus:outline-none text-amber-900 placeholder-amber-300"
+                                       :class="isMismatch({{ $l->id }})
+                                           ? 'border-red-400 text-red-800 focus:ring-red-500 focus:border-red-500'
+                                           : 'border-amber-300 text-amber-900 focus:ring-amber-500 focus:border-amber-500'"
+                                       class="board-qty-cell w-full h-7 px-1 text-center text-xs font-semibold border rounded bg-white focus:ring-1 focus:outline-none placeholder-amber-300"
                                        placeholder="—">
                             </td>
                         @endforeach
@@ -397,7 +401,10 @@
                         <td class="sticky left-0 z-20 px-3 py-2 text-slate-300 font-semibold text-[11px] border-r border-slate-600"
                             style="background:#1e293b;">Column Total ↓</td>
                         @foreach($lotteries as $l)
-                            <td class="px-2 py-2 text-center text-slate-100 font-bold"
+                            <td class="px-2 py-2 text-center font-bold col-total-cell"
+                                :class="isMismatch({{ $l->id }})
+                                    ? 'text-red-300 border-x-2 border-t-2 border-red-500 mismatch-pulse'
+                                    : 'text-slate-100'"
                                 x-text="colTotal({{ $l->id }}).toLocaleString()"></td>
                         @endforeach
                         <td class="px-3 py-2 text-center text-yellow-300 font-bold"
@@ -441,10 +448,12 @@
                             </td>
 
                             @foreach($lotteries as $j => $l)
-                                <td class="p-0 relative"
+                                <td class="p-0 relative col-cell-transition"
                                     x-bind:class="{
-                                        'bg-blue-50': hoveredCol === {{ $l->id }} && !isAdjusted({{ $a->id }}, {{ $l->id }}),
-                                        'bg-amber-100': isAdjusted({{ $a->id }}, {{ $l->id }})
+                                        'bg-blue-50':   hoveredCol === {{ $l->id }} && !isAdjusted({{ $a->id }}, {{ $l->id }}) && !isMismatch({{ $l->id }}),
+                                        'bg-amber-100': isAdjusted({{ $a->id }}, {{ $l->id }}) && !isMismatch({{ $l->id }}),
+                                        'border-x-2 border-red-400 bg-red-50': isMismatch({{ $l->id }}) && !isAdjusted({{ $a->id }}, {{ $l->id }}),
+                                        'border-x-2 border-red-400 bg-red-100': isMismatch({{ $l->id }}) && isAdjusted({{ $a->id }}, {{ $l->id }})
                                     }">
                                     <input
                                         type="number" min="0" step="1"
@@ -473,7 +482,10 @@
                         <td class="sticky left-0 z-10 px-3 py-2.5 text-gray-700 border-r border-gray-200"
                             style="background:#f1f5f9;">Column Total ↑</td>
                         @foreach($lotteries as $l)
-                            <td class="px-2 py-2.5 text-center text-gray-900"
+                            <td class="px-2 py-2.5 text-center col-cell-transition"
+                                :class="isMismatch({{ $l->id }})
+                                    ? 'text-red-600 bg-red-50 border-x-2 border-b-2 border-red-500 font-bold'
+                                    : 'text-gray-900'"
                                 x-text="colTotal({{ $l->id }}).toLocaleString()"></td>
                         @endforeach
                         <td class="px-3 py-2.5 text-center text-blue-700"
@@ -492,6 +504,8 @@
     Green values were pre-filled from saved defaults for this day of the week.
     <span class="inline-block w-3 h-3 rounded-sm bg-amber-100 border border-amber-400 mr-1 ml-4"></span>
     Amber values were automatically adjusted to match Board received quantities.
+    <span class="inline-block w-3 h-3 rounded-sm bg-red-50 border-2 border-red-400 mr-1 ml-4"></span>
+    Red stripe columns have a mismatch between Board Received Qty and Column Total — click Auto-Adjust to resolve.
 </p>
 
 @endif
@@ -510,6 +524,21 @@ input.dist-cell.is-adjusted:focus { background: #fef3c7 !important; box-shadow: 
 input.board-qty-cell::-webkit-outer-spin-button,
 input.board-qty-cell::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input.board-qty-cell[type=number] { -moz-appearance: textfield; }
+
+/* ── Mismatch column highlight ─────────────────────────────────────── */
+/* Smooth transition when the red stripe appears/disappears */
+.col-cell-transition {
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.col-total-cell {
+    transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+/* Pulsing background on the Column Total header cell to draw attention */
+@keyframes mismatch-pulse {
+    0%, 100% { background-color: rgba(153, 27, 27, 0.35); }
+    50%       { background-color: rgba(220, 38,  38, 0.55); }
+}
+.mismatch-pulse { animation: mismatch-pulse 1.4s ease-in-out infinite; }
 
 /* ── PRINT STYLES ─────────────────────────────────────────────────────── */
 @media print {
@@ -728,6 +757,17 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
 
         isAdjusted(aId, lId) {
             return !!((this.adjustedCells[aId] || {})[lId]);
+        },
+
+        // Returns true when Adjustment Mode is on, a board qty has been typed
+        // for this lottery, and it does not yet match the column total.
+        isMismatch(lId) {
+            if (!this.adjustMode) return false;
+            const raw = this.boardQty[lId];
+            if (raw === null || raw === undefined || raw === '') return false;
+            const boardVal = parseInt(raw) || 0;
+            if (boardVal === 0) return false;
+            return boardVal !== this.colTotal(lId);
         },
 
         autoAdjust() {
