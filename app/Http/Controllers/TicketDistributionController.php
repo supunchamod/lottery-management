@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\DailyTicketStock;
+use App\Models\DefaultDistribution;
 use App\Models\Lottery;
 use App\Models\SalesAssistant;
 use App\Models\SubSeller;
@@ -85,6 +86,74 @@ class TicketDistributionController extends Controller
         return redirect()
             ->route('ticket-distribution.index', ['date' => $date])
             ->with('success', 'Ticket distribution saved for ' . Carbon::parse($date)->format('d M Y') . '.');
+    }
+
+    // ── Smart Default Quantity ─────────────────────────────────────────────────
+
+    /**
+     * AJAX: Return the default grid for the weekday of the given date.
+     *
+     * GET /api/ticket-distribution/defaults?date=YYYY-MM-DD
+     *
+     * Response: { day_of_week: 1, day_name: "Monday", defaults: { assistantId: { lotteryId: qty } } }
+     */
+    public function getDefaults(Request $request)
+    {
+        $request->validate(['date' => 'required|date']);
+
+        $carbon     = Carbon::parse($request->input('date'));
+        $dayOfWeek  = $carbon->dayOfWeek;           // 0=Sun … 6=Sat
+
+        return response()->json([
+            'day_of_week' => $dayOfWeek,
+            'day_name'    => $carbon->format('l'),  // e.g. "Monday"
+            'defaults'    => DefaultDistribution::gridForDay($dayOfWeek),
+        ]);
+    }
+
+    /**
+     * AJAX: Upsert default quantities for the weekday derived from the given date.
+     *
+     * POST /api/ticket-distribution/defaults
+     * Body: { date: "YYYY-MM-DD", qty: { assistantId: { lotteryId: qty } } }
+     */
+    public function saveDefaults(Request $request)
+    {
+        $request->validate([
+            'date'    => 'required|date',
+            'qty'     => 'required|array',
+            'qty.*.*' => 'nullable|integer|min:0',
+        ]);
+
+        $dayOfWeek = Carbon::parse($request->input('date'))->dayOfWeek;
+        $grid      = $request->input('qty', []);
+
+        DB::transaction(function () use ($dayOfWeek, $grid) {
+            foreach ($grid as $assistantId => $lotteryQtys) {
+                foreach ($lotteryQtys as $lotteryId => $qty) {
+                    $qty = (int) ($qty ?? 0);
+
+                    if ($qty > 0) {
+                        DefaultDistribution::updateOrCreate(
+                            [
+                                'assistant_id' => $assistantId,
+                                'lottery_id'   => $lotteryId,
+                                'day_of_week'  => $dayOfWeek,
+                            ],
+                            ['default_qty' => $qty]
+                        );
+                    } else {
+                        DefaultDistribution::where([
+                            'assistant_id' => $assistantId,
+                            'lottery_id'   => $lotteryId,
+                            'day_of_week'  => $dayOfWeek,
+                        ])->delete();
+                    }
+                }
+            }
+        });
+
+        return response()->json(['message' => 'Defaults saved.', 'day_of_week' => $dayOfWeek]);
     }
 
     // ── Summary ───────────────────────────────────────────────────────────────

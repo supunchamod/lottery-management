@@ -23,11 +23,11 @@
         <a href="{{ route('ticket-distribution.index', ['date' => $prevDate]) }}"
            class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50">‹</a>
 
-        <form method="GET" action="{{ route('ticket-distribution.index') }}">
-            <input type="date" name="date" value="{{ $date }}"
-                   onchange="this.form.submit()"
-                   class="erp-input text-sm h-9 font-semibold">
-        </form>
+        <input type="date"
+               id="date-picker"
+               value="{{ $date }}"
+               onchange="window.location.href = '{{ route('ticket-distribution.index') }}?date=' + this.value"
+               class="erp-input text-sm h-9 font-semibold">
 
         <a href="{{ route('ticket-distribution.index', ['date' => $nextDate]) }}"
            class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50 {{ $isToday ? 'opacity-40 pointer-events-none' : '' }}">›</a>
@@ -152,11 +152,10 @@
             <span><strong>Adjustment Mode is ON.</strong> Enter Board Received Qty in the amber row, lock any assistant you don't want touched, then click <em>Auto-Adjust Distribution</em>. Amber cells were auto-adjusted. Press <kbd class="rounded bg-amber-200 px-1 font-mono text-xs">Esc</kbd> to exit.</span>
         </div>
 
-        {{-- Scrollable grid --}}
+        {{-- ── Scrollable grid ──────────────────────────────────────────── --}}
         <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
             <table class="min-w-full border-collapse text-xs" id="dist-table">
 
-                {{-- ── HEADER ─────────────────────────────────────────────── --}}
                 <thead>
                     <tr style="background:#0f172a;">
                         <th class="sticky left-0 z-20 px-3 py-3 text-left text-white font-medium whitespace-nowrap border-r border-slate-700"
@@ -203,7 +202,6 @@
                             x-text="boardGrandTotal().toLocaleString()"></td>
                     </tr>
 
-                    {{-- ── TOP TOTALS ROW ──────────────────────────────────── --}}
                     <tr class="border-b-2 border-slate-600" style="background:#1e293b;">
                         <td class="sticky left-0 z-20 px-3 py-2 text-slate-300 font-semibold text-[11px] border-r border-slate-600"
                             style="background:#1e293b;">Column Total ↓</td>
@@ -217,7 +215,6 @@
                     </tr>
                 </thead>
 
-                {{-- ── BODY ────────────────────────────────────────────────── --}}
                 <tbody class="divide-y divide-gray-100">
                     @foreach($assistants as $i => $a)
                         <tr class="{{ $i % 2 === 0 ? 'bg-white' : 'bg-gray-50/60' }}"
@@ -225,7 +222,6 @@
                             @mouseenter="hoveredRow = {{ $a->id }}"
                             @mouseleave="hoveredRow = null">
 
-                            {{-- Sticky name cell --}}
                             <td class="sticky left-0 z-10 px-3 py-1.5 font-medium text-gray-700 whitespace-nowrap border-r border-gray-200"
                                 style="{{ $i % 2 === 0 ? 'background:#fff' : 'background:#f9fafb' }}"
                                 x-bind:style="hoveredRow === {{ $a->id }} ? 'background:#eff6ff' : ''">
@@ -233,7 +229,6 @@
                                 {{ $a->name }}
                             </td>
 
-                            {{-- Input cells --}}
                             @foreach($lotteries as $j => $l)
                                 <td class="p-0 relative"
                                     x-bind:class="{
@@ -255,7 +250,6 @@
                                 </td>
                             @endforeach
 
-                            {{-- Row total --}}
                             <td class="px-3 py-1.5 text-center font-bold"
                                 x-bind:class="rowTotal({{ $a->id }}) > 0 ? 'text-blue-700' : 'text-gray-300'"
                                 x-text="rowTotal({{ $a->id }}).toLocaleString()"></td>
@@ -278,7 +272,6 @@
                         </tr>
                     @endforeach
 
-                    {{-- ── BOTTOM TOTALS ROW ───────────────────────────────── --}}
                     <tr class="border-t-2 border-gray-300 font-bold" style="background:#f1f5f9;">
                         <td class="sticky left-0 z-10 px-3 py-2.5 text-gray-700 border-r border-gray-200"
                             style="background:#f1f5f9;">Column Total ↑</td>
@@ -298,6 +291,12 @@
     </form>
 </div>
 
+{{-- Legend --}}
+<p class="mt-2 text-xs text-gray-400 print:hidden">
+    <span class="inline-block w-3 h-3 rounded-sm bg-emerald-100 border border-emerald-300 mr-1"></span>
+    Green values were pre-filled from saved defaults for this day of the week.
+</p>
+
 @endif
 
 @push('head')
@@ -306,7 +305,6 @@
 input.dist-cell::-webkit-outer-spin-button,
 input.dist-cell::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input.dist-cell[type=number] { -moz-appearance: textfield; }
-
 input.dist-cell::placeholder { color: #d1d5db; }
 input.dist-cell:focus { background: #fff; box-shadow: inset 0 0 0 2px #3b82f6; border-radius: 2px; }
 
@@ -325,10 +323,22 @@ input.board-qty-cell:focus { box-shadow: inset 0 0 0 2px #f59e0b; border-radius:
 [x-cloak] { display: none !important; }
 
 @media print {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+
+    /* Hide all screen-only UI */
     .print\:hidden { display: none !important; }
-    aside, header, nav { display: none !important; }
-    .overflow-x-auto { overflow: visible !important; }
-    input.dist-cell { border: none; }
+    aside, header, nav, [class*="sidebar"] { display: none !important; }
+    body, html { margin: 0 !important; padding: 0 !important; }
+
+    /* Hide the Alpine interactive grid */
+    #dist-form  { display: none !important; }
+
+    /* Show the static PHP-rendered print tables */
+    #print-tables { display: block !important; }
+
+    /* Ensure page breaks work correctly */
+    @page { margin: 10mm; size: A4 landscape; }
 }
 </style>
 
@@ -354,21 +364,56 @@ function distGrid(initialGrid, lotteryIds, assistantIds) {
         locked:         initLocked,
         adjusted:       initAdjusted,
 
+        clearGrid() {
+            for (const aId of Object.keys(this.grid)) {
+                for (const lId of Object.keys(this.grid[aId])) {
+                    this.grid[aId][lId] = 0;
+                }
+            }
+            this.defaultsGrid    = {};
+            this.defaultsApplied = false;
+        },
+
+        gridIsEmpty() { return this.grandTotal() === 0; },
+
+        // ── Totals ─────────────────────────────────────────────────────────
         rowTotal(assistantId) {
             const row = this.grid[assistantId] ?? {};
             return Object.values(row).reduce((s, v) => s + (parseInt(v) || 0), 0);
         },
 
         colTotal(lotteryId) {
-            return Object.values(this.grid).reduce((s, row) => {
-                return s + (parseInt(row[lotteryId]) || 0);
-            }, 0);
+            return Object.values(this.grid).reduce((s, row) => s + (parseInt(row[lotteryId]) || 0), 0);
         },
 
         grandTotal() {
-            return Object.values(this.grid).reduce((s, row) => {
-                return s + Object.values(row).reduce((rs, v) => rs + (parseInt(v) || 0), 0);
-            }, 0);
+            return Object.values(this.grid).reduce((s, row) =>
+                s + Object.values(row).reduce((rs, v) => rs + (parseInt(v) || 0), 0), 0);
+        },
+
+        // ── Form submission ────────────────────────────────────────────────
+        async submitForm() {
+            this.saving = true;
+            try {
+                if (this.saveAsDefault) {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                    const response  = await fetch(saveDefaultsUrl, {
+                        method:  'POST',
+                        headers: {
+                            'Content-Type':     'application/json',
+                            'Accept':           'application/json',
+                            'X-CSRF-TOKEN':     csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: JSON.stringify({ date: currentDate, qty: this.grid }),
+                    });
+                    if (!response.ok) throw new Error('Server error ' + response.status);
+                }
+                document.getElementById('dist-form').submit();
+            } catch (err) {
+                this.saving = false;
+                alert('Failed to save defaults. Please try again.');
+            }
         },
 
         boardGrandTotal() {
