@@ -45,11 +45,14 @@ Route::middleware('auth')->group(function () {
     Route::get ('/daily-sales/analysis', [DailySalesController::class, 'analysis'])->name('daily-sales.analysis');
 
     // Bulk Deposits
-    Route::get ('/bulk-deposits',                             [BulkDepositController::class, 'index'])->name('bulk-deposits.index');
-    Route::get ('/bulk-deposits/create',                      [BulkDepositController::class, 'create'])->name('bulk-deposits.create');
-    Route::post('/bulk-deposits',                             [BulkDepositController::class, 'store'])->name('bulk-deposits.store');
-    Route::get ('/bulk-deposits/{bulkDeposit}/distribute',    [BulkDepositController::class, 'distribute'])->name('bulk-deposits.distribute');
-    Route::post('/bulk-deposits/{bulkDeposit}/distribute',    [BulkDepositController::class, 'saveDistribution'])->name('bulk-deposits.save-distribution');
+    Route::get   ('/bulk-deposits',                           [BulkDepositController::class, 'index'])->name('bulk-deposits.index');
+    Route::get   ('/bulk-deposits/create',                    [BulkDepositController::class, 'create'])->name('bulk-deposits.create');
+    Route::post  ('/bulk-deposits',                           [BulkDepositController::class, 'store'])->name('bulk-deposits.store');
+    Route::get   ('/bulk-deposits/{bulkDeposit}/edit',        [BulkDepositController::class, 'edit'])->name('bulk-deposits.edit');
+    Route::put   ('/bulk-deposits/{bulkDeposit}',             [BulkDepositController::class, 'update'])->name('bulk-deposits.update');
+    Route::delete('/bulk-deposits/{bulkDeposit}',             [BulkDepositController::class, 'destroy'])->name('bulk-deposits.destroy');
+    Route::get   ('/bulk-deposits/{bulkDeposit}/distribute',  [BulkDepositController::class, 'distribute'])->name('bulk-deposits.distribute');
+    Route::post  ('/bulk-deposits/{bulkDeposit}/distribute',  [BulkDepositController::class, 'saveDistribution'])->name('bulk-deposits.save-distribution');
 
     // Winnings
     Route::get ('/winnings',        [PageController::class, 'winningsIndex'])->name('winnings.index');

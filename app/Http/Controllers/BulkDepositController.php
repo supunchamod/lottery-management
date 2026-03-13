@@ -39,12 +39,7 @@ class BulkDepositController extends Controller
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'assistant_id' => 'required|exists:sales_assistants,id',
-            'date_from'    => 'required|date',
-            'date_to'      => 'required|date|after_or_equal:date_from',
-            'notes'        => 'nullable|string|max:500',
-        ]);
+        $data = $this->validateForm($request);
 
         // ── Pending-duplicate guard ───────────────────────────────────────────
         $hasPending = BulkDeposit::where('assistant_id', $data['assistant_id'])
@@ -52,25 +47,96 @@ class BulkDepositController extends Controller
             ->exists();
 
         if ($hasPending) {
-            return back()
-                ->withInput()
-                ->withErrors([
-                    'assistant_id' => 'This assistant already has a pending bulk record. Please process it before adding a new one.',
-                ]);
+            return back()->withInput()->withErrors([
+                'assistant_id' => 'This assistant already has a pending bulk record. Please process it before adding a new one.',
+            ]);
         }
 
-        BulkDeposit::create([
-            'assistant_id' => $data['assistant_id'],
-            'date_from'    => $data['date_from'],
-            'date_to'      => $data['date_to'],
-            'status'       => 'pending',
-            'notes'        => $data['notes'] ?? null,
-            'created_by'   => auth()->id(),
-        ]);
+        $deposit = new BulkDeposit($this->fillableFields($data));
+        $deposit->status     = 'pending';
+        $deposit->created_by = auth()->id();
+        $deposit->compute();
+        $deposit->save();
 
         return redirect()
             ->route('bulk-deposits.index')
             ->with('success', 'Bulk deposit record created successfully.');
+    }
+
+    // ── Edit form ─────────────────────────────────────────────────────────────
+
+    public function edit(BulkDeposit $bulkDeposit)
+    {
+        abort_if($bulkDeposit->isCompleted(), 403, 'Completed bulk deposits cannot be edited.');
+
+        $assistants = SalesAssistant::orderBy('name')->get();
+
+        return view('bulk-deposits.edit', compact('bulkDeposit', 'assistants'));
+    }
+
+    // ── Update bulk deposit ───────────────────────────────────────────────────
+
+    public function update(Request $request, BulkDeposit $bulkDeposit)
+    {
+        abort_if($bulkDeposit->isCompleted(), 403, 'Completed bulk deposits cannot be edited.');
+
+        $data = $this->validateForm($request, $bulkDeposit->id);
+
+        // If assistant changed, re-run the pending-duplicate guard
+        if ((int) $data['assistant_id'] !== (int) $bulkDeposit->assistant_id) {
+            $hasPending = BulkDeposit::where('assistant_id', $data['assistant_id'])
+                ->where('status', 'pending')
+                ->exists();
+
+            if ($hasPending) {
+                return back()->withInput()->withErrors([
+                    'assistant_id' => 'This assistant already has a pending bulk record.',
+                ]);
+            }
+        }
+
+        $bulkDeposit->fill($this->fillableFields($data));
+        $bulkDeposit->compute();
+        $bulkDeposit->save();
+
+        return redirect()
+            ->route('bulk-deposits.index')
+            ->with('success', 'Bulk deposit updated successfully.');
+    }
+
+    // ── Delete bulk deposit ───────────────────────────────────────────────────
+
+    public function destroy(BulkDeposit $bulkDeposit)
+    {
+        $bulkDeposit->load('assistant');
+        $assistantName = $bulkDeposit->assistant->name ?? 'Unknown';
+
+        DB::transaction(function () use ($bulkDeposit) {
+            // If already distributed: remove the daily records that were created
+            // from this bulk deposit's date range so no orphan data remains.
+            if ($bulkDeposit->isCompleted()) {
+                $assistant = $bulkDeposit->assistant;
+                $dateRange = [
+                    $bulkDeposit->date_from->toDateString(),
+                    $bulkDeposit->date_to->toDateString(),
+                ];
+
+                DailySaleRecord::where('assistant_id', $bulkDeposit->assistant_id)
+                    ->whereBetween('date', $dateRange)
+                    ->delete();
+
+                // Rebuild the ledger running balance so it stays consistent
+                if ($assistant) {
+                    $this->ledger->recalculateRunningBalance($assistant);
+                }
+            }
+
+            $bulkDeposit->delete();
+        });
+
+        return redirect()
+            ->route('bulk-deposits.index')
+            ->with('success', "Bulk deposit for {$assistantName} deleted successfully.");
     }
 
     // ── Distribution form ─────────────────────────────────────────────────────
@@ -81,12 +147,10 @@ class BulkDepositController extends Controller
 
         $bulkDeposit->load('assistant');
 
-        // Generate the date range
         $dates = collect(
             CarbonPeriod::create($bulkDeposit->date_from, $bulkDeposit->date_to)
         )->map(fn (Carbon $d) => $d->toDateString())->values();
 
-        // Pre-load any existing daily records for this assistant × date range
         $existing = DailySaleRecord::where('assistant_id', $bulkDeposit->assistant_id)
             ->whereBetween('date', [
                 $bulkDeposit->date_from->toDateString(),
@@ -95,7 +159,6 @@ class BulkDepositController extends Controller
             ->get()
             ->keyBy(fn ($r) => $r->date->toDateString());
 
-        // Build Alpine seed data — pre-fill from existing records where available
         $alpineRows = [];
         foreach ($dates as $date) {
             $r = $existing->get($date);
@@ -134,14 +197,11 @@ class BulkDepositController extends Controller
         $rows        = $request->input('rows', []);
         $assistantId = $bulkDeposit->assistant_id;
         $assistant   = SalesAssistant::findOrFail($assistantId);
-
-        // Validate all dates are within the allowed range
-        $from = $bulkDeposit->date_from->toDateString();
-        $to   = $bulkDeposit->date_to->toDateString();
+        $from        = $bulkDeposit->date_from->toDateString();
+        $to          = $bulkDeposit->date_to->toDateString();
 
         DB::transaction(function () use ($rows, $assistantId, $assistant, $from, $to, $bulkDeposit) {
             foreach ($rows as $date => $data) {
-                // Silently skip dates outside the allowed range
                 if ($date < $from || $date > $to) {
                     continue;
                 }
@@ -169,11 +229,7 @@ class BulkDepositController extends Controller
                     continue;
                 }
 
-                $rec = DailySaleRecord::firstOrNew([
-                    'date'         => $date,
-                    'assistant_id' => $assistantId,
-                ]);
-
+                $rec   = DailySaleRecord::firstOrNew(['date' => $date, 'assistant_id' => $assistantId]);
                 $isNew = ! $rec->exists;
 
                 $rec->fill([
@@ -192,12 +248,59 @@ class BulkDepositController extends Controller
                 $this->ledger->postOrUpdateDailySaleRecord($assistant, $rec, $isNew);
             }
 
-            // Mark the bulk deposit as completed
             $bulkDeposit->update(['status' => 'completed']);
         });
 
         return redirect()
             ->route('bulk-deposits.index')
             ->with('success', "Bulk deposit for {$bulkDeposit->assistant->name} distributed successfully.");
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    private function validateForm(Request $request, ?int $ignoreId = null): array
+    {
+        return $request->validate([
+            'assistant_id' => 'required|exists:sales_assistants,id',
+            'date_from'    => 'required|date',
+            'date_to'      => 'required|date|after_or_equal:date_from',
+            'total_qty'    => 'nullable|integer|min:0',
+            'unit_price'   => 'nullable|numeric|min:0',
+            'denom_5'      => 'nullable|integer|min:0',
+            'denom_10'     => 'nullable|integer|min:0',
+            'denom_20'     => 'nullable|integer|min:0',
+            'denom_50'     => 'nullable|integer|min:0',
+            'denom_100'    => 'nullable|integer|min:0',
+            'denom_500'    => 'nullable|integer|min:0',
+            'denom_1000'   => 'nullable|integer|min:0',
+            'denom_5000'   => 'nullable|integer|min:0',
+            'nlb_winning'  => 'nullable|numeric|min:0',
+            'dlb_winning'  => 'nullable|numeric|min:0',
+            'tw_winning'   => 'nullable|numeric|min:0',
+            'notes'        => 'nullable|string|max:500',
+        ]);
+    }
+
+    private function fillableFields(array $data): array
+    {
+        return [
+            'assistant_id' => $data['assistant_id'],
+            'date_from'    => $data['date_from'],
+            'date_to'      => $data['date_to'],
+            'total_qty'    => (int)   ($data['total_qty']   ?? 0),
+            'unit_price'   => (float) ($data['unit_price']  ?? 0),
+            'denom_5'      => (int)   ($data['denom_5']     ?? 0),
+            'denom_10'     => (int)   ($data['denom_10']    ?? 0),
+            'denom_20'     => (int)   ($data['denom_20']    ?? 0),
+            'denom_50'     => (int)   ($data['denom_50']    ?? 0),
+            'denom_100'    => (int)   ($data['denom_100']   ?? 0),
+            'denom_500'    => (int)   ($data['denom_500']   ?? 0),
+            'denom_1000'   => (int)   ($data['denom_1000']  ?? 0),
+            'denom_5000'   => (int)   ($data['denom_5000']  ?? 0),
+            'nlb_winning'  => (float) ($data['nlb_winning'] ?? 0),
+            'dlb_winning'  => (float) ($data['dlb_winning'] ?? 0),
+            'tw_winning'   => (float) ($data['tw_winning']  ?? 0),
+            'notes'        => $data['notes'] ?? null,
+        ];
     }
 }
