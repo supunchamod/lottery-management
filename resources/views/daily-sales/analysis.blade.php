@@ -85,7 +85,7 @@
 
 {{-- ── Chart ──────────────────────────────────────────────────────────────── --}}
 @if(count($chartLabels) > 0)
-<div class="mb-5 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+<!-- <div class="mb-5 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
     <div class="mb-4 flex items-center justify-between">
         <h3 class="text-sm font-semibold text-gray-700">Performance Trend</h3>
         <div class="flex gap-4 text-xs">
@@ -95,7 +95,7 @@
         </div>
     </div>
     <canvas id="perfChart" style="max-height:260px;"></canvas>
-</div>
+</div> -->
 @endif
 
 {{-- ── Records Table ─────────────────────────────────────────────────────── --}}
