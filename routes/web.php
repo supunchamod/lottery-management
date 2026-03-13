@@ -4,6 +4,7 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\BoardSettlementController;
 use App\Http\Controllers\BoardTransactionController;
+use App\Http\Controllers\BulkDepositController;
 use App\Http\Controllers\DailyRecordController;
 use App\Http\Controllers\DailySalesController;
 use App\Http\Controllers\DailySummaryController;
@@ -42,6 +43,16 @@ Route::middleware('auth')->group(function () {
     Route::get ('/daily-sales',          [DailySalesController::class, 'index'])->name('daily-sales.index');
     Route::post('/daily-sales',          [DailySalesController::class, 'store'])->name('daily-sales.store');
     Route::get ('/daily-sales/analysis', [DailySalesController::class, 'analysis'])->name('daily-sales.analysis');
+
+    // Bulk Deposits
+    Route::get   ('/bulk-deposits',                           [BulkDepositController::class, 'index'])->name('bulk-deposits.index');
+    Route::get   ('/bulk-deposits/create',                    [BulkDepositController::class, 'create'])->name('bulk-deposits.create');
+    Route::post  ('/bulk-deposits',                           [BulkDepositController::class, 'store'])->name('bulk-deposits.store');
+    Route::get   ('/bulk-deposits/{bulkDeposit}/edit',        [BulkDepositController::class, 'edit'])->name('bulk-deposits.edit');
+    Route::put   ('/bulk-deposits/{bulkDeposit}',             [BulkDepositController::class, 'update'])->name('bulk-deposits.update');
+    Route::delete('/bulk-deposits/{bulkDeposit}',             [BulkDepositController::class, 'destroy'])->name('bulk-deposits.destroy');
+    Route::get   ('/bulk-deposits/{bulkDeposit}/distribute',  [BulkDepositController::class, 'distribute'])->name('bulk-deposits.distribute');
+    Route::post  ('/bulk-deposits/{bulkDeposit}/distribute',  [BulkDepositController::class, 'saveDistribution'])->name('bulk-deposits.save-distribution');
 
     // Winnings
     Route::get ('/winnings',        [PageController::class, 'winningsIndex'])->name('winnings.index');
