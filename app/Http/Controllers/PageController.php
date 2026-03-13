@@ -234,10 +234,9 @@ class PageController extends Controller
     public function lotteriesStore(Request $request)
     {
         $data = $request->validate([
-            'name'            => ['required', 'string', 'max:255'],
-            'board'           => ['required', 'in:NLB,DLB'],
-            'unit_price'      => ['required', 'numeric', 'min:0'],
-            'commission_rate' => ['required', 'numeric', 'min:0', 'max:100'],
+            'name'       => ['required', 'string', 'max:255'],
+            'board'      => ['required', 'in:NLB,DLB'],
+            'unit_price' => ['required', 'numeric', 'min:0'],
         ]);
 
         \App\Models\Lottery::create($data);
@@ -253,10 +252,9 @@ class PageController extends Controller
     public function lotteriesUpdate(Request $request, \App\Models\Lottery $lottery)
     {
         $data = $request->validate([
-            'name'            => ['required', 'string', 'max:255'],
-            'board'           => ['required', 'in:NLB,DLB'],
-            'unit_price'      => ['required', 'numeric', 'min:0'],
-            'commission_rate' => ['required', 'numeric', 'min:0', 'max:100'],
+            'name'       => ['required', 'string', 'max:255'],
+            'board'      => ['required', 'in:NLB,DLB'],
+            'unit_price' => ['required', 'numeric', 'min:0'],
         ]);
 
         $lottery->update($data);

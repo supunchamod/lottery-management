@@ -27,7 +27,6 @@
                 <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Name</th>
                 <th class="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-500">Board</th>
                 <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Unit Price</th>
-                <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Commission %</th>
                 <th class="px-5 py-3"></th>
             </tr>
         </thead>
@@ -42,14 +41,13 @@
                         </span>
                     </td>
                     <td class="px-5 py-3 text-right text-gray-700">Rs. {{ number_format($l->unit_price, 2) }}</td>
-                    <td class="px-5 py-3 text-right text-gray-700">{{ number_format($l->commission_rate, 2) }}%</td>
                     <td class="px-5 py-3 text-right">
                         <a href="{{ route('lotteries.edit', $l) }}"
                            class="text-xs text-blue-600 hover:underline">Edit</a>
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="5" class="py-12 text-center text-sm text-gray-400">No lotteries added yet.</td></tr>
+                <tr><td colspan="4" class="py-12 text-center text-sm text-gray-400">No lotteries added yet.</td></tr>
             @endforelse
         </tbody>
     </table>

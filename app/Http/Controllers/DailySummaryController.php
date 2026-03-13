@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\DailySale;
 use App\Models\Expense;
-use App\Models\Lottery;
-use App\Models\LotteryStock;
 use App\Models\Winning;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,10 +14,7 @@ use Illuminate\Support\Facades\DB;
  *
  * Produces the daily P&L summary that mirrors the Excel "W.R Soysa" report:
  *
- *   Gross Commission = Σ (tickets_sold_value × commission_rate / 100)
- *                      per lottery type for the day
- *
- *   Net Profit = Gross Commission − Total Daily Expenses
+ *   Net Profit = Cash Collected − Total Daily Expenses
  *
  * Additional aggregates (total sales, total winnings, cash collected,
  * outstanding assistant balances) are also returned so the dashboard
@@ -48,33 +43,7 @@ class DailySummaryController extends Controller
             ')
             ->first();
 
-        // ── 2. Gross commission ───────────────────────────────────────────────
-        // Computed per lottery type: qty_issued × unit_price × (commission_rate/100)
-        // We join lottery_stocks → lotteries for the day to get accurate per-type totals.
-        $commissionRows = LotteryStock::whereDate('lottery_stocks.date', $date)
-            ->join('lotteries', 'lotteries.id', '=', 'lottery_stocks.lottery_id')
-            ->selectRaw('
-                lotteries.name,
-                lotteries.board,
-                lotteries.unit_price,
-                lotteries.commission_rate,
-                SUM(lottery_stocks.qty_issued)                                          AS total_qty,
-                SUM(lottery_stocks.qty_issued * lotteries.unit_price)                   AS gross_value,
-                SUM(lottery_stocks.qty_issued * lotteries.unit_price
-                    * lotteries.commission_rate / 100)                                  AS commission
-            ')
-            ->groupBy(
-                'lotteries.id',
-                'lotteries.name',
-                'lotteries.board',
-                'lotteries.unit_price',
-                'lotteries.commission_rate'
-            )
-            ->get();
-
-        $grossCommission = $commissionRows->sum('commission');
-
-        // ── 3. Daily expenses ─────────────────────────────────────────────────
+        // ── 2. Daily expenses ─────────────────────────────────────────────────
         $expenseAgg = Expense::whereDate('date', $date)
             ->selectRaw('
                 SUM(amount) AS total_expenses,
@@ -82,16 +51,17 @@ class DailySummaryController extends Controller
             ')
             ->first();
 
-        $totalExpenses = (float) ($expenseAgg->total_expenses ?? 0);
+        $totalExpenses      = (float) ($expenseAgg->total_expenses ?? 0);
+        $totalCashCollected = (float) ($salesAgg->total_cash_collected ?? 0);
 
-        // ── 4. Net profit ─────────────────────────────────────────────────────
-        //   Net Profit = Gross Commission − Daily Expenses
-        $netProfit = $grossCommission - $totalExpenses;
+        // ── 3. Net profit ─────────────────────────────────────────────────────
+        //   Net Profit = Cash Collected − Daily Expenses
+        $netProfit = $totalCashCollected - $totalExpenses;
 
-        // ── 5. Winning totals for the day ─────────────────────────────────────
+        // ── 4. Winning totals for the day ─────────────────────────────────────
         $winning = Winning::where('date', $date)->first();
 
-        // ── 6. Assemble response ──────────────────────────────────────────────
+        // ── 5. Assemble response ──────────────────────────────────────────────
         return response()->json([
             'date' => $date,
 
@@ -110,19 +80,6 @@ class DailySummaryController extends Controller
                 'total_val' => $winning ? (float) $winning->total_val : 0.0,
             ],
 
-            'commission' => [
-                'breakdown'       => $commissionRows->map(fn ($r) => [
-                    'lottery'         => $r->name,
-                    'board'           => $r->board,
-                    'unit_price'      => (float) $r->unit_price,
-                    'commission_rate' => (float) $r->commission_rate,
-                    'total_qty'       => (int)   $r->total_qty,
-                    'gross_value'     => (float) $r->gross_value,
-                    'commission'      => (float) $r->commission,
-                ]),
-                'gross_commission' => (float) $grossCommission,
-            ],
-
             'expenses' => [
                 'count'          => (int)   ($expenseAgg->expense_count  ?? 0),
                 'total_expenses' => (float)  $totalExpenses,
@@ -130,11 +87,11 @@ class DailySummaryController extends Controller
             ],
 
             'profit' => [
-                // Net Profit = Gross Commission − Daily Expenses
-                'gross_commission' => (float) $grossCommission,
-                'total_expenses'   => (float) $totalExpenses,
-                'net_profit'       => (float) $netProfit,
-                'status'           => $netProfit >= 0 ? 'profit' : 'loss',
+                // Net Profit = Cash Collected − Daily Expenses
+                'total_cash_collected' => (float) $totalCashCollected,
+                'total_expenses'       => (float) $totalExpenses,
+                'net_profit'           => (float) $netProfit,
+                'status'               => $netProfit >= 0 ? 'profit' : 'loss',
             ],
         ]);
     }
@@ -154,17 +111,6 @@ class DailySummaryController extends Controller
 
         $from = $request->from;
         $to   = $request->to;
-
-        // Per-day commission totals
-        $commissionByDay = LotteryStock::whereBetween('lottery_stocks.date', [$from, $to])
-            ->join('lotteries', 'lotteries.id', '=', 'lottery_stocks.lottery_id')
-            ->selectRaw('
-                DATE(lottery_stocks.date) AS day,
-                SUM(lottery_stocks.qty_issued * lotteries.unit_price
-                    * lotteries.commission_rate / 100) AS gross_commission
-            ')
-            ->groupByRaw('DATE(lottery_stocks.date)')
-            ->pluck('gross_commission', 'day');
 
         // Per-day expense totals
         $expensesByDay = Expense::whereBetween('date', [$from, $to])
@@ -186,38 +132,35 @@ class DailySummaryController extends Controller
             ->keyBy('day');
 
         // Merge into a unified daily array
-        $allDays = collect($commissionByDay->keys())
-            ->merge($expensesByDay->keys())
+        $allDays = $expensesByDay->keys()
             ->merge($salesByDay->keys())
             ->unique()
             ->sort()
             ->values();
 
-        $summary = $allDays->map(function ($day) use ($commissionByDay, $expensesByDay, $salesByDay) {
-            $commission = (float) ($commissionByDay[$day] ?? 0);
-            $expenses   = (float) ($expensesByDay[$day]   ?? 0);
-            $sales      = $salesByDay[$day] ?? null;
+        $summary = $allDays->map(function ($day) use ($expensesByDay, $salesByDay) {
+            $expenses = (float) ($expensesByDay[$day] ?? 0);
+            $sales    = $salesByDay[$day] ?? null;
+            $cash     = $sales ? (float) $sales->cash : 0.0;
 
             return [
-                'date'             => $day,
-                'gross_commission' => $commission,
-                'total_expenses'   => $expenses,
-                'net_profit'       => $commission - $expenses,
-                'issued_val'       => $sales ? (float) $sales->issued      : 0.0,
-                'cash_collected'   => $sales ? (float) $sales->cash        : 0.0,
-                'winning_val'      => $sales ? (float) $sales->winnings    : 0.0,
-                'outstanding'      => $sales ? (float) $sales->outstanding : 0.0,
+                'date'           => $day,
+                'total_expenses' => $expenses,
+                'net_profit'     => $cash - $expenses,
+                'issued_val'     => $sales ? (float) $sales->issued      : 0.0,
+                'cash_collected' => $cash,
+                'winning_val'    => $sales ? (float) $sales->winnings    : 0.0,
+                'outstanding'    => $sales ? (float) $sales->outstanding : 0.0,
             ];
         });
 
         $totals = [
-            'gross_commission' => $summary->sum('gross_commission'),
-            'total_expenses'   => $summary->sum('total_expenses'),
-            'net_profit'       => $summary->sum('net_profit'),
-            'issued_val'       => $summary->sum('issued_val'),
-            'cash_collected'   => $summary->sum('cash_collected'),
-            'winning_val'      => $summary->sum('winning_val'),
-            'outstanding'      => $summary->sum('outstanding'),
+            'total_expenses' => $summary->sum('total_expenses'),
+            'net_profit'     => $summary->sum('net_profit'),
+            'issued_val'     => $summary->sum('issued_val'),
+            'cash_collected' => $summary->sum('cash_collected'),
+            'winning_val'    => $summary->sum('winning_val'),
+            'outstanding'    => $summary->sum('outstanding'),
         ];
 
         return response()->json([

@@ -92,8 +92,8 @@
     </div>
     <div class="header-divider">
         <div class="header-stat">
-            <div class="hs-label">Gross Commission</div>
-            <div class="hs-val">Rs.{{ number_format($totals['gross_commission'], 2) }}</div>
+            <div class="hs-label">Cash Collected</div>
+            <div class="hs-val">Rs.{{ number_format($totals['cash_collected'], 2) }}</div>
         </div>
         <div class="header-stat">
             <div class="hs-label">Total Expenses</div>
@@ -139,19 +139,9 @@
         <div class="kpi-sub">NLB + DLB combined</div>
     </div>
     <div class="kpi-box">
-        <div class="kpi-label">Gross Value</div>
-        <div class="kpi-val" style="color:#0e7490">Rs.{{ number_format($totals['gross_value'], 2) }}</div>
-        <div class="kpi-sub">Issued @ face value</div>
-    </div>
-    <div class="kpi-box">
-        <div class="kpi-label">Commission Rate</div>
-        @php
-            $rate = $totals['gross_value'] > 0
-                ? round(($totals['gross_commission'] / $totals['gross_value']) * 100, 2)
-                : 0;
-        @endphp
-        <div class="kpi-val" style="color:#0f766e">{{ $rate }}%</div>
-        <div class="kpi-sub">Avg across lotteries</div>
+        <div class="kpi-label">Cash Collected</div>
+        <div class="kpi-val" style="color:#0f766e">Rs.{{ number_format($totals['cash_collected'], 2) }}</div>
+        <div class="kpi-sub">Total cash from agents</div>
     </div>
 </div>
 
@@ -165,7 +155,6 @@
             <th>Returns</th>
             <th>Winnings</th>
             <th>Cash</th>
-            <th>Commission</th>
             <th>Expenses</th>
             <th>Net Profit</th>
             <th>Outstanding</th>
@@ -182,7 +171,6 @@
             <td style="color:#c2410c">{{ number_format($r['returns_val'], 0) }}</td>
             <td style="color:#7c3aed">{{ number_format($r['total_winning'], 0) }}</td>
             <td style="color:#0f766e">{{ number_format($r['cash_collected'], 0) }}</td>
-            <td style="color:#1d4ed8;font-weight:600">{{ number_format($r['gross_commission'], 2) }}</td>
             <td style="color:#be123c">{{ number_format($r['total_expenses'], 2) }}</td>
             <td style="{{ $r['net_profit'] >= 0 ? 'color:#16a34a' : 'color:#dc2626' }};font-weight:700">
                 {{ number_format($r['net_profit'], 2) }}
@@ -200,7 +188,6 @@
             <td>{{ number_format($totals['returns_val'], 0) }}</td>
             <td>{{ number_format($totals['total_winning'], 0) }}</td>
             <td>{{ number_format($totals['cash_collected'], 0) }}</td>
-            <td>{{ number_format($totals['gross_commission'], 2) }}</td>
             <td>{{ number_format($totals['total_expenses'], 2) }}</td>
             <td>Rs.{{ number_format($totals['net_profit'], 2) }}</td>
             <td>{{ number_format($totals['outstanding'], 0) }}</td>
@@ -215,7 +202,7 @@
             — {{ \Carbon\Carbon::parse($from)->format('d M Y') }} to {{ \Carbon\Carbon::parse($to)->format('d M Y') }}
         </div>
         <div class="sb-sub">
-            Gross Commission Rs.{{ number_format($totals['gross_commission'], 2) }}
+            Cash Collected Rs.{{ number_format($totals['cash_collected'], 2) }}
             &minus; Total Expenses Rs.{{ number_format($totals['total_expenses'], 2) }}
         </div>
     </div>
@@ -223,47 +210,6 @@
         Rs.{{ number_format(abs($totals['net_profit']), 2) }}
     </div>
 </div>
-
-{{-- ══ COMMISSION BY LOTTERY ════════════════════════════════════════════════ --}}
-@if($commissionByLottery->count())
-<div class="section-title">Commission Breakdown by Lottery</div>
-<table>
-    <thead>
-        <tr>
-            <th style="text-align:left">Lottery Name</th>
-            <th style="text-align:center">Board</th>
-            <th>Qty Issued</th>
-            <th>Gross Value (Rs.)</th>
-            <th>Commission (Rs.)</th>
-            <th>Rate</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach($commissionByLottery as $c)
-        <tr>
-            <td style="font-weight:600">{{ $c->name }}</td>
-            <td style="text-align:center;color:{{ $c->board === 'NLB' ? '#1d4ed8' : '#ea580c' }};font-weight:700">
-                {{ $c->board }}
-            </td>
-            <td>{{ number_format($c->total_qty) }}</td>
-            <td>{{ number_format($c->gross_value, 2) }}</td>
-            <td style="color:#1d4ed8;font-weight:600">{{ number_format($c->commission, 2) }}</td>
-            <td style="color:#0f766e">
-                {{ $c->gross_value > 0 ? round(($c->commission / $c->gross_value) * 100, 2) : 0 }}%
-            </td>
-        </tr>
-        @endforeach
-    </tbody>
-    <tfoot>
-        <tr>
-            <td colspan="3">TOTAL COMMISSION</td>
-            <td>Rs.{{ number_format($commissionByLottery->sum('gross_value'), 2) }}</td>
-            <td>Rs.{{ number_format($commissionByLottery->sum('commission'), 2) }}</td>
-            <td></td>
-        </tr>
-    </tfoot>
-</table>
-@endif
 
 {{-- ══ TOP ASSISTANTS ═══════════════════════════════════════════════════════ --}}
 @if($topAssistants->count())

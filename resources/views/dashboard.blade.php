@@ -111,7 +111,7 @@
         <div class="flex flex-wrap items-start justify-between gap-3 mb-5">
             <div>
                 <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Revenue vs Expense</h3>
-                <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Last 7 days · commission earned vs costs incurred</p>
+                <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Last 7 days · cash collected vs costs incurred</p>
             </div>
             <div class="flex gap-4 text-xs">
                 <span class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
