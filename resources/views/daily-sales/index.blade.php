@@ -365,7 +365,7 @@
 
             {{-- Denomination inputs --}}
             <div class="px-5 py-4 space-y-2.5">
-                @foreach([5000 => ['bg-purple-100 dark:bg-purple-900/30','text-purple-800 dark:text-purple-300'], 1000 => ['bg-blue-100 dark:bg-blue-900/30','text-blue-800 dark:text-blue-300'], 500 => ['bg-emerald-100 dark:bg-emerald-900/30','text-emerald-800 dark:text-emerald-300'], 100 => ['bg-yellow-100 dark:bg-yellow-900/30','text-yellow-800 dark:text-yellow-300'], 50 => ['bg-orange-100 dark:bg-orange-900/30','text-orange-800 dark:text-orange-300'], 20 => ['bg-slate-100 dark:bg-slate-700','text-slate-700 dark:text-slate-300']] as $denom => $cls)
+                @foreach([5000 => ['bg-purple-100 dark:bg-purple-900/30','text-purple-800 dark:text-purple-300'], 1000 => ['bg-blue-100 dark:bg-blue-900/30','text-blue-800 dark:text-blue-300'], 500 => ['bg-emerald-100 dark:bg-emerald-900/30','text-emerald-800 dark:text-emerald-300'], 100 => ['bg-yellow-100 dark:bg-yellow-900/30','text-yellow-800 dark:text-yellow-300'], 50 => ['bg-orange-100 dark:bg-orange-900/30','text-orange-800 dark:text-orange-300'], 20 => ['bg-slate-100 dark:bg-slate-700','text-slate-700 dark:text-slate-300'], 10 => ['bg-red-100 dark:bg-red-900/30','text-red-800 dark:text-red-300'], 5 => ['bg-pink-100 dark:bg-pink-900/30','text-pink-800 dark:text-pink-300']] as $denom => $cls)
                 <div class="flex items-center gap-3">
                     <span class="w-20 flex-shrink-0 rounded-full {{ $cls[0] }} {{ $cls[1] }} px-3 py-1 text-center text-xs font-bold">
                         Rs. {{ number_format($denom) }}
@@ -400,6 +400,12 @@
                                    bg-white dark:bg-slate-800 py-2.5 text-sm font-medium
                                    text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                         Cancel
+                    </button>
+                    <button type="button" @click="resetCash()"
+                            class="btn-action flex-1 rounded-xl border border-red-300 dark:border-red-600
+                                   bg-white dark:bg-slate-800 py-2.5 text-sm font-medium
+                                   text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                        Reset
                     </button>
                     <button type="button" @click="applyCash()"
                             class="btn-action flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700
@@ -461,16 +467,16 @@ function salesGrid(initialRows, names) {
         cashModal: {
             open: false,
             assistantId: null,
-            denoms: { 20:0, 50:0, 100:0, 500:0, 1000:0, 5000:0 },
+            denoms: { 5:0, 10:0, 20:0, 50:0, 100:0, 500:0, 1000:0, 5000:0 },
         },
 
         // ── Row computed ──────────────────────────────────────────────────────
         value(id)   { return (this.rows[id].qty||0) * (this.rows[id].unitPrice||0); },
         cash(id)    {
             const r = this.rows[id];
-            return (r.d20||0)*20+(r.d50||0)*50+(r.d100||0)*100+(r.d500||0)*500+(r.d1000||0)*1000+(r.d5000||0)*5000;
+            return (r.d5||0)*5+(r.d10||0)*10+(r.d20||0)*20+(r.d50||0)*50+(r.d100||0)*100+(r.d500||0)*500+(r.d1000||0)*1000+(r.d5000||0)*5000;
         },
-        hasCash(id) { const r=this.rows[id]; return (r.d20||0)+(r.d50||0)+(r.d100||0)+(r.d500||0)+(r.d1000||0)+(r.d5000||0)>0; },
+        hasCash(id) { const r=this.rows[id]; return (r.d5||0)+(r.d10||0)+(r.d20||0)+(r.d50||0)+(r.d100||0)+(r.d500||0)+(r.d1000||0)+(r.d5000||0)>0; },
         tw(id)      { return (this.rows[id].nlbWinning||0)+(this.rows[id].dlbWinning||0); },
         cw(id)      { return this.cash(id)+this.tw(id); },
         balance(id) { return this.value(id)-this.cw(id); },
@@ -489,19 +495,22 @@ function salesGrid(initialRows, names) {
         // ── Cash Counter Modal ────────────────────────────────────────────────
         openCashCounter(id) {
             const r = this.rows[id];
-            this.cashModal.denoms = { 20:r.d20||0, 50:r.d50||0, 100:r.d100||0, 500:r.d500||0, 1000:r.d1000||0, 5000:r.d5000||0 };
+            this.cashModal.denoms = { 5:r.d5||0, 10:r.d10||0, 20:r.d20||0, 50:r.d50||0, 100:r.d100||0, 500:r.d500||0, 1000:r.d1000||0, 5000:r.d5000||0 };
             this.cashModal.assistantId = id;
             this.cashModal.open = true;
         },
         cashModalTotal() {
             const d = this.cashModal.denoms;
-            return (d[20]||0)*20+(d[50]||0)*50+(d[100]||0)*100+(d[500]||0)*500+(d[1000]||0)*1000+(d[5000]||0)*5000;
+            return (d[5]||0)*5+(d[10]||0)*10+(d[20]||0)*20+(d[50]||0)*50+(d[100]||0)*100+(d[500]||0)*500+(d[1000]||0)*1000+(d[5000]||0)*5000;
         },
         applyCash() {
             const id = this.cashModal.assistantId;
             const d  = this.cashModal.denoms;
-            Object.assign(this.rows[id], { d20:d[20]||0, d50:d[50]||0, d100:d[100]||0, d500:d[500]||0, d1000:d[1000]||0, d5000:d[5000]||0 });
+            Object.assign(this.rows[id], { d5:d[5]||0, d10:d[10]||0, d20:d[20]||0, d50:d[50]||0, d100:d[100]||0, d500:d[500]||0, d1000:d[1000]||0, d5000:d[5000]||0 });
             this.cashModal.open = false;
+        },
+        resetCash() {
+            this.cashModal.denoms = { 5:0, 10:0, 20:0, 50:0, 100:0, 500:0, 1000:0, 5000:0 };
         },
 
         // ── Formatters ────────────────────────────────────────────────────────
