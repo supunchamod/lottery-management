@@ -217,6 +217,16 @@ class PageController extends Controller
         return view('assistants.ledger', compact('assistant', 'entries'));
     }
 
+    public function assistantsDestroy(SalesAssistant $assistant)
+    {
+        // Check if the assistant has ledger entries or sales before deleting 
+        // to prevent integrity issues, or simply delete if your database allows cascade.
+        $assistant->delete();
+
+        return redirect()->route('assistants.index')
+            ->with('success', "Assistant '{$assistant->name}' has been deleted.");
+    }
+
     // ── Lotteries ─────────────────────────────────────────────────────────────
 
     public function lotteriesIndex()

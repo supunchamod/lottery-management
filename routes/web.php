@@ -76,7 +76,7 @@ Route::middleware('auth')->group(function () {
     Route::get ('/assistants/{assistant}/edit',   [PageController::class, 'assistantsEdit'])->name('assistants.edit');
     Route::put ('/assistants/{assistant}',        [PageController::class, 'assistantsUpdate'])->name('assistants.update');
     Route::get ('/assistants/{assistant}/ledger', [PageController::class, 'assistantsLedger'])->name('assistants.ledger');
-
+    Route::delete('/assistants/{assistant}', [PageController::class, 'assistantsDestroy'])->name('assistants.destroy');
     // Lotteries
     Route::get ('/lotteries',                [PageController::class, 'lotteriesIndex'])->name('lotteries.index');
     Route::get ('/lotteries/create',         [PageController::class, 'lotteriesCreate'])->name('lotteries.create');

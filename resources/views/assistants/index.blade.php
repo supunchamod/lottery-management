@@ -11,7 +11,7 @@
             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
             </svg>
-            Add Assistant
+            Add Sales Assistant
         </a>
     </div>
 
@@ -60,19 +60,37 @@
                 {{-- Action buttons --}}
                 <div class="mt-3 flex gap-2">
                     <a href="{{ route('assistants.ledger', $a) }}"
-                       class="btn-action flex-1 rounded-xl border border-indigo-200 dark:border-indigo-500/30
-                              py-2 text-center text-xs font-semibold
-                              text-indigo-600 dark:text-indigo-400
-                              hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors">
+                    class="btn-action flex-1 rounded-xl border border-indigo-200 dark:border-indigo-500/30
+                            py-2 text-center text-xs font-semibold
+                            text-indigo-600 dark:text-indigo-400
+                            hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors">
                         Ledger
                     </a>
                     <a href="{{ route('assistants.edit', $a) }}"
-                       class="btn-action flex-1 rounded-xl border border-slate-200 dark:border-slate-600/50
-                              py-2 text-center text-xs font-semibold
-                              text-slate-600 dark:text-slate-400
-                              hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                    class="btn-action flex-1 rounded-xl border border-slate-200 dark:border-slate-600/50
+                            py-2 text-center text-xs font-semibold
+                            text-slate-600 dark:text-slate-400
+                            hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                         Edit
                     </a>
+                    
+                    {{-- Delete Button --}}
+                    <form action="{{ route('assistants.destroy', $a) }}" method="POST" 
+                        onsubmit="return confirm('Are you sure you want to delete this assistant? This action cannot be undone.');"
+                        class="inline-block">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" 
+                                class="rounded-xl border border-red-200 dark:border-red-500/30
+                                    px-3 py-2 text-center text-xs font-semibold
+                                    text-red-600 dark:text-red-400
+                                    hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </form>
                 </div>
             </div>
         @empty
