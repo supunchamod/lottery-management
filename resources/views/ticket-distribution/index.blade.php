@@ -199,11 +199,7 @@
         {{ json_encode($alpineGrid) }},
         '{{ $date }}',
         '{{ route('api.ticket-distribution.defaults.get') }}',
-        '{{ route('api.ticket-distribution.defaults.save') }}',
-        {!! json_encode(
-            $lotteries->map(fn($l) => ['id'=>$l->id,'name'=>$l->name,'board'=>$l->board,'unit_price'=>(float)$l->unit_price])->values()->toArray(),
-            JSON_HEX_TAG | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE
-        ) !!}
+        '{{ route('api.ticket-distribution.defaults.save') }}'
      )"
      @keydown.window="handleArrow($event)"
      class="print:hidden">
@@ -287,13 +283,13 @@
         @csrf
         <input type="hidden" name="date" value="{{ $date }}">
 
-        {{-- Hidden inputs synced from Alpine — x-for makes new-lottery columns reactive --}}
+        {{-- Hidden inputs synced from Alpine --}}
         @foreach($assistants as $a)
-            <template x-for="l in lotteries" :key="l.id">
+            @foreach($lotteries as $l)
                 <input type="hidden"
-                       :name="`qty[{{ $a->id }}][${l.id}]`"
-                       :value="(grid[{{ $a->id }}] || {})[l.id] || 0">
-            </template>
+                       :name="`qty[{{ $a->id }}][{{ $l->id }}]`"
+                       :value="grid[{{ $a->id }}][{{ $l->id }}] || 0">
+            @endforeach
         @endforeach
 
         {{-- ── Toolbar ──────────────────────────────────────────────────── --}}
@@ -357,15 +353,16 @@
                             style="background:#0f172a; min-width:150px;">
                             # &nbsp; Assistant
                         </th>
-                        <template x-for="l in lotteries" :key="l.id">
-                            <th class="px-2 py-3 text-center font-medium whitespace-nowrap"
-                                :class="l.board === 'NLB' ? 'text-blue-300' : 'text-orange-300'"
+                        @foreach($lotteries as $l)
+                            <th class="px-2 py-3 text-center font-medium whitespace-nowrap
+                                       {{ $l->board === 'NLB' ? 'text-blue-300' : 'text-orange-300' }}"
                                 style="min-width:62px;">
-                                <span x-text="l.name"></span>
-                                <span class="block text-gray-500 font-normal" style="font-size:10px;"
-                                      x-text="'Rs.' + parseInt(l.unit_price).toLocaleString()"></span>
+                                {{ $l->name }}
+                                <span class="block text-gray-500 font-normal" style="font-size:10px;">
+                                    Rs.{{ number_format($l->unit_price, 0) }}
+                                </span>
                             </th>
-                        </template>
+                        @endforeach
                         <th class="px-3 py-3 text-center text-yellow-300 font-semibold whitespace-nowrap">
                             Total
                         </th>
@@ -382,19 +379,18 @@
                                 Board Received Qty
                             </div>
                         </td>
-                        <template x-for="l in lotteries" :key="l.id">
+                        @foreach($lotteries as $l)
                             <td class="px-1 py-1.5 text-center col-cell-transition"
-                                :class="isMismatch(l.id) ? 'bg-red-50' : ''">
+                                :class="isMismatch({{ $l->id }}) ? 'bg-red-50' : ''">
                                 <input type="number" min="0" step="1"
-                                       :value="boardQty[l.id]"
-                                       @input="boardQty[l.id] = $event.target.value"
-                                       :class="isMismatch(l.id)
+                                       x-model="boardQty[{{ $l->id }}]"
+                                       :class="isMismatch({{ $l->id }})
                                            ? 'border-red-400 text-red-800 focus:ring-red-500 focus:border-red-500'
                                            : 'border-amber-300 text-amber-900 focus:ring-amber-500 focus:border-amber-500'"
                                        class="board-qty-cell w-full h-7 px-1 text-center text-xs font-semibold border rounded bg-white focus:ring-1 focus:outline-none placeholder-amber-300"
                                        placeholder="—">
                             </td>
-                        </template>
+                        @endforeach
                         <td class="px-3 py-1.5 text-center text-xs font-bold text-amber-700">
                             <span x-text="boardGrandTotal().toLocaleString() || '—'"></span>
                         </td>
@@ -403,13 +399,13 @@
                     <tr class="border-b-2 border-slate-600" style="background:#1e293b;">
                         <td class="sticky left-0 z-20 px-3 py-2 text-slate-300 font-semibold text-[11px] border-r border-slate-600"
                             style="background:#1e293b;">Column Total ↓</td>
-                        <template x-for="l in lotteries" :key="l.id">
+                        @foreach($lotteries as $l)
                             <td class="px-2 py-2 text-center font-bold col-total-cell"
-                                :class="isMismatch(l.id)
+                                :class="isMismatch({{ $l->id }})
                                     ? 'text-red-300 border-x-2 border-t-2 border-red-500 mismatch-pulse'
                                     : 'text-slate-100'"
-                                x-text="colTotal(l.id).toLocaleString()"></td>
-                        </template>
+                                x-text="colTotal({{ $l->id }}).toLocaleString()"></td>
+                        @endforeach
                         <td class="px-3 py-2 text-center text-yellow-300 font-bold"
                             x-text="grandTotal().toLocaleString()"></td>
                     </tr>
@@ -450,30 +446,30 @@
                                 </div>
                             </td>
 
-                            <template x-for="(l, li) in lotteries" :key="l.id">
+                            @foreach($lotteries as $j => $l)
                                 <td class="p-0 relative col-cell-transition"
                                     x-bind:class="{
-                                        'bg-blue-50':   hoveredCol === l.id && !isAdjusted({{ $a->id }}, l.id) && !isMismatch(l.id),
-                                        'bg-amber-100': isAdjusted({{ $a->id }}, l.id) && !isMismatch(l.id),
-                                        'border-x-2 border-red-400 bg-red-50': isMismatch(l.id) && !isAdjusted({{ $a->id }}, l.id),
-                                        'border-x-2 border-red-400 bg-red-100': isMismatch(l.id) && isAdjusted({{ $a->id }}, l.id)
+                                        'bg-blue-50':   hoveredCol === {{ $l->id }} && !isAdjusted({{ $a->id }}, {{ $l->id }}) && !isMismatch({{ $l->id }}),
+                                        'bg-amber-100': isAdjusted({{ $a->id }}, {{ $l->id }}) && !isMismatch({{ $l->id }}),
+                                        'border-x-2 border-red-400 bg-red-50': isMismatch({{ $l->id }}) && !isAdjusted({{ $a->id }}, {{ $l->id }}),
+                                        'border-x-2 border-red-400 bg-red-100': isMismatch({{ $l->id }}) && isAdjusted({{ $a->id }}, {{ $l->id }})
                                     }">
                                     <input
                                         type="number" min="0" step="1"
                                         class="dist-cell w-full h-8 px-1 text-center text-xs font-medium border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-400 focus:z-10 relative outline-none"
-                                        :value="(grid[{{ $a->id }}] || {})[l.id] || ''"
+                                        :value="grid[{{ $a->id }}][{{ $l->id }}] || ''"
                                         :class="{
-                                            'text-emerald-700': isDefault({{ $a->id }}, l.id) && !isAdjusted({{ $a->id }}, l.id),
-                                            'text-amber-800 font-semibold is-adjusted': isAdjusted({{ $a->id }}, l.id)
+                                            'text-emerald-700': isDefault({{ $a->id }}, {{ $l->id }}) && !isAdjusted({{ $a->id }}, {{ $l->id }}),
+                                            'text-amber-800 font-semibold is-adjusted': isAdjusted({{ $a->id }}, {{ $l->id }})
                                         }"
-                                        @focus="hoveredCol = l.id"
+                                        @focus="hoveredCol = {{ $l->id }}"
                                         @blur="hoveredCol = null"
-                                        @input="onCellInput({{ $a->id }}, l.id, $event.target.value)"
-                                        :data-row="{{ $i }}"
-                                        :data-col="li"
+                                        @input="onCellInput({{ $a->id }}, {{ $l->id }}, $event.target.value)"
+                                        data-row="{{ $i }}"
+                                        data-col="{{ $j }}"
                                         placeholder="">
                                 </td>
-                            </template>
+                            @endforeach
 
                             <td class="px-3 py-1.5 text-center font-bold"
                                 x-bind:class="rowTotal({{ $a->id }}) > 0 ? 'text-blue-700' : 'text-gray-300'"
@@ -484,13 +480,13 @@
                     <tr class="border-t-2 border-gray-300 font-bold" style="background:#f1f5f9;">
                         <td class="sticky left-0 z-10 px-3 py-2.5 text-gray-700 border-r border-gray-200"
                             style="background:#f1f5f9;">Column Total ↑</td>
-                        <template x-for="l in lotteries" :key="l.id">
+                        @foreach($lotteries as $l)
                             <td class="px-2 py-2.5 text-center col-cell-transition"
-                                :class="isMismatch(l.id)
+                                :class="isMismatch({{ $l->id }})
                                     ? 'text-red-600 bg-red-50 border-x-2 border-b-2 border-red-500 font-bold'
                                     : 'text-gray-900'"
-                                x-text="colTotal(l.id).toLocaleString()"></td>
-                        </template>
+                                x-text="colTotal({{ $l->id }}).toLocaleString()"></td>
+                        @endforeach
                         <td class="px-3 py-2.5 text-center text-blue-700"
                             x-text="grandTotal().toLocaleString()"></td>
                     </tr>
@@ -499,8 +495,6 @@
         </div>
 
     </form>
-
-
 </div>
 
 {{-- Legend --}}
@@ -567,11 +561,10 @@ input.board-qty-cell[type=number] { -moz-appearance: textfield; }
 </style>
 
 <script>
-function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl, initialLotteries) {
+function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
     return {
         // ── State ──────────────────────────────────────────────────────────
         grid:            initialGrid,
-        lotteries:       initialLotteries,
         defaultsGrid:    {},
         hoveredRow:      null,
         hoveredCol:      null,
@@ -810,7 +803,7 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl, initia
             const row = parseInt(el.dataset.row);
             const col = parseInt(el.dataset.col);
             const totalRows = {{ count($assistants) }};
-            const totalCols = this.lotteries.length;
+            const totalCols = {{ count($lotteries) }};
             let targetRow = row, targetCol = col;
 
             if (e.key === 'ArrowRight' || e.key === 'Tab' && !e.shiftKey) {
