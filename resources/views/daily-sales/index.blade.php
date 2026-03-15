@@ -17,7 +17,7 @@
                   text-slate-600 dark:text-slate-300
                   hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">‹</a>
 
-        <form method="GET" action="{{ route('daily-sales.index') }}">
+        <form id="date-nav-form" method="GET" action="{{ route('daily-sales.index') }}">
             <input type="date" name="date" value="{{ $date }}"
                    onchange="this.form.submit()"
                    class="erp-input text-sm h-9 font-semibold">
@@ -114,7 +114,9 @@
     </div>
 
     {{-- ── Form ─────────────────────────────────────────────────────────────── --}}
-    <form id="sales-form" method="POST" action="{{ route('daily-sales.store') }}">
+    <form id="sales-form" method="POST" action="{{ route('daily-sales.store') }}"
+          @submit="isDirty = false"
+          @input="isDirty = true">
         @csrf
         <input type="hidden" name="date" value="{{ $date }}">
 
@@ -464,10 +466,55 @@ function salesGrid(initialRows, names) {
         rows: initialRows,
         names: names,
         activeRow: null,
+        isDirty: false,
         cashModal: {
             open: false,
             assistantId: null,
             denoms: { 5:0, 10:0, 20:0, 50:0, 100:0, 500:0, 1000:0, 5000:0 },
+        },
+
+        // ── DLP lifecycle ─────────────────────────────────────────────────────
+        init() {
+            // 1. Browser-level: warn on tab close / refresh / back-button
+            this._unloadHandler = (e) => {
+                if (!this.isDirty) return;
+                e.preventDefault();
+                e.returnValue = '';
+            };
+            window.addEventListener('beforeunload', this._unloadHandler);
+
+            // 2. App-level: intercept all nav-link clicks when dirty
+            this._clickGuard = (e) => {
+                if (!this.isDirty) return;
+                const a = e.target.closest('a[href]');
+                if (!a) return;
+                const href = a.getAttribute('href');
+                if (!href || href === '#' || href.startsWith('javascript:')) return;
+                e.preventDefault();
+                if (confirm('You have unsaved changes in your table.\nIf you leave, your data will be lost.\n\nDo you want to continue?')) {
+                    this.isDirty = false;
+                    window.location.href = a.href;
+                }
+            };
+            document.addEventListener('click', this._clickGuard);
+
+            // 3. App-level: intercept the date-picker form (onchange="this.form.submit()")
+            this._formGuard = (e) => {
+                if (!this.isDirty) return;
+                if (!confirm('You have unsaved changes in your table.\nIf you leave, your data will be lost.\n\nDo you want to continue?')) {
+                    e.preventDefault();
+                } else {
+                    this.isDirty = false;
+                }
+            };
+            const dateForm = document.getElementById('date-nav-form');
+            if (dateForm) dateForm.addEventListener('submit', this._formGuard);
+        },
+        destroy() {
+            window.removeEventListener('beforeunload', this._unloadHandler);
+            document.removeEventListener('click', this._clickGuard);
+            const dateForm = document.getElementById('date-nav-form');
+            if (dateForm) dateForm.removeEventListener('submit', this._formGuard);
         },
 
         // ── Row computed ──────────────────────────────────────────────────────
@@ -507,6 +554,7 @@ function salesGrid(initialRows, names) {
             const id = this.cashModal.assistantId;
             const d  = this.cashModal.denoms;
             Object.assign(this.rows[id], { d5:d[5]||0, d10:d[10]||0, d20:d[20]||0, d50:d[50]||0, d100:d[100]||0, d500:d[500]||0, d1000:d[1000]||0, d5000:d[5000]||0 });
+            this.isDirty = true;
             this.cashModal.open = false;
         },
         resetCash() {

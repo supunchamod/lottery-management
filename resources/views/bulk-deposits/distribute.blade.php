@@ -64,7 +64,9 @@
 {{-- ══════════════════════════════════════════════════════════════════════
      MAIN FORM
 ═══════════════════════════════════════════════════════════════════════ --}}
-<form method="POST" action="{{ route('bulk-deposits.save-distribution', $bulkDeposit) }}">
+<form method="POST" action="{{ route('bulk-deposits.save-distribution', $bulkDeposit) }}"
+      @submit="isDirty = false"
+      @input="isDirty = true">
     @csrf
 
 <div class="rounded-2xl bg-white dark:bg-slate-800 shadow-sm ring-1 ring-black/5 dark:ring-white/5 overflow-hidden">
@@ -398,10 +400,41 @@ function bulkDistribute(initialRows, dates) {
     return {
         rows: initialRows,
         dates: dates,
+        isDirty: false,
         cashModal: {
             open: false,
             date: null,
             denoms: { 20:0, 50:0, 100:0, 500:0, 1000:0, 5000:0 },
+        },
+
+        // ── DLP lifecycle ─────────────────────────────────────────────────────
+        init() {
+            // 1. Browser-level: warn on tab close / refresh / back-button
+            this._unloadHandler = (e) => {
+                if (!this.isDirty) return;
+                e.preventDefault();
+                e.returnValue = '';
+            };
+            window.addEventListener('beforeunload', this._unloadHandler);
+
+            // 2. App-level: intercept all nav-link clicks when dirty
+            this._clickGuard = (e) => {
+                if (!this.isDirty) return;
+                const a = e.target.closest('a[href]');
+                if (!a) return;
+                const href = a.getAttribute('href');
+                if (!href || href === '#' || href.startsWith('javascript:')) return;
+                e.preventDefault();
+                if (confirm('You have unsaved changes in your distribution table.\nIf you leave, your data will be lost.\n\nDo you want to continue?')) {
+                    this.isDirty = false;
+                    window.location.href = a.href;
+                }
+            };
+            document.addEventListener('click', this._clickGuard);
+        },
+        destroy() {
+            window.removeEventListener('beforeunload', this._unloadHandler);
+            document.removeEventListener('click', this._clickGuard);
         },
 
         // ── Per-row computed ──────────────────────────────────────────────────
@@ -456,6 +489,7 @@ function bulkDistribute(initialRows, dates) {
                 d20:d[20]||0, d50:d[50]||0, d100:d[100]||0,
                 d500:d[500]||0, d1000:d[1000]||0, d5000:d[5000]||0,
             });
+            this.isDirty = true;
             this.cashModal.open = false;
         },
         resetCash() {
