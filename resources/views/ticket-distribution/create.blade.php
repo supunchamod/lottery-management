@@ -3,7 +3,7 @@
 <div x-data="ticketGrid()" x-init="init()">
 
 {{-- ── Header filters ──────────────────────────────────────────────────────── --}}
-<form method="GET" action="{{ route('ticket-distribution.create') }}"
+<form id="ticket-filter-form" method="GET" action="{{ route('ticket-distribution.create') }}"
       class="mb-5 flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white px-5 py-4 shadow-sm">
 
     <div>
@@ -42,7 +42,9 @@
         </a>
     </div>
 @else
-    <form method="POST" action="{{ route('ticket-distribution.store') }}">
+    <form id="ticket-dist-form" method="POST" action="{{ route('ticket-distribution.store') }}"
+          @submit="isDirty = false"
+          @input="isDirty = true">
         @csrf
         <input type="hidden" name="assistant_id" value="{{ $assistantId }}">
         <input type="hidden" name="date" value="{{ $date }}">
@@ -159,6 +161,9 @@
 function ticketGrid() {
     return {
         grid: {},
+        isDirty: false,
+        pendingUrl: null,
+        _formId: 'ticket-dist-form',
 
         init() {
             // Bootstrap the reactive grid from server-rendered values
@@ -171,6 +176,89 @@ function ticketGrid() {
             this.grid[{{ $seller->id }}][{{ $lottery->id }}] = {{ (int)$val }};
             @endforeach
             @endforeach
+
+            // ── DLP: browser-level (tab close / refresh / back) ───────────────
+            this._unloadHandler = (e) => {
+                if (!this.isDirty) return;
+                e.preventDefault();
+                e.returnValue = '';
+            };
+            window.addEventListener('beforeunload', this._unloadHandler);
+
+            // ── DLP: intercept sidebar / header nav-link clicks ───────────────
+            this._clickGuard = (e) => {
+                if (!this.isDirty) return;
+                const a = e.target.closest('a[href]');
+                if (!a) return;
+                const href = a.getAttribute('href');
+                if (!href || href === '#' || href.startsWith('javascript:')) return;
+                e.preventDefault();
+                this._dlpPrompt(a.href);
+            };
+            document.addEventListener('click', this._clickGuard);
+
+            // ── DLP: intercept filter-form auto-submit (assistant/date selects) ─
+            this._formGuard = (e) => {
+                if (!this.isDirty) return;
+                e.preventDefault();
+                const f = e.target;
+                const params = new URLSearchParams(new FormData(f)).toString();
+                this._dlpPrompt(f.action + (params ? '?' + params : ''));
+            };
+            const filterForm = document.getElementById('ticket-filter-form');
+            if (filterForm) filterForm.addEventListener('submit', this._formGuard);
+        },
+
+        destroy() {
+            window.removeEventListener('beforeunload', this._unloadHandler);
+            document.removeEventListener('click', this._clickGuard);
+            const filterForm = document.getElementById('ticket-filter-form');
+            if (filterForm) filterForm.removeEventListener('submit', this._formGuard);
+        },
+
+        // ── SweetAlert2 DLP prompt ────────────────────────────────────────────
+        _dlpPrompt(destUrl) {
+            this.pendingUrl = destUrl;
+            const dark = document.documentElement.classList.contains('dark');
+            Swal.fire({
+                title: 'Unsaved Changes',
+                html: 'You have unsaved ticket distribution data.<br><small style="color:#94a3b8">Choose how to proceed:</small>',
+                icon: 'warning',
+                iconColor: '#f59e0b',
+                background: dark ? '#1e293b' : '#ffffff',
+                color: dark ? '#e2e8f0' : '#1e293b',
+                showConfirmButton: true,
+                showDenyButton: true,
+                showCancelButton: true,
+                confirmButtonText: 'Save &amp; Go',
+                denyButtonText: 'Discard &amp; Leave',
+                cancelButtonText: 'Keep Editing',
+                confirmButtonColor: '#4f46e5',
+                denyButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                showLoaderOnConfirm: true,
+                allowOutsideClick: false,
+                allowEscapeKey: true,
+                preConfirm: async () => {
+                    const form = document.getElementById(this._formId);
+                    const res = await fetch(form.action, { method: 'POST', body: new FormData(form) })
+                        .catch(() => null);
+                    if (!res || !res.ok) {
+                        Swal.showValidationMessage('Save failed — please try again.');
+                        return false;
+                    }
+                    return true;
+                },
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    this.isDirty = false;
+                    window.location.href = this.pendingUrl;
+                } else if (result.isDenied) {
+                    this.isDirty = false;
+                    window.location.href = this.pendingUrl;
+                }
+                // isDismissed = "Keep Editing" → do nothing
+            });
         },
 
         updateTotals() {
