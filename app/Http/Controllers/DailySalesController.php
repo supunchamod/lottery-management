@@ -136,17 +136,25 @@ class DailySalesController extends Controller
 
     public function analysis(Request $request)
     {
-        $assistants  = SalesAssistant::orderBy('name')->get();
-        $assistantId = $request->input('assistant_id', $assistants->first()?->id);
-        $period      = $request->input('period', 'today'); // today|weekly|monthly|overall|custom
+        $assistants = SalesAssistant::orderBy('name')->get();
+        $allIds     = $assistants->pluck('id')->map(fn ($id) => (int) $id)->all();
 
+        // Multi-assistant selector — defaults to all assistants
+        $inputIds     = $request->input('assistant_ids', $allIds);
+        if (! is_array($inputIds)) {
+            $inputIds = [$inputIds];
+        }
+        $assistantIds = array_values(array_intersect(array_map('intval', $inputIds), $allIds));
+        if (empty($assistantIds)) {
+            $assistantIds = $allIds;
+        }
+
+        $period    = $request->input('period', 'today'); // today|weekly|monthly|overall|custom
         $today     = Carbon::today();
         $startDate = $request->input('start_date', $today->copy()->startOfMonth()->toDateString());
         $endDate   = $request->input('end_date',   $today->toDateString());
 
-        $assistant = $assistants->firstWhere('id', $assistantId);
-
-        $query = DailySaleRecord::where('assistant_id', $assistantId);
+        $query = DailySaleRecord::whereIn('assistant_id', $assistantIds);
 
         match ($period) {
             'today'   => $query->whereDate('date', $today),
@@ -164,6 +172,18 @@ class DailySalesController extends Controller
 
         $records = $query->orderBy('date')->get();
 
+        $selectedAssistants = $assistants->whereIn('id', $assistantIds)->values();
+
+        // Per-assistant breakdown for comparison table
+        $byAssistant = $records->groupBy('assistant_id')->map(fn ($recs) => [
+            'totalValue'   => $recs->sum('value'),
+            'totalCash'    => $recs->sum('cash'),
+            'totalWinning' => $recs->sum('total_winning'),
+            'totalCW'      => $recs->sum('cw'),
+            'totalBalance' => $recs->sum('balance'),
+            'recordCount'  => $recs->count(),
+        ]);
+
         $stats = [
             'totalValue'       => $records->sum('value'),
             'totalCash'        => $records->sum('cash'),
@@ -174,15 +194,17 @@ class DailySalesController extends Controller
             'recordCount'      => $records->count(),
         ];
 
-        // Chart data — daily balance trend
-        $chartLabels  = $records->pluck('date')->map(fn ($d) => $d->format('d M'))->toArray();
-        $chartBalance = $records->map(fn ($r) => (float) $r->balance)->toArray();
-        $chartCash    = $records->map(fn ($r) => (float) $r->cash)->toArray();
-        $chartValue   = $records->map(fn ($r) => (float) $r->value)->toArray();
+        // Chart — per-assistant comparison bar chart
+        $chartLabels  = $selectedAssistants->map(fn ($a) => $a->name)->toArray();
+        $chartValue   = $selectedAssistants->map(fn ($a) => (float) ($byAssistant->get($a->id)['totalValue']   ?? 0))->toArray();
+        $chartCash    = $selectedAssistants->map(fn ($a) => (float) ($byAssistant->get($a->id)['totalCash']    ?? 0))->toArray();
+        $chartWinning = $selectedAssistants->map(fn ($a) => (float) ($byAssistant->get($a->id)['totalWinning'] ?? 0))->toArray();
 
         return view('daily-sales.analysis', compact(
-            'assistants', 'assistant', 'assistantId', 'period', 'startDate', 'endDate',
-            'records', 'stats', 'chartLabels', 'chartBalance', 'chartCash', 'chartValue'
+            'assistants', 'selectedAssistants', 'assistantIds', 'allIds',
+            'period', 'startDate', 'endDate',
+            'records', 'byAssistant', 'stats',
+            'chartLabels', 'chartValue', 'chartCash', 'chartWinning'
         ));
     }
 }

@@ -6,6 +6,26 @@
          period:    '{{ $period }}',
          startDate: '{{ $startDate }}',
          endDate:   '{{ $endDate }}',
+         selected:  {{ json_encode(array_map('intval', $assistantIds)) }},
+         allIds:    {{ json_encode(array_map('intval', $allIds)) }},
+         get allSelected() { return this.selected.length === this.allIds.length; },
+         toggleAll() {
+             if (!this.allSelected) {
+                 this.selected = [...this.allIds];
+                 this.$nextTick(() => document.getElementById('analysis-form').submit());
+             }
+         },
+         toggleOne(id) {
+             const idx = this.selected.indexOf(id);
+             if (idx >= 0) {
+                 this.selected.splice(idx, 1);
+                 if (this.selected.length === 0) this.selected = [...this.allIds];
+             } else {
+                 this.selected.push(id);
+             }
+             this.$nextTick(() => document.getElementById('analysis-form').submit());
+         },
+         isSelected(id) { return this.selected.includes(id); },
          setPeriod(val) {
              this.period = val;
              if (val !== 'custom') this.$nextTick(() => document.getElementById('analysis-form').submit());
@@ -20,23 +40,43 @@
     <form id="analysis-form" method="GET" action="{{ route('daily-sales.analysis') }}"
           class="flex flex-wrap items-end gap-3">
 
-        {{-- Alpine state carriers — always present so every submit carries current values --}}
+        {{-- State carriers — always present so every submit carries current values --}}
         <input type="hidden" name="period"     :value="period">
         <input type="hidden" name="start_date" :value="startDate">
         <input type="hidden" name="end_date"   :value="endDate">
+        <template x-for="id in selected" :key="id">
+            <input type="hidden" name="assistant_ids[]" :value="id">
+        </template>
 
-        {{-- Assistant selector — auto-submits; hidden inputs carry current period & dates --}}
+        {{-- Multi-assistant checkbox panel --}}
         <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Assistant</label>
-            <select name="assistant_id" onchange="this.form.submit()"
-                    class="erp-input text-sm h-9 pr-8">
-                @foreach($assistants as $a)
-                    <option value="{{ $a->id }}" @selected($a->id == $assistantId)>{{ $a->name }}</option>
-                @endforeach
-            </select>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Assistants</label>
+            <div class="rounded-lg border border-gray-200 bg-white overflow-hidden" style="min-width:190px;max-width:230px">
+                {{-- All toggle --}}
+                <label class="flex items-center gap-2.5 px-3 py-2 cursor-pointer bg-gray-50 border-b border-gray-200 hover:bg-gray-100">
+                    <input type="checkbox"
+                           :checked="allSelected"
+                           @change="toggleAll()"
+                           class="h-3.5 w-3.5 rounded text-blue-600 border-gray-300">
+                    <span class="text-xs font-bold text-gray-800">All Assistants</span>
+                    <span class="ml-auto text-[10px] text-gray-400" x-text="selected.length + '/' + allIds.length"></span>
+                </label>
+                {{-- Individual assistant checkboxes --}}
+                <div class="max-h-36 overflow-y-auto divide-y divide-gray-100">
+                    @foreach($assistants as $a)
+                    <label class="flex items-center gap-2.5 px-3 py-1.5 cursor-pointer hover:bg-blue-50">
+                        <input type="checkbox"
+                               :checked="isSelected({{ $a->id }})"
+                               @change="toggleOne({{ $a->id }})"
+                               class="h-3.5 w-3.5 rounded text-blue-600 border-gray-300">
+                        <span class="text-xs text-gray-700">{{ $a->name }}</span>
+                    </label>
+                    @endforeach
+                </div>
+            </div>
         </div>
 
-        {{-- Period pill-group — Custom does not auto-submit; it reveals date pickers --}}
+        {{-- Period pill-group — Custom reveals date pickers, others auto-submit --}}
         <div>
             <label class="block text-xs font-medium text-gray-500 mb-1">Period</label>
             <div class="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
@@ -51,8 +91,7 @@
             </div>
         </div>
 
-        {{-- Custom date range — shown only when 'custom' is active.
-             style= fallback prevents a flash before Alpine initialises. --}}
+        {{-- Custom date range — style= prevents flash before Alpine initialises --}}
         <div x-show="period === 'custom'"
              x-transition:enter="transition ease-out duration-150"
              x-transition:enter-start="opacity-0 -translate-y-1"
@@ -86,18 +125,43 @@
     </form>
 </div>
 
-{{-- ── Assistant Info + Period Label ────────────────────────────────────── --}}
+{{-- ── Info Banner ─────────────────────────────────────────────────────────── --}}
 <div class="mb-5 rounded-xl border border-blue-100 bg-blue-50 px-5 py-3 flex flex-wrap items-center gap-5">
-    <div class="flex items-center gap-3">
-        <div class="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white font-bold text-lg">
-            {{ strtoupper(substr($assistant?->name ?? '?', 0, 1)) }}
+
+    {{-- Assistant identity --}}
+    @if($selectedAssistants->count() === 1)
+        @php $solo = $selectedAssistants->first(); @endphp
+        <div class="flex items-center gap-3">
+            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white font-bold text-lg">
+                {{ strtoupper(substr($solo->name, 0, 1)) }}
+            </div>
+            <div>
+                <p class="font-bold text-gray-900">{{ $solo->name }}</p>
+                <p class="text-xs text-gray-500">{{ $solo->phone }}</p>
+            </div>
         </div>
-        <div>
-            <p class="font-bold text-gray-900">{{ $assistant?->name ?? '—' }}</p>
-            <p class="text-xs text-gray-500">{{ $assistant?->phone }}</p>
+    @else
+        <div class="flex items-center gap-3">
+            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white font-bold text-base">
+                {{ $selectedAssistants->count() === count($allIds) ? '★' : $selectedAssistants->count() }}
+            </div>
+            <div>
+                <p class="font-bold text-gray-900">
+                    {{ $selectedAssistants->count() === count($allIds) ? 'All Assistants' : $selectedAssistants->count() . ' Assistants' }}
+                </p>
+                <p class="text-xs text-gray-500">
+                    @if($selectedAssistants->count() <= 3)
+                        {{ $selectedAssistants->pluck('name')->join(', ') }}
+                    @else
+                        {{ $selectedAssistants->take(2)->pluck('name')->join(', ') }} + {{ $selectedAssistants->count() - 2 }} more
+                    @endif
+                </p>
+            </div>
         </div>
-    </div>
+    @endif
+
     <div class="h-8 w-px bg-blue-200 hidden sm:block"></div>
+
     <div>
         <p class="text-xs text-blue-400 uppercase tracking-wide font-medium">Period</p>
         @if($period === 'custom')
@@ -110,16 +174,20 @@
             <p class="font-semibold text-gray-800 capitalize">{{ ucfirst($period) }}</p>
         @endif
     </div>
+
     <div>
         <p class="text-xs text-blue-400 uppercase tracking-wide font-medium">Records</p>
         <p class="font-semibold text-gray-800">{{ $stats['recordCount'] }}</p>
     </div>
+
+    @if($selectedAssistants->count() === 1)
     <div class="ml-auto text-right">
         <p class="text-xs text-blue-400 uppercase tracking-wide font-medium">Current Balance</p>
-        <p class="text-xl font-bold {{ ($assistant?->current_balance ?? 0) > 0 ? 'text-red-600' : 'text-emerald-600' }}">
-            Rs. {{ number_format(abs($assistant?->current_balance ?? 0), 2) }}
+        <p class="text-xl font-bold {{ ($solo->current_balance ?? 0) > 0 ? 'text-red-600' : 'text-emerald-600' }}">
+            Rs. {{ number_format(abs($solo->current_balance ?? 0), 2) }}
         </p>
     </div>
+    @endif
 </div>
 
 {{-- ── Stats Grid ────────────────────────────────────────────────────────── --}}
@@ -141,22 +209,90 @@
     @endforeach
 </div>
 
-{{-- ── Chart ──────────────────────────────────────────────────────────────── --}}
+{{-- ── Comparison Chart ─────────────────────────────────────────────────── --}}
 @if(count($chartLabels) > 0)
-<!-- <div class="mb-5 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+<div class="mb-5 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
     <div class="mb-4 flex items-center justify-between">
-        <h3 class="text-sm font-semibold text-gray-700">Performance Trend</h3>
+        <h3 class="text-sm font-semibold text-gray-700">
+            {{ count($assistantIds) > 1 ? 'Assistant Comparison' : 'Performance Overview' }}
+        </h3>
         <div class="flex gap-4 text-xs">
             <span class="flex items-center gap-1.5"><span class="inline-block h-2.5 w-5 rounded-sm bg-gray-800"></span>Value</span>
             <span class="flex items-center gap-1.5"><span class="inline-block h-2.5 w-5 rounded-sm bg-emerald-500"></span>Cash</span>
-            <span class="flex items-center gap-1.5"><span class="inline-block h-2.5 w-5 rounded-sm bg-red-500"></span>Balance</span>
+            <span class="flex items-center gap-1.5"><span class="inline-block h-2.5 w-5 rounded-sm bg-violet-500"></span>Winning</span>
         </div>
     </div>
     <canvas id="perfChart" style="max-height:260px;"></canvas>
-</div> -->
+</div>
 @endif
 
-{{-- ── Records Table ─────────────────────────────────────────────────────── --}}
+{{-- ── Comparison Table (multi-assistant only) ─────────────────────────── --}}
+@if($selectedAssistants->count() > 1)
+<div class="mb-5 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+    <div class="border-b border-gray-100 px-5 py-3">
+        <h3 class="text-sm font-semibold text-gray-700">Assistant Comparison</h3>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-xs divide-y divide-gray-100">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-2.5 text-left text-xs font-semibold uppercase text-gray-500">Assistant</th>
+                    <th class="px-3 py-2.5 text-right text-xs font-semibold uppercase text-gray-500">Days</th>
+                    <th class="px-3 py-2.5 text-right text-xs font-semibold uppercase text-yellow-600">Value</th>
+                    <th class="px-3 py-2.5 text-right text-xs font-semibold uppercase text-emerald-600">Cash</th>
+                    <th class="px-3 py-2.5 text-right text-xs font-semibold uppercase text-violet-600">Winning</th>
+                    <th class="px-3 py-2.5 text-right text-xs font-semibold uppercase text-cyan-600">C+W</th>
+                    <th class="px-3 py-2.5 text-right text-xs font-semibold uppercase text-gray-500">Balance</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                @foreach($selectedAssistants as $a)
+                @php
+                    $aS  = $byAssistant->get($a->id) ?? ['totalValue'=>0,'totalCash'=>0,'totalWinning'=>0,'totalCW'=>0,'totalBalance'=>0,'recordCount'=>0];
+                    $aBal = $aS['totalBalance'];
+                @endphp
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2.5 font-medium text-gray-700">
+                        <div class="flex items-center gap-2">
+                            <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 font-bold text-[11px]">
+                                {{ strtoupper(substr($a->name, 0, 1)) }}
+                            </div>
+                            <span>{{ $a->name }}</span>
+                        </div>
+                    </td>
+                    <td class="px-3 py-2.5 text-right text-gray-600">{{ $aS['recordCount'] }}</td>
+                    <td class="px-3 py-2.5 text-right text-yellow-700 font-semibold">{{ number_format($aS['totalValue'], 0) }}</td>
+                    <td class="px-3 py-2.5 text-right text-emerald-700">{{ number_format($aS['totalCash'], 0) }}</td>
+                    <td class="px-3 py-2.5 text-right text-violet-700">{{ number_format($aS['totalWinning'], 0) }}</td>
+                    <td class="px-3 py-2.5 text-right text-cyan-700">{{ number_format($aS['totalCW'], 0) }}</td>
+                    <td class="px-3 py-2.5 text-right">
+                        <span class="{{ $aBal > 0 ? 'text-red-700' : ($aBal < 0 ? 'text-amber-700' : 'text-emerald-700') }}">
+                            {{ $aBal > 0 ? '+' : '' }}{{ number_format($aBal, 0) }}
+                        </span>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+            <tfoot class="border-t-2 border-gray-300 bg-gray-50 font-bold">
+                @php $totalBal = $records->sum('balance'); @endphp
+                <tr>
+                    <td class="px-4 py-2.5 text-gray-700">Totals</td>
+                    <td class="px-3 py-2.5 text-right text-gray-900">{{ $stats['recordCount'] }}</td>
+                    <td class="px-3 py-2.5 text-right text-yellow-700">{{ number_format($stats['totalValue'], 0) }}</td>
+                    <td class="px-3 py-2.5 text-right text-emerald-700">{{ number_format($stats['totalCash'], 0) }}</td>
+                    <td class="px-3 py-2.5 text-right text-violet-700">{{ number_format($stats['totalWinning'], 0) }}</td>
+                    <td class="px-3 py-2.5 text-right text-cyan-700">{{ number_format($stats['totalCW'], 0) }}</td>
+                    <td class="px-3 py-2.5 text-right {{ $totalBal > 0 ? 'text-red-700' : ($totalBal < 0 ? 'text-amber-700' : 'text-emerald-700') }}">
+                        {{ $totalBal > 0 ? '+' : '' }}{{ number_format($totalBal, 0) }}
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+@endif
+
+{{-- ── Detailed Records Table ───────────────────────────────────────────── --}}
 <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
     <div class="border-b border-gray-100 px-5 py-3 flex items-center justify-between">
         <h3 class="text-sm font-semibold text-gray-700">Detailed Records</h3>
@@ -171,6 +307,9 @@
             <thead class="bg-gray-50">
                 <tr>
                     <th class="px-4 py-2.5 text-left text-xs font-semibold uppercase text-gray-500">Date</th>
+                    @if($selectedAssistants->count() > 1)
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold uppercase text-gray-500">Assistant</th>
+                    @endif
                     <th class="px-3 py-2.5 text-right text-xs font-semibold uppercase text-gray-500">Qty</th>
                     <th class="px-3 py-2.5 text-right text-xs font-semibold uppercase text-yellow-600">Value</th>
                     <th class="px-3 py-2.5 text-right text-xs font-semibold uppercase text-emerald-600">Cash</th>
@@ -186,6 +325,9 @@
                 @foreach($records->sortByDesc('date') as $r)
                 <tr class="hover:bg-gray-50">
                     <td class="px-4 py-2.5 font-medium text-gray-700">{{ $r->date->format('d M Y') }}</td>
+                    @if($selectedAssistants->count() > 1)
+                    <td class="px-3 py-2.5 text-gray-700">{{ $selectedAssistants->firstWhere('id', $r->assistant_id)?->name ?? '—' }}</td>
+                    @endif
                     <td class="px-3 py-2.5 text-right text-gray-700">{{ number_format($r->tickets_issued_qty) }}</td>
                     <td class="px-3 py-2.5 text-right font-semibold text-yellow-700">{{ number_format($r->value, 0) }}</td>
                     <td class="px-3 py-2.5 text-right text-emerald-700">{{ number_format($r->cash, 0) }}</td>
@@ -208,7 +350,7 @@
             </tbody>
             <tfoot class="border-t-2 border-gray-300 font-bold bg-gray-50">
                 <tr>
-                    <td class="px-4 py-2.5 text-gray-700">Totals</td>
+                    <td class="px-4 py-2.5 text-gray-700" colspan="{{ $selectedAssistants->count() > 1 ? 2 : 1 }}">Totals</td>
                     <td class="px-3 py-2.5 text-right text-gray-900">{{ number_format($records->sum('tickets_issued_qty')) }}</td>
                     <td class="px-3 py-2.5 text-right text-yellow-700">{{ number_format($records->sum('value'), 0) }}</td>
                     <td class="px-3 py-2.5 text-right text-emerald-700">{{ number_format($records->sum('cash'), 0) }}</td>
@@ -246,35 +388,38 @@ document.addEventListener('DOMContentLoaded', function () {
                     data: {!! json_encode($chartValue) !!},
                     backgroundColor: 'rgba(17,24,39,0.75)',
                     borderRadius: 4,
-                    order: 3,
                 },
                 {
                     label: 'Cash',
                     data: {!! json_encode($chartCash) !!},
                     backgroundColor: 'rgba(16,185,129,0.8)',
                     borderRadius: 4,
-                    order: 2,
                 },
                 {
-                    label: 'Balance',
-                    data: {!! json_encode($chartBalance) !!},
-                    type: 'line',
-                    borderColor: 'rgba(239,68,68,0.9)',
-                    backgroundColor: 'rgba(239,68,68,0.08)',
-                    borderWidth: 2,
-                    pointRadius: 3,
-                    fill: true,
-                    tension: 0.3,
-                    order: 1,
+                    label: 'Winning',
+                    data: {!! json_encode($chartWinning) !!},
+                    backgroundColor: 'rgba(139,92,246,0.8)',
+                    borderRadius: 4,
                 },
             ],
         },
         options: {
             responsive: true,
             interaction: { mode: 'index', intersect: false },
-            plugins: { legend: { display: false } },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (c) => ` ${c.dataset.label}: Rs. ${c.parsed.y.toLocaleString()}`,
+                    },
+                },
+            },
             scales: {
-                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' } },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(0,0,0,0.04)' },
+                    ticks: { callback: (v) => 'Rs. ' + v.toLocaleString() },
+                },
                 x: { grid: { display: false } },
             },
         },
