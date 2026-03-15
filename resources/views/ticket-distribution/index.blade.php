@@ -202,7 +202,7 @@
         '{{ route('api.ticket-distribution.defaults.save') }}',
         {!! json_encode(
             $lotteries->map(fn($l) => ['id'=>$l->id,'name'=>$l->name,'board'=>$l->board,'unit_price'=>(float)$l->unit_price])->values()->toArray(),
-            JSON_HEX_TAG | JSON_UNESCAPED_UNICODE
+            JSON_HEX_TAG | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE
         ) !!}
      )"
      @keydown.window="handleArrow($event)"
