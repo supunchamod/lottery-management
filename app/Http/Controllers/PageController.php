@@ -254,6 +254,24 @@ class PageController extends Controller
         return redirect()->route('lotteries.index')->with('success', "{$data['name']} added.");
     }
 
+    public function lotteriesQuickCreate(Request $request)
+    {
+        $data = $request->validate([
+            'name'       => ['required', 'string', 'max:255', 'unique:lotteries,name'],
+            'board'      => ['required', 'in:NLB,DLB'],
+            'unit_price' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $lottery = \App\Models\Lottery::create($data);
+
+        return response()->json([
+            'id'         => $lottery->id,
+            'name'       => $lottery->name,
+            'board'      => $lottery->board,
+            'unit_price' => (float) $lottery->unit_price,
+        ], 201);
+    }
+
     public function lotteriesEdit(\App\Models\Lottery $lottery)
     {
         return view('lotteries.edit', compact('lottery'));

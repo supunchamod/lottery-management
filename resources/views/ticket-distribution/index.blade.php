@@ -199,9 +199,14 @@
         {{ json_encode($alpineGrid) }},
         '{{ $date }}',
         '{{ route('api.ticket-distribution.defaults.get') }}',
-        '{{ route('api.ticket-distribution.defaults.save') }}'
+        '{{ route('api.ticket-distribution.defaults.save') }}',
+        {!! json_encode(
+            $lotteries->map(fn($l) => ['id'=>$l->id,'name'=>$l->name,'board'=>$l->board,'unit_price'=>(float)$l->unit_price])->values()->toArray(),
+            JSON_HEX_TAG | JSON_UNESCAPED_UNICODE
+        ) !!}
      )"
      @keydown.window="handleArrow($event)"
+     @keydown.escape.window="if (qc.open) { qc.open = false; qc.error = ''; }"
      class="print:hidden">
 
     {{-- ── Smart Default banner ──────────────────────────────────────────── --}}
@@ -283,13 +288,13 @@
         @csrf
         <input type="hidden" name="date" value="{{ $date }}">
 
-        {{-- Hidden inputs synced from Alpine --}}
+        {{-- Hidden inputs synced from Alpine — x-for makes new-lottery columns reactive --}}
         @foreach($assistants as $a)
-            @foreach($lotteries as $l)
+            <template x-for="l in lotteries" :key="l.id">
                 <input type="hidden"
-                       :name="`qty[{{ $a->id }}][{{ $l->id }}]`"
-                       :value="grid[{{ $a->id }}][{{ $l->id }}] || 0">
-            @endforeach
+                       :name="`qty[{{ $a->id }}][${l.id}]`"
+                       :value="(grid[{{ $a->id }}] || {})[l.id] || 0">
+            </template>
         @endforeach
 
         {{-- ── Toolbar ──────────────────────────────────────────────────── --}}
@@ -301,6 +306,15 @@
                 <span class="rounded-full bg-gray-100 px-3 py-0.5 text-xs font-bold text-gray-600">
                     Grand Total: <span x-text="grandTotal().toLocaleString()" class="text-blue-700"></span>
                 </span>
+                {{-- Quick Create Lottery --}}
+                <button type="button"
+                        @click="qc.open = true; $nextTick(() => $refs.qcName && $refs.qcName.focus())"
+                        class="inline-flex items-center gap-1 rounded-lg border border-dashed border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 hover:border-blue-400 transition">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Add Lottery
+                </button>
             </div>
 
             <div class="flex items-center gap-3">
@@ -353,16 +367,15 @@
                             style="background:#0f172a; min-width:150px;">
                             # &nbsp; Assistant
                         </th>
-                        @foreach($lotteries as $l)
-                            <th class="px-2 py-3 text-center font-medium whitespace-nowrap
-                                       {{ $l->board === 'NLB' ? 'text-blue-300' : 'text-orange-300' }}"
+                        <template x-for="l in lotteries" :key="l.id">
+                            <th class="px-2 py-3 text-center font-medium whitespace-nowrap"
+                                :class="l.board === 'NLB' ? 'text-blue-300' : 'text-orange-300'"
                                 style="min-width:62px;">
-                                {{ $l->name }}
-                                <span class="block text-gray-500 font-normal" style="font-size:10px;">
-                                    Rs.{{ number_format($l->unit_price, 0) }}
-                                </span>
+                                <span x-text="l.name"></span>
+                                <span class="block text-gray-500 font-normal" style="font-size:10px;"
+                                      x-text="'Rs.' + parseInt(l.unit_price).toLocaleString()"></span>
                             </th>
-                        @endforeach
+                        </template>
                         <th class="px-3 py-3 text-center text-yellow-300 font-semibold whitespace-nowrap">
                             Total
                         </th>
@@ -379,18 +392,19 @@
                                 Board Received Qty
                             </div>
                         </td>
-                        @foreach($lotteries as $l)
+                        <template x-for="l in lotteries" :key="l.id">
                             <td class="px-1 py-1.5 text-center col-cell-transition"
-                                :class="isMismatch({{ $l->id }}) ? 'bg-red-50' : ''">
+                                :class="isMismatch(l.id) ? 'bg-red-50' : ''">
                                 <input type="number" min="0" step="1"
-                                       x-model="boardQty[{{ $l->id }}]"
-                                       :class="isMismatch({{ $l->id }})
+                                       :value="boardQty[l.id]"
+                                       @input="boardQty[l.id] = $event.target.value"
+                                       :class="isMismatch(l.id)
                                            ? 'border-red-400 text-red-800 focus:ring-red-500 focus:border-red-500'
                                            : 'border-amber-300 text-amber-900 focus:ring-amber-500 focus:border-amber-500'"
                                        class="board-qty-cell w-full h-7 px-1 text-center text-xs font-semibold border rounded bg-white focus:ring-1 focus:outline-none placeholder-amber-300"
                                        placeholder="—">
                             </td>
-                        @endforeach
+                        </template>
                         <td class="px-3 py-1.5 text-center text-xs font-bold text-amber-700">
                             <span x-text="boardGrandTotal().toLocaleString() || '—'"></span>
                         </td>
@@ -399,13 +413,13 @@
                     <tr class="border-b-2 border-slate-600" style="background:#1e293b;">
                         <td class="sticky left-0 z-20 px-3 py-2 text-slate-300 font-semibold text-[11px] border-r border-slate-600"
                             style="background:#1e293b;">Column Total ↓</td>
-                        @foreach($lotteries as $l)
+                        <template x-for="l in lotteries" :key="l.id">
                             <td class="px-2 py-2 text-center font-bold col-total-cell"
-                                :class="isMismatch({{ $l->id }})
+                                :class="isMismatch(l.id)
                                     ? 'text-red-300 border-x-2 border-t-2 border-red-500 mismatch-pulse'
                                     : 'text-slate-100'"
-                                x-text="colTotal({{ $l->id }}).toLocaleString()"></td>
-                        @endforeach
+                                x-text="colTotal(l.id).toLocaleString()"></td>
+                        </template>
                         <td class="px-3 py-2 text-center text-yellow-300 font-bold"
                             x-text="grandTotal().toLocaleString()"></td>
                     </tr>
@@ -446,30 +460,30 @@
                                 </div>
                             </td>
 
-                            @foreach($lotteries as $j => $l)
+                            <template x-for="(l, li) in lotteries" :key="l.id">
                                 <td class="p-0 relative col-cell-transition"
                                     x-bind:class="{
-                                        'bg-blue-50':   hoveredCol === {{ $l->id }} && !isAdjusted({{ $a->id }}, {{ $l->id }}) && !isMismatch({{ $l->id }}),
-                                        'bg-amber-100': isAdjusted({{ $a->id }}, {{ $l->id }}) && !isMismatch({{ $l->id }}),
-                                        'border-x-2 border-red-400 bg-red-50': isMismatch({{ $l->id }}) && !isAdjusted({{ $a->id }}, {{ $l->id }}),
-                                        'border-x-2 border-red-400 bg-red-100': isMismatch({{ $l->id }}) && isAdjusted({{ $a->id }}, {{ $l->id }})
+                                        'bg-blue-50':   hoveredCol === l.id && !isAdjusted({{ $a->id }}, l.id) && !isMismatch(l.id),
+                                        'bg-amber-100': isAdjusted({{ $a->id }}, l.id) && !isMismatch(l.id),
+                                        'border-x-2 border-red-400 bg-red-50': isMismatch(l.id) && !isAdjusted({{ $a->id }}, l.id),
+                                        'border-x-2 border-red-400 bg-red-100': isMismatch(l.id) && isAdjusted({{ $a->id }}, l.id)
                                     }">
                                     <input
                                         type="number" min="0" step="1"
                                         class="dist-cell w-full h-8 px-1 text-center text-xs font-medium border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-400 focus:z-10 relative outline-none"
-                                        :value="grid[{{ $a->id }}][{{ $l->id }}] || ''"
+                                        :value="(grid[{{ $a->id }}] || {})[l.id] || ''"
                                         :class="{
-                                            'text-emerald-700': isDefault({{ $a->id }}, {{ $l->id }}) && !isAdjusted({{ $a->id }}, {{ $l->id }}),
-                                            'text-amber-800 font-semibold is-adjusted': isAdjusted({{ $a->id }}, {{ $l->id }})
+                                            'text-emerald-700': isDefault({{ $a->id }}, l.id) && !isAdjusted({{ $a->id }}, l.id),
+                                            'text-amber-800 font-semibold is-adjusted': isAdjusted({{ $a->id }}, l.id)
                                         }"
-                                        @focus="hoveredCol = {{ $l->id }}"
+                                        @focus="hoveredCol = l.id"
                                         @blur="hoveredCol = null"
-                                        @input="onCellInput({{ $a->id }}, {{ $l->id }}, $event.target.value)"
-                                        data-row="{{ $i }}"
-                                        data-col="{{ $j }}"
+                                        @input="onCellInput({{ $a->id }}, l.id, $event.target.value)"
+                                        :data-row="{{ $i }}"
+                                        :data-col="li"
                                         placeholder="">
                                 </td>
-                            @endforeach
+                            </template>
 
                             <td class="px-3 py-1.5 text-center font-bold"
                                 x-bind:class="rowTotal({{ $a->id }}) > 0 ? 'text-blue-700' : 'text-gray-300'"
@@ -480,13 +494,13 @@
                     <tr class="border-t-2 border-gray-300 font-bold" style="background:#f1f5f9;">
                         <td class="sticky left-0 z-10 px-3 py-2.5 text-gray-700 border-r border-gray-200"
                             style="background:#f1f5f9;">Column Total ↑</td>
-                        @foreach($lotteries as $l)
+                        <template x-for="l in lotteries" :key="l.id">
                             <td class="px-2 py-2.5 text-center col-cell-transition"
-                                :class="isMismatch({{ $l->id }})
+                                :class="isMismatch(l.id)
                                     ? 'text-red-600 bg-red-50 border-x-2 border-b-2 border-red-500 font-bold'
                                     : 'text-gray-900'"
-                                x-text="colTotal({{ $l->id }}).toLocaleString()"></td>
-                        @endforeach
+                                x-text="colTotal(l.id).toLocaleString()"></td>
+                        </template>
                         <td class="px-3 py-2.5 text-center text-blue-700"
                             x-text="grandTotal().toLocaleString()"></td>
                     </tr>
@@ -495,6 +509,117 @@
         </div>
 
     </form>
+
+    {{-- ── Quick Create Lottery Modal ─────────────────────────────────── --}}
+    <div x-show="qc.open"
+         x-transition:enter="transition ease-out duration-150"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-100"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         style="background:rgba(0,0,0,0.45);"
+         @click.self="qc.open = false; qc.error = ''">
+
+        <div x-show="qc.open"
+             x-transition:enter="transition ease-out duration-150"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-100"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95"
+             class="w-full max-w-sm rounded-2xl bg-white shadow-2xl border border-gray-200 overflow-hidden"
+             @click.stop>
+
+            {{-- Header --}}
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50">
+                <div class="flex items-center gap-2">
+                    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-sm font-bold text-gray-900">Add New Lottery</h3>
+                </div>
+                <button type="button" @click="qc.open = false; qc.error = ''"
+                        class="text-gray-400 hover:text-gray-600 transition">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            {{-- Body --}}
+            <div class="px-5 py-4 space-y-4">
+
+                {{-- Error banner --}}
+                <div x-show="qc.error"
+                     x-transition
+                     class="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700"
+                     x-text="qc.error"></div>
+
+                {{-- Lottery Name --}}
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Lottery Name <span class="text-red-500">*</span></label>
+                    <input x-ref="qcName"
+                           x-model="qc.name"
+                           type="text"
+                           placeholder="e.g. Mahajana Sampatha"
+                           maxlength="100"
+                           @keydown.enter.prevent="submitQuickCreate()"
+                           class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent">
+                </div>
+
+                {{-- Board --}}
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Board <span class="text-red-500">*</span></label>
+                    <div class="flex gap-3">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" x-model="qc.board" value="NLB"
+                                   class="h-4 w-4 text-blue-600 border-gray-300">
+                            <span class="text-sm font-semibold text-blue-700">NLB</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" x-model="qc.board" value="DLB"
+                                   class="h-4 w-4 text-orange-500 border-gray-300">
+                            <span class="text-sm font-semibold text-orange-600">DLB</span>
+                        </label>
+                    </div>
+                </div>
+
+                {{-- Unit Price --}}
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Unit Price (Rs.) <span class="text-red-500">*</span></label>
+                    <input x-model.number="qc.unitPrice"
+                           type="number" min="0" step="1"
+                           @keydown.enter.prevent="submitQuickCreate()"
+                           class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent">
+                </div>
+
+            </div>
+
+            {{-- Footer --}}
+            <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-100 bg-gray-50">
+                <button type="button"
+                        @click="qc.open = false; qc.error = ''"
+                        class="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition">
+                    Cancel
+                </button>
+                <button type="button"
+                        @click="submitQuickCreate()"
+                        :disabled="qc.saving || !qc.name.trim()"
+                        class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-50">
+                    <svg x-show="qc.saving" class="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                    </svg>
+                    <span x-text="qc.saving ? 'Creating…' : 'Create Lottery'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 {{-- Legend --}}
@@ -561,10 +686,11 @@ input.board-qty-cell[type=number] { -moz-appearance: textfield; }
 </style>
 
 <script>
-function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
+function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl, initialLotteries) {
     return {
         // ── State ──────────────────────────────────────────────────────────
         grid:            initialGrid,
+        lotteries:       initialLotteries,
         defaultsGrid:    {},
         hoveredRow:      null,
         hoveredCol:      null,
@@ -583,6 +709,16 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
         boardQty:       {},   // { [lotteryId]: raw input value }
         adjustedCells:  {},   // { [aId]: { [lId]: true } }
         lockedRows:     {},   // { [aId]: true }
+
+        // ── Quick Create Lottery ───────────────────────────────────────────
+        qc: {
+            open:      false,
+            saving:    false,
+            error:     '',
+            name:      '',
+            board:     'NLB',
+            unitPrice: 40,
+        },
 
         // ── Lifecycle ──────────────────────────────────────────────────────
         init() {
@@ -795,6 +931,61 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
             }
         },
 
+        // ── Quick Create Lottery ───────────────────────────────────────────
+        submitQuickCreate() {
+            const name = this.qc.name.trim();
+            if (!name) return;
+            if (this.lotteries.some(l => l.name.toLowerCase() === name.toLowerCase())) {
+                this.qc.error = `A lottery named "${name}" already exists.`;
+                return;
+            }
+            this.qc.saving = true;
+            this.qc.error  = '';
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            fetch('{{ route('lotteries.quick-create') }}', {
+                method:  'POST',
+                headers: {
+                    'Content-Type':     'application/json',
+                    'Accept':           'application/json',
+                    'X-CSRF-TOKEN':     csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({
+                    name:       this.qc.name.trim(),
+                    board:      this.qc.board,
+                    unit_price: this.qc.unitPrice,
+                }),
+            })
+            .then(async res => {
+                if (res.status === 422) {
+                    const body = await res.json();
+                    const msgs = Object.values(body.errors || {}).flat();
+                    this.qc.error = msgs[0] || 'Validation failed.';
+                    return;
+                }
+                if (!res.ok) throw new Error('Server error ' + res.status);
+                const lottery = await res.json();
+                this.addLotteryToGrid(lottery);
+                this.qc.open      = false;
+                this.qc.name      = '';
+                this.qc.board     = 'NLB';
+                this.qc.unitPrice = 40;
+                this.qc.error     = '';
+            })
+            .catch(() => { this.qc.error = 'Failed to create lottery. Please try again.'; })
+            .finally(() => { this.qc.saving = false; });
+        },
+
+        addLotteryToGrid(lottery) {
+            // Initialise every assistant's row with qty=0 for the new lottery
+            for (const aId of Object.keys(this.grid)) {
+                if (!this.grid[aId]) this.grid[aId] = {};
+                this.grid[aId][lottery.id] = 0;
+            }
+            // Push to the reactive lottery list — triggers x-for to render the new column
+            this.lotteries.push(lottery);
+        },
+
         // ── Keyboard navigation ────────────────────────────────────────────
         handleArrow(e) {
             const el = document.activeElement;
@@ -803,7 +994,7 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
             const row = parseInt(el.dataset.row);
             const col = parseInt(el.dataset.col);
             const totalRows = {{ count($assistants) }};
-            const totalCols = {{ count($lotteries) }};
+            const totalCols = this.lotteries.length;
             let targetRow = row, targetCol = col;
 
             if (e.key === 'ArrowRight' || e.key === 'Tab' && !e.shiftKey) {
