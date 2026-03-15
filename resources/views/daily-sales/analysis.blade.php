@@ -1,14 +1,31 @@
 <x-layouts.app title="Sales Analysis">
 
 {{-- ── Controls ──────────────────────────────────────────────────────────── --}}
-<div class="mb-5 flex flex-wrap items-end gap-3">
+<div class="mb-5 flex flex-wrap items-end gap-3"
+     x-data="{
+         period:    '{{ $period }}',
+         startDate: '{{ $startDate }}',
+         endDate:   '{{ $endDate }}',
+         setPeriod(val) {
+             this.period = val;
+             if (val !== 'custom') this.$nextTick(() => document.getElementById('analysis-form').submit());
+         }
+     }">
+
     <a href="{{ route('daily-sales.index') }}"
        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
         ← Daily Grid
     </a>
 
-    <form method="GET" action="{{ route('daily-sales.analysis') }}" class="flex flex-wrap items-end gap-3">
+    <form id="analysis-form" method="GET" action="{{ route('daily-sales.analysis') }}"
+          class="flex flex-wrap items-end gap-3">
 
+        {{-- Alpine state carriers — always present so every submit carries current values --}}
+        <input type="hidden" name="period"     :value="period">
+        <input type="hidden" name="start_date" :value="startDate">
+        <input type="hidden" name="end_date"   :value="endDate">
+
+        {{-- Assistant selector — auto-submits; hidden inputs carry current period & dates --}}
         <div>
             <label class="block text-xs font-medium text-gray-500 mb-1">Assistant</label>
             <select name="assistant_id" onchange="this.form.submit()"
@@ -19,19 +36,52 @@
             </select>
         </div>
 
+        {{-- Period pill-group — Custom does not auto-submit; it reveals date pickers --}}
         <div>
             <label class="block text-xs font-medium text-gray-500 mb-1">Period</label>
             <div class="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
-                @foreach(['today' => 'Today', 'weekly' => 'Weekly', 'monthly' => 'Monthly', 'overall' => 'Overall'] as $val => $label)
-                    <button type="submit" name="period" value="{{ $val }}"
-                            class="px-4 py-2 font-medium transition
-                                   {{ $period === $val
-                                      ? 'bg-blue-600 text-white'
-                                      : 'bg-white text-gray-600 hover:bg-gray-50' }}">
+                @foreach(['today' => 'Today', 'weekly' => 'Weekly', 'monthly' => 'Monthly', 'overall' => 'Overall', 'custom' => 'Custom'] as $val => $label)
+                    <button type="button"
+                            @click="setPeriod('{{ $val }}')"
+                            :class="period === '{{ $val }}' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'"
+                            class="px-4 py-2 font-medium transition whitespace-nowrap">
                         {{ $label }}
                     </button>
                 @endforeach
             </div>
+        </div>
+
+        {{-- Custom date range — shown only when 'custom' is active.
+             style= fallback prevents a flash before Alpine initialises. --}}
+        <div x-show="period === 'custom'"
+             x-transition:enter="transition ease-out duration-150"
+             x-transition:enter-start="opacity-0 -translate-y-1"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             style="{{ $period === 'custom' ? '' : 'display:none' }}"
+             class="flex flex-wrap items-end gap-2">
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Start Date</label>
+                <input type="date"
+                       x-model="startDate"
+                       :max="endDate"
+                       class="erp-input text-sm h-9">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">End Date</label>
+                <input type="date"
+                       x-model="endDate"
+                       :min="startDate"
+                       max="{{ today()->toDateString() }}"
+                       class="erp-input text-sm h-9">
+            </div>
+            <button type="submit"
+                    class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-700
+                           px-4 py-2 text-sm font-semibold text-white transition h-9">
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/>
+                </svg>
+                Filter
+            </button>
         </div>
     </form>
 </div>
@@ -50,7 +100,15 @@
     <div class="h-8 w-px bg-blue-200 hidden sm:block"></div>
     <div>
         <p class="text-xs text-blue-400 uppercase tracking-wide font-medium">Period</p>
-        <p class="font-semibold text-gray-800 capitalize">{{ ucfirst($period) }}</p>
+        @if($period === 'custom')
+            <p class="font-semibold text-gray-800 text-sm">
+                {{ \Carbon\Carbon::parse($startDate)->format('d M Y') }}
+                <span class="text-blue-300 mx-1">→</span>
+                {{ \Carbon\Carbon::parse($endDate)->format('d M Y') }}
+            </p>
+        @else
+            <p class="font-semibold text-gray-800 capitalize">{{ ucfirst($period) }}</p>
+        @endif
     </div>
     <div>
         <p class="text-xs text-blue-400 uppercase tracking-wide font-medium">Records</p>

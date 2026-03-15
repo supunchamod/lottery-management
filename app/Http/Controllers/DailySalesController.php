@@ -138,13 +138,16 @@ class DailySalesController extends Controller
     {
         $assistants  = SalesAssistant::orderBy('name')->get();
         $assistantId = $request->input('assistant_id', $assistants->first()?->id);
-        $period      = $request->input('period', 'weekly'); // today|weekly|monthly|overall
+        $period      = $request->input('period', 'today'); // today|weekly|monthly|overall|custom
+
+        $today     = Carbon::today();
+        $startDate = $request->input('start_date', $today->copy()->startOfMonth()->toDateString());
+        $endDate   = $request->input('end_date',   $today->toDateString());
 
         $assistant = $assistants->firstWhere('id', $assistantId);
 
         $query = DailySaleRecord::where('assistant_id', $assistantId);
 
-        $today = Carbon::today();
         match ($period) {
             'today'   => $query->whereDate('date', $today),
             'weekly'  => $query->whereBetween('date', [
@@ -155,29 +158,30 @@ class DailySalesController extends Controller
                             $today->copy()->startOfMonth()->toDateString(),
                             $today->copy()->endOfMonth()->toDateString(),
                         ]),
+            'custom'  => $query->whereBetween('date', [$startDate, $endDate]),
             default   => null, // overall — no date filter
         };
 
         $records = $query->orderBy('date')->get();
 
         $stats = [
-            'totalValue'      => $records->sum('value'),
-            'totalCash'       => $records->sum('cash'),
-            'totalWinning'    => $records->sum('total_winning'),
-            'totalCW'         => $records->sum('cw'),
+            'totalValue'       => $records->sum('value'),
+            'totalCash'        => $records->sum('cash'),
+            'totalWinning'     => $records->sum('total_winning'),
+            'totalCW'          => $records->sum('cw'),
             'totalOutstanding' => $records->where('balance', '>', 0)->sum('balance'),
-            'totalOverpaid'   => $records->where('balance', '<', 0)->sum(fn ($r) => abs($r->balance)),
-            'recordCount'     => $records->count(),
+            'totalOverpaid'    => $records->where('balance', '<', 0)->sum(fn ($r) => abs($r->balance)),
+            'recordCount'      => $records->count(),
         ];
 
         // Chart data — daily balance trend
-        $chartLabels = $records->pluck('date')->map(fn ($d) => $d->format('d M'))->toArray();
+        $chartLabels  = $records->pluck('date')->map(fn ($d) => $d->format('d M'))->toArray();
         $chartBalance = $records->map(fn ($r) => (float) $r->balance)->toArray();
         $chartCash    = $records->map(fn ($r) => (float) $r->cash)->toArray();
         $chartValue   = $records->map(fn ($r) => (float) $r->value)->toArray();
 
         return view('daily-sales.analysis', compact(
-            'assistants', 'assistant', 'assistantId', 'period',
+            'assistants', 'assistant', 'assistantId', 'period', 'startDate', 'endDate',
             'records', 'stats', 'chartLabels', 'chartBalance', 'chartCash', 'chartValue'
         ));
     }
