@@ -36,6 +36,15 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
 // ═════════════════════════════════════════════════════════════════════════════
 Route::middleware('auth')->group(function () {
 
+    Route::get('/run-migration', function () {
+        try {
+            Artisan::call('migrate', ['--force' => true]);
+            return "Migration Successful: <br><pre>" . Artisan::output() . "</pre>";
+        } catch (\Exception $e) {
+            return "Error: " . $e->getMessage();
+        }
+    });
+
     // Dashboard
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 

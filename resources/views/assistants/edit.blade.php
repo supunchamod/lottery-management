@@ -39,8 +39,8 @@
                 <p class="text-xs text-gray-500">Current Balance</p>
                 <p class="text-lg font-bold {{ $assistant->current_balance > 0 ? 'text-red-600' : ($assistant->current_balance < 0 ? 'text-emerald-600' : 'text-gray-500') }}">
                     Rs. {{ number_format(abs($assistant->current_balance), 2) }}
-                    @if($assistant->current_balance > 0) <span class="text-xs font-normal text-red-400">(owes)</span>
-                    @elseif($assistant->current_balance < 0) <span class="text-xs font-normal text-emerald-400">(credit)</span>
+                    @if($assistant->current_balance > 0) <span class="text-xs font-normal text-red-400">(credit)</span>
+                    @elseif($assistant->current_balance < 0) <span class="text-xs font-normal text-emerald-400">(Excess)</span>
                     @endif
                 </p>
             </div>
