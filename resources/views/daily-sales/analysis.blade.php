@@ -1,36 +1,87 @@
 <x-layouts.app title="Sales Analysis">
 
+{{-- ── Alpine component — defined before Alpine's deferred init ────────── --}}
+@push('head')
+<script>
+function analysisControls() {
+    return {
+        /* ── state ── */
+        period:       '{{ $period }}',
+        startDate:    '{{ $startDate }}',
+        endDate:      '{{ $endDate }}',
+        selected:     {!! json_encode(array_map('intval', $assistantIds), JSON_HEX_TAG) !!},
+        allIds:       {!! json_encode(array_map('intval', $allIds),       JSON_HEX_TAG) !!},
+        allAssistants:{!! json_encode(
+                            $assistants->map(fn($a) => ['id' => (int)$a->id, 'name' => $a->name])
+                                       ->values()->toArray(),
+                            JSON_HEX_TAG | JSON_UNESCAPED_UNICODE
+                        ) !!},
+        dropOpen: false,
+        search:   '',
+
+        /* ── computed ── */
+        get filtered() {
+            const q = this.search.trim().toLowerCase();
+            return q ? this.allAssistants.filter(a => a.name.toLowerCase().includes(q))
+                     : this.allAssistants;
+        },
+        get allFilteredSelected() {
+            const f = this.filtered;
+            return f.length > 0 && f.every(a => this.selected.includes(a.id));
+        },
+        get someFilteredSelected() {
+            return !this.allFilteredSelected && this.filtered.some(a => this.selected.includes(a.id));
+        },
+        get label() {
+            if (this.selected.length === 0)                    return 'Select Assistants\u2026';
+            if (this.selected.length === this.allIds.length)   return 'All Assistants';
+            if (this.selected.length === 1)                    return '1 Assistant Selected';
+            return this.selected.length + ' Assistants Selected';
+        },
+
+        /* ── dropdown ── */
+        openDrop() {
+            this.dropOpen = true;
+            this.$nextTick(() => this.$refs.searchInput && this.$refs.searchInput.focus());
+        },
+        closeDrop(submit) {
+            this.dropOpen = false;
+            this.search   = '';
+            if (submit) {
+                if (this.selected.length === 0) this.selected = [...this.allIds];
+                this.$nextTick(() => document.getElementById('analysis-form').submit());
+            }
+        },
+
+        /* ── selection ── */
+        toggleOne(id) {
+            const idx = this.selected.indexOf(id);
+            if (idx >= 0) this.selected.splice(idx, 1);
+            else          this.selected.push(id);
+        },
+        toggleFiltered() {
+            const ids = this.filtered.map(a => a.id);
+            if (this.allFilteredSelected) {
+                this.selected = this.selected.filter(id => !ids.includes(id));
+            } else {
+                ids.forEach(id => { if (!this.selected.includes(id)) this.selected.push(id); });
+            }
+        },
+
+        /* ── period ── */
+        setPeriod(val) {
+            this.period = val;
+            if (val !== 'custom') this.$nextTick(() => document.getElementById('analysis-form').submit());
+        },
+    };
+}
+</script>
+@endpush
+
 {{-- ── Controls ──────────────────────────────────────────────────────────── --}}
 <div class="mb-5 flex flex-wrap items-end gap-3"
-     x-data="{
-         period:    '{{ $period }}',
-         startDate: '{{ $startDate }}',
-         endDate:   '{{ $endDate }}',
-         selected:  {{ json_encode(array_map('intval', $assistantIds)) }},
-         allIds:    {{ json_encode(array_map('intval', $allIds)) }},
-         get allSelected() { return this.selected.length === this.allIds.length; },
-         toggleAll() {
-             if (!this.allSelected) {
-                 this.selected = [...this.allIds];
-                 this.$nextTick(() => document.getElementById('analysis-form').submit());
-             }
-         },
-         toggleOne(id) {
-             const idx = this.selected.indexOf(id);
-             if (idx >= 0) {
-                 this.selected.splice(idx, 1);
-                 if (this.selected.length === 0) this.selected = [...this.allIds];
-             } else {
-                 this.selected.push(id);
-             }
-             this.$nextTick(() => document.getElementById('analysis-form').submit());
-         },
-         isSelected(id) { return this.selected.includes(id); },
-         setPeriod(val) {
-             this.period = val;
-             if (val !== 'custom') this.$nextTick(() => document.getElementById('analysis-form').submit());
-         }
-     }">
+     x-data="analysisControls()"
+     @keydown.escape.window="if (dropOpen) closeDrop(false)">
 
     <a href="{{ route('daily-sales.index') }}"
        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
@@ -40,7 +91,7 @@
     <form id="analysis-form" method="GET" action="{{ route('daily-sales.analysis') }}"
           class="flex flex-wrap items-end gap-3">
 
-        {{-- State carriers — always present so every submit carries current values --}}
+        {{-- State carriers — always serialised with every submit --}}
         <input type="hidden" name="period"     :value="period">
         <input type="hidden" name="start_date" :value="startDate">
         <input type="hidden" name="end_date"   :value="endDate">
@@ -48,35 +99,98 @@
             <input type="hidden" name="assistant_ids[]" :value="id">
         </template>
 
-        {{-- Multi-assistant checkbox panel --}}
-        <div>
+        {{-- ── Searchable multi-select dropdown ─────────────────────────── --}}
+        <div class="relative" @click.outside="closeDrop(false)">
             <label class="block text-xs font-medium text-gray-500 mb-1">Assistants</label>
-            <div class="rounded-lg border border-gray-200 bg-white overflow-hidden" style="min-width:190px;max-width:230px">
-                {{-- All toggle --}}
-                <label class="flex items-center gap-2.5 px-3 py-2 cursor-pointer bg-gray-50 border-b border-gray-200 hover:bg-gray-100">
-                    <input type="checkbox"
-                           :checked="allSelected"
-                           @change="toggleAll()"
-                           class="h-3.5 w-3.5 rounded text-blue-600 border-gray-300">
-                    <span class="text-xs font-bold text-gray-800">All Assistants</span>
-                    <span class="ml-auto text-[10px] text-gray-400" x-text="selected.length + '/' + allIds.length"></span>
-                </label>
-                {{-- Individual assistant checkboxes --}}
-                <div class="max-h-36 overflow-y-auto divide-y divide-gray-100">
-                    @foreach($assistants as $a)
-                    <label class="flex items-center gap-2.5 px-3 py-1.5 cursor-pointer hover:bg-blue-50">
+
+            {{-- Trigger button --}}
+            <button type="button"
+                    @click="dropOpen ? closeDrop(false) : openDrop()"
+                    class="inline-flex items-center justify-between gap-2 rounded-lg border border-gray-200
+                           bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition min-w-[210px] h-9">
+                <span x-text="label" class="truncate"></span>
+                <svg class="h-4 w-4 shrink-0 text-gray-400 transition-transform duration-150"
+                     :class="dropOpen ? 'rotate-180' : ''"
+                     fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+
+            {{-- Dropdown panel --}}
+            <div x-show="dropOpen"
+                 x-transition:enter="transition ease-out duration-100"
+                 x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
+                 x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-75"
+                 x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 scale-95 -translate-y-1"
+                 class="absolute z-30 left-0 top-full mt-1 w-72 rounded-xl border border-gray-200
+                        bg-white shadow-xl overflow-hidden origin-top-left">
+
+                {{-- Search input --}}
+                <div class="p-2 border-b border-gray-100">
+                    <div class="relative">
+                        <svg class="absolute left-2.5 top-2 h-3.5 w-3.5 text-gray-400 pointer-events-none"
+                             fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+                        </svg>
+                        <input x-ref="searchInput"
+                               x-model="search"
+                               type="text"
+                               placeholder="Search assistants…"
+                               class="w-full rounded-lg border border-gray-200 bg-gray-50 pl-8 pr-3 py-1.5
+                                      text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent">
+                    </div>
+                </div>
+
+                {{-- Select All / Select All Filtered --}}
+                <div class="border-b border-gray-100 bg-gray-50">
+                    <label class="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-gray-100">
                         <input type="checkbox"
-                               :checked="isSelected({{ $a->id }})"
-                               @change="toggleOne({{ $a->id }})"
+                               :checked="allFilteredSelected"
+                               x-effect="$el.indeterminate = someFilteredSelected"
+                               @change="toggleFiltered()"
                                class="h-3.5 w-3.5 rounded text-blue-600 border-gray-300">
-                        <span class="text-xs text-gray-700">{{ $a->name }}</span>
+                        <span class="text-xs font-semibold text-gray-700"
+                              x-text="search.trim()
+                                  ? 'Select All Filtered (' + filtered.length + ')'
+                                  : 'All Assistants (' + allIds.length + ')'">
+                        </span>
                     </label>
-                    @endforeach
+                </div>
+
+                {{-- Scrollable assistant list --}}
+                <div class="max-h-56 overflow-y-auto divide-y divide-gray-50">
+                    <template x-for="a in filtered" :key="a.id">
+                        <label class="flex items-center gap-2.5 px-3 py-1.5 cursor-pointer hover:bg-blue-50">
+                            <input type="checkbox"
+                                   :checked="selected.includes(a.id)"
+                                   @change="toggleOne(a.id)"
+                                   class="h-3.5 w-3.5 rounded text-blue-600 border-gray-300">
+                            <span x-text="a.name" class="text-xs text-gray-700 truncate"></span>
+                        </label>
+                    </template>
+                    <div x-show="filtered.length === 0"
+                         class="px-3 py-6 text-center text-xs text-gray-400 italic">
+                        No assistants match your search.
+                    </div>
+                </div>
+
+                {{-- Footer: count + Apply --}}
+                <div class="border-t border-gray-100 bg-gray-50 px-3 py-2 flex items-center justify-between">
+                    <span class="text-xs text-gray-500"
+                          x-text="selected.length + ' of ' + allIds.length + ' selected'"></span>
+                    <button type="button"
+                            @click="closeDrop(true)"
+                            class="rounded-lg bg-blue-600 hover:bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white transition">
+                        Apply
+                    </button>
                 </div>
             </div>
         </div>
 
-        {{-- Period pill-group — Custom reveals date pickers, others auto-submit --}}
+        {{-- Period pill-group --}}
         <div>
             <label class="block text-xs font-medium text-gray-500 mb-1">Period</label>
             <div class="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
@@ -128,7 +242,6 @@
 {{-- ── Info Banner ─────────────────────────────────────────────────────────── --}}
 <div class="mb-5 rounded-xl border border-blue-100 bg-blue-50 px-5 py-3 flex flex-wrap items-center gap-5">
 
-    {{-- Assistant identity --}}
     @if($selectedAssistants->count() === 1)
         @php $solo = $selectedAssistants->first(); @endphp
         <div class="flex items-center gap-3">
@@ -381,7 +494,7 @@ document.addEventListener('DOMContentLoaded', function () {
     new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: {!! json_encode($chartLabels) !!},
+            labels: {!! json_encode($chartLabels, JSON_HEX_TAG) !!},
             datasets: [
                 {
                     label: 'Value',
