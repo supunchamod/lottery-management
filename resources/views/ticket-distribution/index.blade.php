@@ -201,7 +201,6 @@
         '{{ route('api.ticket-distribution.defaults.get') }}',
         '{{ route('api.ticket-distribution.defaults.save') }}'
      )"
-     x-init="init()"
      @keydown.window="handleArrow($event)"
      class="print:hidden">
 
@@ -575,6 +574,9 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
         defaultsChecked: false,
         dayName:         '',
         saving:          false,
+        isDirty:         false,
+        pendingUrl:      null,
+        _formId:         'dist-form',
 
         // ── Adjustment Mode ────────────────────────────────────────────────
         adjustMode:     false,
@@ -594,6 +596,93 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
                 .then(data => { this.dayName = data.day_name; this.defaultsChecked = true; })
                 .catch(() => {});
             }
+
+            // ── DLP: browser-level (tab close / refresh / back-button) ────────
+            this._unloadHandler = (e) => {
+                if (!this.isDirty) return;
+                e.preventDefault();
+                e.returnValue = '';
+            };
+            window.addEventListener('beforeunload', this._unloadHandler);
+
+            // ── DLP: intercept all sidebar / header nav-link clicks ───────────
+            this._clickGuard = (e) => {
+                if (!this.isDirty) return;
+                const a = e.target.closest('a[href]');
+                if (!a) return;
+                const href = a.getAttribute('href');
+                if (!href || href === '#' || href.startsWith('javascript:')) return;
+                e.preventDefault();
+                this._dlpPrompt(a.href);
+            };
+            document.addEventListener('click', this._clickGuard);
+
+            // ── DLP: intercept the date-picker (inline onchange navigates directly,
+            //         bypassing any click or form guard — so we take it over here) ──
+            const datePicker = document.getElementById('date-picker');
+            if (datePicker) {
+                datePicker.removeAttribute('onchange');
+                this._dateGuard = (e) => {
+                    const url = '{{ route("ticket-distribution.index") }}?date=' + e.target.value;
+                    if (!this.isDirty) { window.location.href = url; return; }
+                    this._dlpPrompt(url);
+                };
+                datePicker.addEventListener('change', this._dateGuard);
+            }
+        },
+
+        destroy() {
+            window.removeEventListener('beforeunload', this._unloadHandler);
+            document.removeEventListener('click', this._clickGuard);
+            const datePicker = document.getElementById('date-picker');
+            if (datePicker && this._dateGuard) {
+                datePicker.removeEventListener('change', this._dateGuard);
+            }
+        },
+
+        // ── SweetAlert2 DLP prompt ────────────────────────────────────────────
+        _dlpPrompt(destUrl) {
+            this.pendingUrl = destUrl;
+            const dark = document.documentElement.classList.contains('dark');
+            Swal.fire({
+                title: 'Unsaved Changes',
+                html: 'You have unsaved ticket distribution data.<br><small style="color:#94a3b8">Choose how to proceed:</small>',
+                icon: 'warning',
+                iconColor: '#f59e0b',
+                background: dark ? '#1e293b' : '#ffffff',
+                color: dark ? '#e2e8f0' : '#1e293b',
+                showConfirmButton: true,
+                showDenyButton: true,
+                showCancelButton: true,
+                confirmButtonText: 'Save &amp; Go',
+                denyButtonText: 'Discard &amp; Leave',
+                cancelButtonText: 'Keep Editing',
+                confirmButtonColor: '#4f46e5',
+                denyButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                showLoaderOnConfirm: true,
+                allowOutsideClick: false,
+                allowEscapeKey: true,
+                preConfirm: async () => {
+                    const form = document.getElementById(this._formId);
+                    const res = await fetch(form.action, { method: 'POST', body: new FormData(form) })
+                        .catch(() => null);
+                    if (!res || !res.ok) {
+                        Swal.showValidationMessage('Save failed — please try again.');
+                        return false;
+                    }
+                    return true;
+                },
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    this.isDirty = false;
+                    window.location.href = this.pendingUrl;
+                } else if (result.isDenied) {
+                    this.isDirty = false;
+                    window.location.href = this.pendingUrl;
+                }
+                // isDismissed = "Keep Editing" → do nothing
+            });
         },
 
         // ── Smart Defaults ─────────────────────────────────────────────────
@@ -642,6 +731,7 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
             const qty = parseInt(rawValue) || 0;
             if (!this.grid[aId]) this.grid[aId] = {};
             this.grid[aId][lId] = qty;
+            this.isDirty = true;
             // Clear adjustment highlight when user manually edits the cell
             if (this.adjustedCells[aId]) delete this.adjustedCells[aId][lId];
         },
@@ -697,6 +787,7 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
                     });
                     if (!response.ok) throw new Error('Server error ' + response.status);
                 }
+                this.isDirty = false;
                 document.getElementById('dist-form').submit();
             } catch (err) {
                 this.saving = false;
@@ -849,6 +940,7 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
                         this.grid[aId][lId] = newQty;
                         if (!this.adjustedCells[aId]) this.adjustedCells[aId] = {};
                         this.adjustedCells[aId][lId] = true;
+                        this.isDirty = true;
                     }
                 }
             }
