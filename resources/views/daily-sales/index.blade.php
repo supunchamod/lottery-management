@@ -467,6 +467,8 @@ function salesGrid(initialRows, names) {
         names: names,
         activeRow: null,
         isDirty: false,
+        pendingUrl: null,
+        _formId: 'sales-form',
         cashModal: {
             open: false,
             assistantId: null,
@@ -491,21 +493,17 @@ function salesGrid(initialRows, names) {
                 const href = a.getAttribute('href');
                 if (!href || href === '#' || href.startsWith('javascript:')) return;
                 e.preventDefault();
-                if (confirm('You have unsaved changes in your table.\nIf you leave, your data will be lost.\n\nDo you want to continue?')) {
-                    this.isDirty = false;
-                    window.location.href = a.href;
-                }
+                this._dlpPrompt(a.href);
             };
             document.addEventListener('click', this._clickGuard);
 
             // 3. App-level: intercept the date-picker form (onchange="this.form.submit()")
             this._formGuard = (e) => {
                 if (!this.isDirty) return;
-                if (!confirm('You have unsaved changes in your table.\nIf you leave, your data will be lost.\n\nDo you want to continue?')) {
-                    e.preventDefault();
-                } else {
-                    this.isDirty = false;
-                }
+                e.preventDefault();
+                const f = e.target;
+                const params = new URLSearchParams(new FormData(f)).toString();
+                this._dlpPrompt(f.action + (params ? '?' + params : ''));
             };
             const dateForm = document.getElementById('date-nav-form');
             if (dateForm) dateForm.addEventListener('submit', this._formGuard);
@@ -515,6 +513,51 @@ function salesGrid(initialRows, names) {
             document.removeEventListener('click', this._clickGuard);
             const dateForm = document.getElementById('date-nav-form');
             if (dateForm) dateForm.removeEventListener('submit', this._formGuard);
+        },
+
+        // ── SweetAlert2 DLP prompt ────────────────────────────────────────────
+        _dlpPrompt(destUrl) {
+            this.pendingUrl = destUrl;
+            const dark = document.documentElement.classList.contains('dark');
+            Swal.fire({
+                title: 'Unsaved Changes',
+                html: 'Your table has unsaved entries.<br><small style="color:#94a3b8">Choose how to proceed:</small>',
+                icon: 'warning',
+                iconColor: '#f59e0b',
+                background: dark ? '#1e293b' : '#ffffff',
+                color: dark ? '#e2e8f0' : '#1e293b',
+                showConfirmButton: true,
+                showDenyButton: true,
+                showCancelButton: true,
+                confirmButtonText: 'Save &amp; Go',
+                denyButtonText: 'Discard &amp; Leave',
+                cancelButtonText: 'Keep Editing',
+                confirmButtonColor: '#4f46e5',
+                denyButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                showLoaderOnConfirm: true,
+                allowOutsideClick: false,
+                allowEscapeKey: true,
+                preConfirm: async () => {
+                    const form = document.getElementById(this._formId);
+                    const res = await fetch(form.action, { method: 'POST', body: new FormData(form) })
+                        .catch(() => null);
+                    if (!res || !res.ok) {
+                        Swal.showValidationMessage('Save failed — please try again.');
+                        return false;
+                    }
+                    return true;
+                },
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    this.isDirty = false;
+                    window.location.href = this.pendingUrl;
+                } else if (result.isDenied) {
+                    this.isDirty = false;
+                    window.location.href = this.pendingUrl;
+                }
+                // isDismissed = "Keep Editing" → do nothing
+            });
         },
 
         // ── Row computed ──────────────────────────────────────────────────────

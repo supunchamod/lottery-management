@@ -26,6 +26,9 @@
     {{-- ── Chart.js ────────────────────────────────────────────────────────────── --}}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
+    {{-- ── SweetAlert2 ─────────────────────────────────────────────────────────── --}}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('head')
 </head>
