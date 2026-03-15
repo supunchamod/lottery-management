@@ -86,7 +86,7 @@
 
 {{-- Alpine.js — Sales Grid + Cash Counter Modal ──────────────────────────── --}}
 <div x-data="salesGrid({{ json_encode($alpineRows) }}, {{ json_encode($assistantNames) }})"
-     @keydown.escape.window="cashModal.open = false">
+     @keydown.escape.window="addForm.cashOpen ? (addForm.cashOpen = false) : addForm.open ? (addForm.open = false) : (cashModal.open = false)">
 
     {{-- ── Live Day Summary Tiles ──────────────────────────────────────────── --}}
     <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
@@ -141,14 +141,28 @@
             <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">
                 {{ $parsedDate->format('Y-m-d') }} — {{ $parsedDate->format('l') }}
             </span>
-            <button type="submit"
-                    class="btn-action inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700
-                           px-5 py-2 text-sm font-semibold text-white shadow-md shadow-indigo-900/20 transition-colors">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                </svg>
-                Save All Records
-            </button>
+            <div class="flex items-center gap-2">
+                <button type="button"
+                        @click="openAddForm()"
+                        class="btn-action inline-flex items-center gap-2 rounded-xl border border-indigo-300 dark:border-indigo-700
+                               bg-white dark:bg-slate-800
+                               px-4 py-2 text-sm font-semibold
+                               text-indigo-700 dark:text-indigo-300
+                               hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Add Form
+                </button>
+                <button type="submit"
+                        class="btn-action inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700
+                               px-5 py-2 text-sm font-semibold text-white shadow-md shadow-indigo-900/20 transition-colors">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Save All Records
+                </button>
+            </div>
         </div>
 
         {{-- ── GRID TABLE ───────────────────────────────────────────────────── --}}
@@ -419,6 +433,272 @@
         </div>
     </div>
 
+    {{-- ══════════════════════════════════════════════════════════════════════
+         ADD FORM MODAL — single-entry popup with searchable assistant picker
+         and embedded cash counter (two-panel, no nested overlay)
+    ═══════════════════════════════════════════════════════════════════════ --}}
+    <div x-show="addForm.open"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 print:hidden"
+         @click.self="addForm.open = false"
+         style="display:none;">
+
+        <div class="w-full max-w-md rounded-2xl bg-white dark:bg-slate-800 shadow-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/5"
+             @click.stop
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100">
+
+            {{-- Modal header --}}
+            <div class="flex items-center justify-between bg-slate-900 dark:bg-slate-950 px-5 py-4">
+                <div>
+                    <p class="text-xs text-slate-400 uppercase tracking-wide font-medium"
+                       x-text="addForm.cashOpen ? 'Cash Counter' : 'Add Single Entry'"></p>
+                    <p class="font-bold text-white text-sm mt-0.5"
+                       x-text="addForm.cashOpen
+                           ? (names[addForm.assistantId] ?? 'Count Cash')
+                           : '{{ $parsedDate->format('d M Y') }}'"></p>
+                </div>
+                <button type="button" @click="addForm.open = false"
+                        class="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            {{-- ── MAIN FORM PANEL ─────────────────────────────────────────── --}}
+            <div x-show="!addForm.cashOpen" class="px-5 py-4 space-y-3.5">
+
+                {{-- Sales Assistant — searchable dropdown --}}
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+                        Sales Assistant <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <input type="text"
+                               x-model="addForm.search"
+                               @focus="addForm.dropOpen = true"
+                               @input="addForm.dropOpen = true; addForm.assistantId = ''"
+                               placeholder="Type to search assistant…"
+                               autocomplete="off"
+                               class="w-full rounded-xl border border-slate-200 dark:border-slate-700
+                                      bg-white dark:bg-slate-700/50 text-slate-900 dark:text-white
+                                      px-3 py-2 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500/50
+                                      placeholder-slate-400 dark:placeholder-slate-500">
+                        <div x-show="addForm.dropOpen && filteredAssistants().length > 0"
+                             @click.outside="addForm.dropOpen = false"
+                             class="absolute z-10 mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700
+                                    bg-white dark:bg-slate-800 shadow-lg overflow-hidden max-h-44 overflow-y-auto"
+                             style="display:none;">
+                            <template x-for="pair in filteredAssistants()" :key="pair[0]">
+                                <button type="button"
+                                        @mousedown.prevent="selectAssistant(pair[0], pair[1])"
+                                        class="w-full px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-300
+                                               hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                                        x-text="pair[1]">
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Amount & Unit Price --}}
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">Amount (Units)</label>
+                        <input type="number" min="0" step="1"
+                               x-model.number="addForm.qty"
+                               class="w-full rounded-xl border border-slate-200 dark:border-slate-700
+                                      bg-white dark:bg-slate-700/50 text-slate-900 dark:text-white
+                                      px-3 py-2 text-sm text-center font-medium
+                                      focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500/50">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">Unit Price</label>
+                        <input type="number" min="0" step="0.01"
+                               x-model.number="addForm.unitPrice"
+                               class="w-full rounded-xl border border-slate-200 dark:border-slate-700
+                                      bg-white dark:bg-slate-700/50 text-slate-900 dark:text-white
+                                      px-3 py-2 text-sm text-center font-medium
+                                      focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500/50">
+                    </div>
+                </div>
+
+                {{-- Value (auto) + Cash button --}}
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+                            Value <span class="font-normal text-slate-400">(auto)</span>
+                        </label>
+                        <div class="rounded-xl border border-yellow-200 dark:border-yellow-800/40
+                                    bg-yellow-50/60 dark:bg-yellow-900/10
+                                    px-3 py-2 text-sm font-semibold text-center
+                                    text-yellow-700 dark:text-yellow-400"
+                             x-text="'Rs. ' + fmt(addFormValue())"></div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+                            Cash <span class="font-normal text-slate-400">(click to count)</span>
+                        </label>
+                        <button type="button"
+                                @click="addForm.cashOpen = true"
+                                class="btn-action w-full rounded-xl border border-emerald-200 dark:border-emerald-700
+                                       bg-emerald-50 dark:bg-emerald-900/20
+                                       px-3 py-2 text-sm font-semibold
+                                       text-emerald-700 dark:text-emerald-400
+                                       hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                                x-text="addFormCashTotal() > 0 ? 'Rs. ' + fmt(addFormCashTotal()) : '+ Count Cash'">
+                        </button>
+                    </div>
+                </div>
+
+                {{-- NLB & DLB Winning --}}
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">NLB Winning</label>
+                        <input type="number" min="0" step="0.01"
+                               x-model.number="addForm.nlbWinning"
+                               class="w-full rounded-xl border border-slate-200 dark:border-slate-700
+                                      bg-white dark:bg-slate-700/50 text-slate-900 dark:text-white
+                                      px-3 py-2 text-sm text-center font-medium
+                                      focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500/50">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">DLB Winning</label>
+                        <input type="number" min="0" step="0.01"
+                               x-model.number="addForm.dlbWinning"
+                               class="w-full rounded-xl border border-slate-200 dark:border-slate-700
+                                      bg-white dark:bg-slate-700/50 text-slate-900 dark:text-white
+                                      px-3 py-2 text-sm text-center font-medium
+                                      focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500/50">
+                    </div>
+                </div>
+
+                {{-- Remarks --}}
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">Remarks</label>
+                    <input type="text"
+                           x-model="addForm.remarks"
+                           placeholder="Optional notes…"
+                           class="w-full rounded-xl border border-slate-200 dark:border-slate-700
+                                  bg-white dark:bg-slate-700/50 text-slate-900 dark:text-white
+                                  px-3 py-2 text-sm
+                                  focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500/50
+                                  placeholder-slate-400 dark:placeholder-slate-500">
+                </div>
+
+                {{-- Live summary strip --}}
+                <div class="grid grid-cols-3 gap-2 rounded-xl bg-slate-50 dark:bg-slate-700/30 px-3 py-2.5">
+                    <div class="text-center">
+                        <p class="text-[10px] text-slate-400 dark:text-slate-500 font-medium mb-0.5">TW</p>
+                        <p class="text-sm font-bold text-purple-700 dark:text-purple-400" x-text="fmt(addFormTW())"></p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-[10px] text-slate-400 dark:text-slate-500 font-medium mb-0.5">C+W</p>
+                        <p class="text-sm font-bold text-cyan-700 dark:text-cyan-400" x-text="fmt(addFormCW())"></p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-[10px] text-slate-400 dark:text-slate-500 font-medium mb-0.5">Balance</p>
+                        <p class="text-sm font-bold"
+                           :class="addFormBalance() > 0
+                               ? 'text-red-600 dark:text-red-400'
+                               : addFormBalance() < 0
+                                   ? 'text-amber-600 dark:text-amber-400'
+                                   : 'text-emerald-600 dark:text-emerald-400'"
+                           x-text="fmt(Math.abs(addFormBalance()))"></p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Main form footer --}}
+            <div x-show="!addForm.cashOpen"
+                 class="border-t border-slate-100 dark:border-slate-700/60
+                        bg-slate-50 dark:bg-slate-900/40 px-5 py-4 flex gap-3">
+                <button type="button"
+                        @click="addForm.open = false"
+                        class="btn-action flex-1 rounded-xl border border-slate-300 dark:border-slate-600
+                               bg-white dark:bg-slate-800 py-2.5 text-sm font-medium
+                               text-slate-700 dark:text-slate-300
+                               hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                    Cancel
+                </button>
+                <button type="button"
+                        @click="submitAddForm()"
+                        :disabled="!addForm.assistantId"
+                        class="btn-action flex-[2] rounded-xl bg-indigo-600 hover:bg-indigo-700
+                               py-2.5 text-sm font-semibold text-white transition-colors
+                               disabled:opacity-40 disabled:cursor-not-allowed">
+                    Add to Table
+                </button>
+            </div>
+
+            {{-- ── CASH COUNTER PANEL (within the add form modal) ─────────── --}}
+            <div x-show="addForm.cashOpen" class="px-5 py-4 space-y-2.5">
+                @foreach([5000 => ['bg-purple-100 dark:bg-purple-900/30','text-purple-800 dark:text-purple-300'], 1000 => ['bg-blue-100 dark:bg-blue-900/30','text-blue-800 dark:text-blue-300'], 500 => ['bg-emerald-100 dark:bg-emerald-900/30','text-emerald-800 dark:text-emerald-300'], 100 => ['bg-yellow-100 dark:bg-yellow-900/30','text-yellow-800 dark:text-yellow-300'], 50 => ['bg-orange-100 dark:bg-orange-900/30','text-orange-800 dark:text-orange-300'], 20 => ['bg-slate-100 dark:bg-slate-700','text-slate-700 dark:text-slate-300'], 10 => ['bg-red-100 dark:bg-red-900/30','text-red-800 dark:text-red-300'], 5 => ['bg-pink-100 dark:bg-pink-900/30','text-pink-800 dark:text-pink-300']] as $denom => $cls)
+                <div class="flex items-center gap-3">
+                    <span class="w-20 flex-shrink-0 rounded-full {{ $cls[0] }} {{ $cls[1] }} px-3 py-1 text-center text-xs font-bold">
+                        Rs. {{ number_format($denom) }}
+                    </span>
+                    <span class="text-slate-400 dark:text-slate-500">×</span>
+                    <input type="number" min="0" step="1" placeholder="0"
+                           class="flex-1 rounded-xl border border-slate-200 dark:border-slate-700
+                                  bg-white dark:bg-slate-700/50 text-slate-900 dark:text-white
+                                  px-3 py-1.5 text-sm text-center font-medium
+                                  focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500/50"
+                           :value="addForm.denoms[{{ $denom }}]"
+                           @input="addForm.denoms[{{ $denom }}] = parseInt($event.target.value) || 0"
+                           @keydown.enter.prevent="addForm.cashOpen = false">
+                    <span class="w-24 flex-shrink-0 text-right text-sm font-semibold text-slate-700 dark:text-slate-300"
+                          x-text="'Rs. ' + ((addForm.denoms[{{ $denom }}]||0)*{{ $denom }}).toLocaleString()"></span>
+                </div>
+                @endforeach
+            </div>
+
+            {{-- Cash counter footer --}}
+            <div x-show="addForm.cashOpen"
+                 class="border-t border-slate-100 dark:border-slate-700/60
+                        bg-slate-50 dark:bg-slate-900/40 px-5 py-4">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-sm font-medium text-slate-600 dark:text-slate-400">Total Cash</span>
+                    <span class="text-2xl font-bold text-emerald-700 dark:text-emerald-400"
+                          x-text="'Rs. ' + fmt(addFormCashTotal())"></span>
+                </div>
+                <div class="flex gap-3">
+                    <button type="button"
+                            @click="addForm.cashOpen = false"
+                            class="btn-action flex-1 rounded-xl border border-slate-300 dark:border-slate-600
+                                   bg-white dark:bg-slate-800 py-2.5 text-sm font-medium
+                                   text-slate-700 dark:text-slate-300
+                                   hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                        ← Back
+                    </button>
+                    <button type="button"
+                            @click="addForm.denoms = { 5:0, 10:0, 20:0, 50:0, 100:0, 500:0, 1000:0, 5000:0 }"
+                            class="btn-action flex-1 rounded-xl border border-red-300 dark:border-red-600
+                                   bg-white dark:bg-slate-800 py-2.5 text-sm font-medium
+                                   text-red-600 dark:text-red-400
+                                   hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                        Reset
+                    </button>
+                    <button type="button"
+                            @click="addForm.cashOpen = false"
+                            class="btn-action flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700
+                                   py-2.5 text-sm font-semibold text-white transition-colors">
+                        Apply
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
 </div>{{-- /x-data --}}
 
 {{-- ══════════════════════════════════════════════════════════════════════
@@ -472,6 +752,19 @@ function salesGrid(initialRows, names) {
         cashModal: {
             open: false,
             assistantId: null,
+            denoms: { 5:0, 10:0, 20:0, 50:0, 100:0, 500:0, 1000:0, 5000:0 },
+        },
+        addForm: {
+            open:        false,
+            dropOpen:    false,
+            cashOpen:    false,
+            assistantId: '',
+            search:      '',
+            qty:         0,
+            unitPrice:   40,
+            nlbWinning:  0,
+            dlbWinning:  0,
+            remarks:     '',
             denoms: { 5:0, 10:0, 20:0, 50:0, 100:0, 500:0, 1000:0, 5000:0 },
         },
 
@@ -602,6 +895,76 @@ function salesGrid(initialRows, names) {
         },
         resetCash() {
             this.cashModal.denoms = { 5:0, 10:0, 20:0, 50:0, 100:0, 500:0, 1000:0, 5000:0 };
+        },
+
+        // ── Add Form ──────────────────────────────────────────────────────────
+        openAddForm() {
+            this.addForm = {
+                open:        true,
+                dropOpen:    false,
+                cashOpen:    false,
+                assistantId: '',
+                search:      '',
+                qty:         0,
+                unitPrice:   40,
+                nlbWinning:  0,
+                dlbWinning:  0,
+                remarks:     '',
+                denoms: { 5:0, 10:0, 20:0, 50:0, 100:0, 500:0, 1000:0, 5000:0 },
+            };
+        },
+        filteredAssistants() {
+            const q = (this.addForm.search || '').toLowerCase();
+            return Object.entries(this.names).filter(([, name]) =>
+                !q || name.toLowerCase().includes(q)
+            );
+        },
+        selectAssistant(id, name) {
+            this.addForm.assistantId = id;
+            this.addForm.search      = name;
+            this.addForm.dropOpen    = false;
+            // Pre-fill from the existing row so edits show current state
+            const r = this.rows[id];
+            if (r) {
+                this.addForm.qty        = r.qty        || 0;
+                this.addForm.unitPrice  = r.unitPrice  || 40;
+                this.addForm.nlbWinning = r.nlbWinning || 0;
+                this.addForm.dlbWinning = r.dlbWinning || 0;
+                this.addForm.remarks    = r.remarks    || '';
+                this.addForm.denoms = {
+                    5:    r.d5    || 0, 10:   r.d10   || 0,
+                    20:   r.d20   || 0, 50:   r.d50   || 0,
+                    100:  r.d100  || 0, 500:  r.d500  || 0,
+                    1000: r.d1000 || 0, 5000: r.d5000 || 0,
+                };
+            }
+        },
+        addFormCashTotal() {
+            const d = this.addForm.denoms;
+            return (d[5]||0)*5+(d[10]||0)*10+(d[20]||0)*20+(d[50]||0)*50
+                 + (d[100]||0)*100+(d[500]||0)*500+(d[1000]||0)*1000+(d[5000]||0)*5000;
+        },
+        addFormValue()   { return (this.addForm.qty||0) * (this.addForm.unitPrice||0); },
+        addFormTW()      { return (this.addForm.nlbWinning||0) + (this.addForm.dlbWinning||0); },
+        addFormCW()      { return this.addFormCashTotal() + this.addFormTW(); },
+        addFormBalance() { return this.addFormValue() - this.addFormCW(); },
+        submitAddForm() {
+            if (!this.addForm.assistantId || !this.rows[this.addForm.assistantId]) return;
+            const id = this.addForm.assistantId;
+            const d  = this.addForm.denoms;
+            Object.assign(this.rows[id], {
+                qty:        this.addForm.qty,
+                unitPrice:  this.addForm.unitPrice,
+                d5:    d[5]   ||0, d10:   d[10]  ||0,
+                d20:   d[20]  ||0, d50:   d[50]  ||0,
+                d100:  d[100] ||0, d500:  d[500] ||0,
+                d1000: d[1000]||0, d5000: d[5000]||0,
+                nlbWinning: this.addForm.nlbWinning,
+                dlbWinning: this.addForm.dlbWinning,
+                remarks:    this.addForm.remarks,
+            });
+            this.isDirty = true;
+            this.addForm.open = false;
         },
 
         // ── Formatters ────────────────────────────────────────────────────────
