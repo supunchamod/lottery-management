@@ -81,8 +81,7 @@ Route::middleware('auth')->group(function () {
     Route::get ('/lotteries',                [PageController::class, 'lotteriesIndex'])->name('lotteries.index');
     Route::get ('/lotteries/create',         [PageController::class, 'lotteriesCreate'])->name('lotteries.create');
     Route::post('/lotteries',                [PageController::class, 'lotteriesStore'])->name('lotteries.store');
-    Route::post('/lotteries/quick-create',  [PageController::class, 'lotteriesQuickCreate'])->name('lotteries.quick-create');
-    Route::get ('/lotteries/{lottery}/edit', [PageController::class, 'lotteriesEdit'])->name('lotteries.edit');
+Route::get ('/lotteries/{lottery}/edit', [PageController::class, 'lotteriesEdit'])->name('lotteries.edit');
     Route::put ('/lotteries/{lottery}',      [PageController::class, 'lotteriesUpdate'])->name('lotteries.update');
 
     // Stock
