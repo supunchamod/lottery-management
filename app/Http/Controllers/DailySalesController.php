@@ -18,7 +18,7 @@ class DailySalesController extends Controller
     public function index(Request $request)
     {
         $date       = $request->input('date', today()->toDateString());
-        $assistants = SalesAssistant::orderBy('name')->get();
+        $assistants = SalesAssistant::with('route')->orderByDesc('created_at')->get();
 
         // Load existing records for this date, keyed by assistant_id
         $records = DailySaleRecord::where('date', $date)

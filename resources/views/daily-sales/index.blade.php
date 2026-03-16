@@ -3,6 +3,56 @@
 @php
     $parsedDate     = \Carbon\Carbon::parse($date);
     $assistantNames = $assistants->pluck('name', 'id')->toArray();
+
+    // ── Route Color Map (matches Ticket Distribution screen) ─────────────────
+    $routeColorMap = [
+        'blue'   => [
+            'headerBg'    => 'bg-blue-200',   'headerText'   => 'text-blue-900',
+            'headerBgHex' => '#bfdbfe',
+            'rowBg'       => 'bg-blue-50',    'rowBgHex'     => '#eff6ff',
+            'rowHoverHex' => '#dbeafe',
+            'separator'   => 'border-blue-200',
+        ],
+        'green'  => [
+            'headerBg'    => 'bg-green-200',  'headerText'   => 'text-green-900',
+            'headerBgHex' => '#bbf7d0',
+            'rowBg'       => 'bg-green-50',   'rowBgHex'     => '#f0fdf4',
+            'rowHoverHex' => '#dcfce7',
+            'separator'   => 'border-green-200',
+        ],
+        'yellow' => [
+            'headerBg'    => 'bg-yellow-200', 'headerText'   => 'text-yellow-900',
+            'headerBgHex' => '#fef08a',
+            'rowBg'       => 'bg-yellow-50',  'rowBgHex'     => '#fefce8',
+            'rowHoverHex' => '#fef9c3',
+            'separator'   => 'border-yellow-200',
+        ],
+        'pink'   => [
+            'headerBg'    => 'bg-pink-200',   'headerText'   => 'text-pink-900',
+            'headerBgHex' => '#fbcfe8',
+            'rowBg'       => 'bg-pink-50',    'rowBgHex'     => '#fdf2f8',
+            'rowHoverHex' => '#fce7f3',
+            'separator'   => 'border-pink-200',
+        ],
+    ];
+    $defaultRouteColor = [
+        'headerBg'    => 'bg-gray-100',   'headerText'   => 'text-gray-500',
+        'headerBgHex' => '#f3f4f6',
+        'rowBg'       => 'bg-white',      'rowBgHex'     => '#ffffff',
+        'rowHoverHex' => '#eff6ff',
+        'separator'   => 'border-gray-100',
+    ];
+
+    // Group assistants by route; sort named routes alpha, unassigned last.
+    // Within each group the controller already ordered by created_at DESC.
+    $routeGroups = $assistants
+        ->groupBy(fn ($a) => $a->route_id ?? 'unassigned')
+        ->map(fn ($group) => [
+            'route'      => $group->first()->route,
+            'assistants' => $group,
+        ])
+        ->sortBy(fn ($g) => $g['route']?->name ?? 'ZZZZZ')
+        ->values();
 @endphp
 
 {{-- ══════════════════════════════════════════════════════════════════════
@@ -216,22 +266,47 @@
                     </tr>
                 </thead>
 
-                <tbody class="divide-y divide-slate-100 dark:divide-slate-700/40">
-                    @foreach($assistants as $i => $a)
-                    @php $aid = $a->id; @endphp
-                    <tr class="{{ $i % 2 === 0
-                                    ? 'bg-white dark:bg-slate-800/40'
-                                    : 'bg-slate-50/50 dark:bg-slate-800/70' }}"
+                <tbody>
+                    @php $rowIndex = 0; @endphp
+                    @foreach($routeGroups as $routeGroup)
+                    @php
+                        $route       = $routeGroup['route'];
+                        $colors      = $routeColorMap[$route?->color_code ?? ''] ?? $defaultRouteColor;
+                    @endphp
+
+                    {{-- ── Route Group Header ──────────────────────────────── --}}
+                    <tr class="border-t-2 border-slate-300 dark:border-slate-600">
+                        <td class="sticky left-0 z-10 px-3 py-1.5 font-bold text-[11px] uppercase tracking-widest
+                                   {{ $colors['headerText'] }} border-r border-slate-300 dark:border-slate-600"
+                            style="background: {{ $colors['headerBgHex'] }};">
+                            {{ $route?->name ?? 'Unassigned' }}
+                            <span class="ml-1.5 font-normal opacity-60 normal-case tracking-normal">
+                                {{ $routeGroup['assistants']->count() }}
+                            </span>
+                        </td>
+                        <td colspan="10" class="{{ $colors['headerBg'] }}"></td>
+                    </tr>
+
+                    {{-- ── Assistant Rows ───────────────────────────────────── --}}
+                    @foreach($routeGroup['assistants'] as $a)
+                    @php
+                        $aid         = $a->id;
+                        $ri          = $rowIndex++;
+                        $rowBgHex    = $colors['rowBgHex'];
+                        $rowHoverHex = $colors['rowHoverHex'];
+                    @endphp
+                    <tr class="{{ $colors['rowBg'] }} border-b {{ $colors['separator'] }} dark:border-slate-700/40"
                         :class="activeRow === {{ $aid }} ? 'ring-1 ring-inset ring-indigo-300 dark:ring-indigo-500/40 !bg-indigo-50 dark:!bg-indigo-900/20' : ''"
                         @mouseenter="activeRow = {{ $aid }}"
                         @mouseleave="activeRow = null">
 
                         {{-- Sticky name cell --}}
                         <td class="sticky left-0 z-10 px-3 py-1.5 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap border-r border-slate-200 dark:border-slate-700/40"
+                            style="background: {{ $rowBgHex }}"
                             :style="activeRow === {{ $aid }}
-                                ? (document.documentElement.classList.contains('dark') ? 'background:rgba(99,102,241,0.15)' : 'background:#eff6ff')
-                                : '{{ $i % 2 === 0 ? '' : '' }}'">
-                            <span class="mr-1 text-slate-400 dark:text-slate-500 text-[11px]">{{ $i + 1 }}</span>
+                                ? (document.documentElement.classList.contains('dark') ? 'background:rgba(99,102,241,0.15)' : 'background:{{ $rowHoverHex }}')
+                                : 'background:{{ $rowBgHex }}'">
+                            <span class="mr-1 text-slate-400 dark:text-slate-500 text-[11px]">{{ $ri + 1 }}</span>
                             {{ $a->name }}
                         </td>
 
@@ -322,6 +397,7 @@
                                    placeholder="Notes…">
                         </td>
                     </tr>
+                    @endforeach
                     @endforeach
 
                     {{-- Bottom totals row --}}
