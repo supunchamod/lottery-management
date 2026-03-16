@@ -225,44 +225,44 @@
                 {{-- Sticky column headers --}}
                 <thead class="sticky top-0 z-20">
                     <tr style="background:#0f172a;">
-                        <th class="sticky left-0 z-20 px-3 py-3 text-left text-white font-medium whitespace-nowrap border-r border-slate-700"
+                        <th class="sticky left-0 z-20 px-3 py-3 text-left text-white font-medium whitespace-nowrap border-x border-slate-600"
                             style="background:#0f172a; min-width:150px;">#&nbsp; Name</th>
-                        <th class="px-2 py-3 text-center text-indigo-300 font-medium whitespace-nowrap" style="min-width:68px;">Amount</th>
-                        <th class="px-2 py-3 text-center text-blue-200 font-medium whitespace-nowrap" style="min-width:60px;">Unit<br>Price</th>
-                        <th class="px-2 py-3 text-center text-yellow-300 font-medium whitespace-nowrap" style="min-width:72px;">
+                        <th class="px-2 py-3 text-center text-indigo-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:68px;">Amount</th>
+                        <th class="px-2 py-3 text-center text-blue-200 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:60px;">Unit<br>Price</th>
+                        <th class="px-2 py-3 text-center text-yellow-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:72px;">
                             Value<br><span class="text-slate-500 font-normal" style="font-size:10px;">auto</span>
                         </th>
-                        <th class="px-2 py-3 text-center text-emerald-300 font-medium whitespace-nowrap" style="min-width:80px;">
+                        <th class="px-2 py-3 text-center text-emerald-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:80px;">
                             Cash<br><span class="text-slate-500 font-normal" style="font-size:10px;">click to count</span>
                         </th>
-                        <th class="px-2 py-3 text-center text-violet-300 font-medium whitespace-nowrap" style="min-width:66px;">NLB<br>Winning</th>
-                        <th class="px-2 py-3 text-center text-violet-300 font-medium whitespace-nowrap" style="min-width:66px;">DLB<br>Winning</th>
-                        <th class="px-2 py-3 text-center text-purple-300 font-medium whitespace-nowrap" style="min-width:62px;">
+                        <th class="px-2 py-3 text-center text-violet-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:66px;">NLB<br>Winning</th>
+                        <th class="px-2 py-3 text-center text-violet-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:66px;">DLB<br>Winning</th>
+                        <th class="px-2 py-3 text-center text-purple-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:62px;">
                             TW<br><span class="text-slate-500 font-normal" style="font-size:10px;">auto</span>
                         </th>
-                        <th class="px-2 py-3 text-center text-cyan-300 font-medium whitespace-nowrap" style="min-width:62px;">
+                        <th class="px-2 py-3 text-center text-cyan-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:62px;">
                             C+W<br><span class="text-slate-500 font-normal" style="font-size:10px;">auto</span>
                         </th>
-                        <th class="px-2 py-3 text-center text-red-300 font-medium whitespace-nowrap" style="min-width:90px;">
+                        <th class="px-2 py-3 text-center text-red-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:90px;">
                             Status<br><span class="text-slate-500 font-normal" style="font-size:10px;">Balance</span>
                         </th>
-                        <th class="px-2 py-3 text-center text-slate-300 font-medium whitespace-nowrap" style="min-width:130px;">Remarks</th>
+                        <th class="px-2 py-3 text-center text-slate-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:130px;">Remarks</th>
                     </tr>
 
                     {{-- Totals row --}}
                     <tr style="background:#1e293b;" class="border-b-2 border-slate-600">
-                        <td class="sticky left-0 z-20 px-3 py-2 text-slate-300 font-semibold text-[11px] border-r border-slate-600"
+                        <td class="sticky left-0 z-20 px-3 py-2 text-slate-300 font-semibold text-[11px] border-x border-slate-600"
                             style="background:#1e293b;">Totals ↓</td>
-                        <td class="px-2 py-2 text-center text-slate-200 font-bold" x-text="fmtInt(totalQty())"></td>
-                        <td class="px-2 py-2 text-center text-slate-500">—</td>
-                        <td class="px-2 py-2 text-center text-yellow-300 font-bold"  x-text="fmt(totalValue())"></td>
-                        <td class="px-2 py-2 text-center text-emerald-300 font-bold" x-text="fmt(totalCash())"></td>
-                        <td class="px-2 py-2 text-center text-violet-300 font-bold"  x-text="fmt(totalNlb())"></td>
-                        <td class="px-2 py-2 text-center text-violet-300 font-bold"  x-text="fmt(totalDlb())"></td>
-                        <td class="px-2 py-2 text-center text-purple-300 font-bold"  x-text="fmt(totalWinning())"></td>
-                        <td class="px-2 py-2 text-center text-cyan-300 font-bold"    x-text="fmt(totalCW())"></td>
-                        <td class="px-2 py-2 text-center text-red-300 font-bold"     x-text="fmt(Math.abs(totalBalance()))"></td>
-                        <td></td>
+                        <td class="px-2 py-2 text-center text-slate-200 font-bold border-x border-slate-600" x-text="fmtInt(totalQty())"></td>
+                        <td class="px-2 py-2 text-center text-slate-500 border-x border-slate-600">—</td>
+                        <td class="px-2 py-2 text-center text-yellow-300 font-bold border-x border-slate-600"  x-text="fmt(totalValue())"></td>
+                        <td class="px-2 py-2 text-center text-emerald-300 font-bold border-x border-slate-600" x-text="fmt(totalCash())"></td>
+                        <td class="px-2 py-2 text-center text-violet-300 font-bold border-x border-slate-600"  x-text="fmt(totalNlb())"></td>
+                        <td class="px-2 py-2 text-center text-violet-300 font-bold border-x border-slate-600"  x-text="fmt(totalDlb())"></td>
+                        <td class="px-2 py-2 text-center text-purple-300 font-bold border-x border-slate-600"  x-text="fmt(totalWinning())"></td>
+                        <td class="px-2 py-2 text-center text-cyan-300 font-bold border-x border-slate-600"    x-text="fmt(totalCW())"></td>
+                        <td class="px-2 py-2 text-center text-red-300 font-bold border-x border-slate-600"     x-text="fmt(Math.abs(totalBalance()))"></td>
+                        <td class="border-x border-slate-600"></td>
                     </tr>
                 </thead>
 
@@ -277,14 +277,14 @@
                     {{-- ── Route Group Header ──────────────────────────────── --}}
                     <tr class="border-t-2 border-slate-300 dark:border-slate-600">
                         <td class="sticky left-0 z-10 px-3 py-1.5 font-bold text-[11px] uppercase tracking-widest
-                                   {{ $colors['headerText'] }} border-r border-slate-300 dark:border-slate-600"
+                                   {{ $colors['headerText'] }} border-x border-gray-300 dark:border-slate-600"
                             style="background: {{ $colors['headerBgHex'] }};">
                             {{ $route?->name ?? 'Unassigned' }}
                             <span class="ml-1.5 font-normal opacity-60 normal-case tracking-normal">
                                 {{ $routeGroup['assistants']->count() }}
                             </span>
                         </td>
-                        <td colspan="10" class="{{ $colors['headerBg'] }}"></td>
+                        <td colspan="10" class="{{ $colors['headerBg'] }} border-x border-gray-300 dark:border-slate-600"></td>
                     </tr>
 
                     {{-- ── Assistant Rows ───────────────────────────────────── --}}
@@ -301,7 +301,7 @@
                         @mouseleave="activeRow = null">
 
                         {{-- Sticky name cell --}}
-                        <td class="sticky left-0 z-10 px-3 py-1.5 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap border-r border-slate-200 dark:border-slate-700/40"
+                        <td class="sticky left-0 z-10 px-3 py-1.5 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap border-x border-gray-200 dark:border-slate-700/40"
                             style="background: {{ $rowBgHex }}"
                             :style="activeRow === {{ $aid }}
                                 ? (document.documentElement.classList.contains('dark') ? 'background:rgba(99,102,241,0.15)' : 'background:{{ $rowHoverHex }}')
@@ -311,7 +311,7 @@
                         </td>
 
                         {{-- Amount --}}
-                        <td class="p-0">
+                        <td class="p-0 border-x border-gray-200 dark:border-slate-700/40">
                             <input type="number" min="0" step="1"
                                    class="ds-cell w-full h-8 px-1 text-center text-xs border-0 bg-transparent outline-none text-slate-800 dark:text-slate-200"
                                    :value="rows[{{ $aid }}].qty || ''"
@@ -319,7 +319,7 @@
                         </td>
 
                         {{-- Unit Price --}}
-                        <td class="p-0">
+                        <td class="p-0 border-x border-gray-200 dark:border-slate-700/40">
                             <input type="number" min="0" step="0.01"
                                    class="ds-cell w-full h-8 px-1 text-center text-xs border-0 bg-transparent outline-none text-slate-800 dark:text-slate-200"
                                    :value="rows[{{ $aid }}].unitPrice"
@@ -327,11 +327,11 @@
                         </td>
 
                         {{-- Value (auto) --}}
-                        <td class="px-2 py-1.5 text-center font-semibold text-yellow-700 dark:text-yellow-400 bg-yellow-50/50 dark:bg-yellow-900/10"
+                        <td class="px-2 py-1.5 text-center font-semibold text-yellow-700 dark:text-yellow-400 bg-yellow-50/50 dark:bg-yellow-900/10 border-x border-gray-200 dark:border-slate-700/40"
                             x-text="fmt(value({{ $aid }}))"></td>
 
                         {{-- Cash (opens modal) --}}
-                        <td class="p-0">
+                        <td class="p-0 border-x border-gray-200 dark:border-slate-700/40">
                             <button type="button"
                                     class="btn-action w-full h-8 px-2 text-center text-xs font-semibold
                                            text-emerald-700 dark:text-emerald-400
@@ -343,7 +343,7 @@
                         </td>
 
                         {{-- NLB Winning --}}
-                        <td class="p-0">
+                        <td class="p-0 border-x border-gray-200 dark:border-slate-700/40">
                             <input type="number" min="0" step="0.01"
                                    class="ds-cell w-full h-8 px-1 text-center text-xs border-0 bg-transparent outline-none text-slate-800 dark:text-slate-200"
                                    :value="rows[{{ $aid }}].nlbWinning || ''"
@@ -351,7 +351,7 @@
                         </td>
 
                         {{-- DLB Winning --}}
-                        <td class="p-0">
+                        <td class="p-0 border-x border-gray-200 dark:border-slate-700/40">
                             <input type="number" min="0" step="0.01"
                                    class="ds-cell w-full h-8 px-1 text-center text-xs border-0 bg-transparent outline-none text-slate-800 dark:text-slate-200"
                                    :value="rows[{{ $aid }}].dlbWinning || ''"
@@ -359,15 +359,15 @@
                         </td>
 
                         {{-- TW (auto) --}}
-                        <td class="px-2 py-1.5 text-center text-purple-700 dark:text-purple-400 font-medium bg-purple-50/30 dark:bg-purple-900/10"
+                        <td class="px-2 py-1.5 text-center text-purple-700 dark:text-purple-400 font-medium bg-purple-50/30 dark:bg-purple-900/10 border-x border-gray-200 dark:border-slate-700/40"
                             x-text="fmt(tw({{ $aid }}))"></td>
 
                         {{-- C+W (auto) --}}
-                        <td class="px-2 py-1.5 text-center text-cyan-700 dark:text-cyan-400 font-semibold bg-cyan-50/30 dark:bg-cyan-900/10"
+                        <td class="px-2 py-1.5 text-center text-cyan-700 dark:text-cyan-400 font-semibold bg-cyan-50/30 dark:bg-cyan-900/10 border-x border-gray-200 dark:border-slate-700/40"
                             x-text="fmt(cw({{ $aid }}))"></td>
 
                         {{-- Status --}}
-                        <td class="px-1 py-1.5 text-center">
+                        <td class="px-1 py-1.5 text-center border-x border-gray-200 dark:border-slate-700/40">
                             <template x-if="balance({{ $aid }}) > 0">
                                 <div class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 px-1.5 py-0.5 text-center">
                                     <p class="text-[9px] font-bold text-red-500 dark:text-red-400 uppercase">Outstanding</p>
@@ -389,7 +389,7 @@
                         </td>
 
                         {{-- Remarks --}}
-                        <td class="p-0">
+                        <td class="p-0 border-x border-gray-200 dark:border-slate-700/40">
                             <input type="text"
                                    class="ds-cell w-full h-8 px-2 text-xs border-0 bg-transparent outline-none text-slate-700 dark:text-slate-300 placeholder-slate-400 dark:placeholder-slate-600"
                                    :value="rows[{{ $aid }}].remarks"
@@ -402,20 +402,20 @@
 
                     {{-- Bottom totals row --}}
                     <tr class="border-t-2 border-slate-200 dark:border-slate-600 font-bold bg-slate-50 dark:bg-slate-700/40">
-                        <td class="sticky left-0 z-10 px-3 py-2.5 text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-600"
+                        <td class="sticky left-0 z-10 px-3 py-2.5 text-slate-700 dark:text-slate-300 border-x border-gray-200 dark:border-slate-600"
                             style="background:inherit;">Totals ↑</td>
-                        <td class="px-2 py-2.5 text-center text-slate-900 dark:text-white" x-text="fmtInt(totalQty())"></td>
-                        <td class="px-2 py-2.5 text-center text-slate-400 dark:text-slate-500">—</td>
-                        <td class="px-2 py-2.5 text-center text-yellow-700 dark:text-yellow-400 font-bold" x-text="fmt(totalValue())"></td>
-                        <td class="px-2 py-2.5 text-center text-emerald-700 dark:text-emerald-400 font-bold" x-text="fmt(totalCash())"></td>
-                        <td class="px-2 py-2.5 text-center text-violet-700 dark:text-violet-400" x-text="fmt(totalNlb())"></td>
-                        <td class="px-2 py-2.5 text-center text-violet-700 dark:text-violet-400" x-text="fmt(totalDlb())"></td>
-                        <td class="px-2 py-2.5 text-center text-purple-700 dark:text-purple-400 font-bold" x-text="fmt(totalWinning())"></td>
-                        <td class="px-2 py-2.5 text-center text-cyan-700 dark:text-cyan-400 font-bold" x-text="fmt(totalCW())"></td>
-                        <td class="px-2 py-2.5 text-center font-bold"
+                        <td class="px-2 py-2.5 text-center text-slate-900 dark:text-white border-x border-gray-200 dark:border-slate-600" x-text="fmtInt(totalQty())"></td>
+                        <td class="px-2 py-2.5 text-center text-slate-400 dark:text-slate-500 border-x border-gray-200 dark:border-slate-600">—</td>
+                        <td class="px-2 py-2.5 text-center text-yellow-700 dark:text-yellow-400 font-bold border-x border-gray-200 dark:border-slate-600" x-text="fmt(totalValue())"></td>
+                        <td class="px-2 py-2.5 text-center text-emerald-700 dark:text-emerald-400 font-bold border-x border-gray-200 dark:border-slate-600" x-text="fmt(totalCash())"></td>
+                        <td class="px-2 py-2.5 text-center text-violet-700 dark:text-violet-400 border-x border-gray-200 dark:border-slate-600" x-text="fmt(totalNlb())"></td>
+                        <td class="px-2 py-2.5 text-center text-violet-700 dark:text-violet-400 border-x border-gray-200 dark:border-slate-600" x-text="fmt(totalDlb())"></td>
+                        <td class="px-2 py-2.5 text-center text-purple-700 dark:text-purple-400 font-bold border-x border-gray-200 dark:border-slate-600" x-text="fmt(totalWinning())"></td>
+                        <td class="px-2 py-2.5 text-center text-cyan-700 dark:text-cyan-400 font-bold border-x border-gray-200 dark:border-slate-600" x-text="fmt(totalCW())"></td>
+                        <td class="px-2 py-2.5 text-center font-bold border-x border-gray-200 dark:border-slate-600"
                             :class="totalBalance() > 0 ? 'text-red-700 dark:text-red-400' : (totalBalance() < 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400')"
                             x-text="fmt(Math.abs(totalBalance()))"></td>
-                        <td></td>
+                        <td class="border-x border-gray-200 dark:border-slate-600"></td>
                     </tr>
                 </tbody>
             </table>

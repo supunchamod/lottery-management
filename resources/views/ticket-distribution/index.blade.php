@@ -424,12 +424,12 @@
 
                 <thead>
                     <tr style="background:#0f172a;">
-                        <th class="sticky left-0 z-20 px-3 py-3 text-left text-white font-medium whitespace-nowrap border-r border-slate-700"
+                        <th class="sticky left-0 z-20 px-3 py-3 text-left text-white font-medium whitespace-nowrap border-x border-slate-600"
                             style="background:#0f172a; min-width:150px;">
                             # &nbsp; Assistant
                         </th>
                         @foreach($lotteries as $l)
-                            <th class="px-2 py-3 text-center font-medium whitespace-nowrap
+                            <th class="px-2 py-3 text-center font-medium whitespace-nowrap border-x border-slate-600
                                        {{ $l->board === 'NLB' ? 'text-blue-300' : 'text-orange-300' }}"
                                 style="min-width:62px;">
                                 {{ $l->name }}
@@ -438,14 +438,14 @@
                                 </span>
                             </th>
                         @endforeach
-                        <th class="px-3 py-3 text-center text-yellow-300 font-semibold whitespace-nowrap">
+                        <th class="px-3 py-3 text-center text-yellow-300 font-semibold whitespace-nowrap border-x border-slate-600">
                             Total
                         </th>
                     </tr>
 
                     {{-- ── Board Received Qty row (Adjustment Mode only) ── --}}
                     <tr x-show="adjustMode" style="background:#fffbeb; border-bottom: 2px solid #fcd34d;">
-                        <td class="sticky left-0 z-20 px-3 py-2 font-semibold text-[11px] border-r border-amber-300 whitespace-nowrap"
+                        <td class="sticky left-0 z-20 px-3 py-2 font-semibold text-[11px] border-x border-amber-300 whitespace-nowrap"
                             style="background:#fffbeb; color:#92400e;">
                             <div class="flex items-center gap-1.5">
                                 <svg class="h-3.5 w-3.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -455,7 +455,7 @@
                             </div>
                         </td>
                         @foreach($lotteries as $l)
-                            <td class="px-1 py-1.5 text-center col-cell-transition"
+                            <td class="px-1 py-1.5 text-center col-cell-transition border-x border-amber-300"
                                 :class="isMismatch({{ $l->id }}) ? 'bg-red-50' : ''">
                                 <input type="number" min="0" step="1"
                                        x-model="boardQty[{{ $l->id }}]"
@@ -466,22 +466,22 @@
                                        placeholder="—">
                             </td>
                         @endforeach
-                        <td class="px-3 py-1.5 text-center text-xs font-bold text-amber-700">
+                        <td class="px-3 py-1.5 text-center text-xs font-bold text-amber-700 border-x border-amber-300">
                             <span x-text="boardGrandTotal().toLocaleString() || '—'"></span>
                         </td>
                     </tr>
 
                     <tr class="border-b-2 border-slate-600" style="background:#1e293b;">
-                        <td class="sticky left-0 z-20 px-3 py-2 text-slate-300 font-semibold text-[11px] border-r border-slate-600"
+                        <td class="sticky left-0 z-20 px-3 py-2 text-slate-300 font-semibold text-[11px] border-x border-slate-600"
                             style="background:#1e293b;">Column Total ↓</td>
                         @foreach($lotteries as $l)
-                            <td class="px-2 py-2 text-center font-bold col-total-cell"
+                            <td class="px-2 py-2 text-center font-bold col-total-cell border-x border-slate-600"
                                 :class="isMismatch({{ $l->id }})
                                     ? 'text-red-300 border-x-2 border-t-2 border-red-500 mismatch-pulse'
                                     : 'text-slate-100'"
                                 x-text="colTotal({{ $l->id }}).toLocaleString()"></td>
                         @endforeach
-                        <td class="px-3 py-2 text-center text-yellow-300 font-bold"
+                        <td class="px-3 py-2 text-center text-yellow-300 font-bold border-x border-slate-600"
                             x-text="grandTotal().toLocaleString()"></td>
                     </tr>
                 </thead>
@@ -497,7 +497,7 @@
                         {{-- ── Route Group Header Row ──────────────────────── --}}
                         <tr class="border-t-2 border-gray-300">
                             <td class="sticky left-0 z-10 px-3 py-1.5 font-bold text-[11px] uppercase tracking-widest
-                                       {{ $colors['headerText'] }} border-r border-gray-300"
+                                       {{ $colors['headerText'] }} border-x border-gray-300"
                                 style="background: {{ $colors['headerBgHex'] }};">
                                 {{ $route?->name ?? 'Unassigned' }}
                                 <span class="ml-1.5 font-normal opacity-60 normal-case tracking-normal">
@@ -505,7 +505,7 @@
                                 </span>
                             </td>
                             <td colspan="{{ count($lotteries) + 1 }}"
-                                class="{{ $colors['headerBg'] }}"></td>
+                                class="{{ $colors['headerBg'] }} border-x border-gray-300"></td>
                         </tr>
 
                         {{-- ── Assistant Rows ──────────────────────────────── --}}
@@ -524,7 +524,7 @@
                                 @mouseenter="hoveredRow = {{ $a->id }}"
                                 @mouseleave="hoveredRow = null">
 
-                                <td class="sticky left-0 z-10 px-3 py-1.5 font-medium text-gray-700 whitespace-nowrap border-r border-gray-200"
+                                <td class="sticky left-0 z-10 px-3 py-1.5 font-medium text-gray-700 whitespace-nowrap border-x border-gray-200"
                                     style="background: {{ $rowBgHex }}"
                                     x-bind:style="isLocked({{ $a->id }}) ? 'background:#fffbeb' : (hoveredRow === {{ $a->id }} ? 'background:{{ $rowHoverHex }}' : 'background:{{ $rowBgHex }}')">
                                     <div class="flex items-center gap-1.5">
@@ -550,7 +550,7 @@
                                 </td>
 
                                 @foreach($lotteries as $j => $l)
-                                    <td class="p-0 relative col-cell-transition"
+                                    <td class="p-0 relative col-cell-transition border-x border-gray-200"
                                         x-bind:class="{
                                             'bg-blue-50':   hoveredCol === {{ $l->id }} && !isAdjusted({{ $a->id }}, {{ $l->id }}) && !isMismatch({{ $l->id }}),
                                             'bg-amber-100': isAdjusted({{ $a->id }}, {{ $l->id }}) && !isMismatch({{ $l->id }}),
@@ -574,7 +574,7 @@
                                     </td>
                                 @endforeach
 
-                                <td class="px-3 py-1.5 text-center font-bold"
+                                <td class="px-3 py-1.5 text-center font-bold border-x border-gray-200"
                                     x-bind:class="rowTotal({{ $a->id }}) > 0 ? 'text-blue-700' : 'text-gray-300'"
                                     x-text="rowTotal({{ $a->id }}).toLocaleString()"></td>
                             </tr>
@@ -582,16 +582,16 @@
                     @endforeach
 
                     <tr class="border-t-2 border-gray-300 font-bold" style="background:#f1f5f9;">
-                        <td class="sticky left-0 z-10 px-3 py-2.5 text-gray-700 border-r border-gray-200"
+                        <td class="sticky left-0 z-10 px-3 py-2.5 text-gray-700 border-x border-gray-200"
                             style="background:#f1f5f9;">Column Total ↑</td>
                         @foreach($lotteries as $l)
-                            <td class="px-2 py-2.5 text-center col-cell-transition"
+                            <td class="px-2 py-2.5 text-center col-cell-transition border-x border-gray-200"
                                 :class="isMismatch({{ $l->id }})
                                     ? 'text-red-600 bg-red-50 border-x-2 border-b-2 border-red-500 font-bold'
                                     : 'text-gray-900'"
                                 x-text="colTotal({{ $l->id }}).toLocaleString()"></td>
                         @endforeach
-                        <td class="px-3 py-2.5 text-center text-blue-700"
+                        <td class="px-3 py-2.5 text-center text-blue-700 border-x border-gray-200"
                             x-text="grandTotal().toLocaleString()"></td>
                     </tr>
                 </tbody>
