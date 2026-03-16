@@ -376,6 +376,18 @@
                 <span class="rounded-full bg-gray-100 px-3 py-0.5 text-xs font-bold text-gray-600">
                     Grand Total: <span x-text="grandTotal().toLocaleString()" class="text-blue-700"></span>
                 </span>
+
+                {{-- Edit lock badge --}}
+                <span class="flex items-center gap-1.5 rounded-full px-3 py-0.5 text-xs font-bold cursor-default select-none"
+                      :class="editLocked ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'">
+                    <svg x-show="editLocked" class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"/>
+                    </svg>
+                    <svg x-show="!editLocked" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
+                    </svg>
+                    <span x-text="editLocked ? (successCount === 1 ? '1 of 2 verified' : 'Locked') : 'Unlocked'"></span>
+                </span>
             </div>
 
             <div class="flex items-center gap-3">
@@ -599,6 +611,45 @@
         </div>
 
     </form>
+
+    {{-- ── Password Modal ──────────────────────────────────────────────────── --}}
+    <div x-show="pwModal.open"
+         class="fixed inset-0 z-[60] flex items-center justify-center print:hidden"
+         style="display:none;">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="cancelPassword()"></div>
+        <div class="relative z-10 w-full max-w-sm mx-4 rounded-2xl bg-white shadow-2xl p-6"
+             x-effect="if (pwModal.open) $nextTick(() => { const i = $el.querySelector('input[type=password]'); if (i) i.focus(); })">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 shrink-0">
+                    <svg class="h-5 w-5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-semibold text-gray-900">Table is Locked</h3>
+                    <p class="text-xs text-gray-500"
+                       x-text="successCount === 0 ? 'Enter password to make your 1st edit.' : 'Enter password to confirm your 2nd edit.'"></p>
+                </div>
+            </div>
+            <input type="password"
+                   x-model="pwModal.input"
+                   @keydown.enter="submitPassword()"
+                   @keydown.escape.prevent="cancelPassword()"
+                   placeholder="Enter password"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 mb-1">
+            <p x-show="pwModal.error" x-text="pwModal.error" class="text-xs text-red-600 min-h-[1rem] mb-1"></p>
+            <div class="flex gap-2 mt-3">
+                <button type="button" @click="cancelPassword()"
+                        class="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition">
+                    Cancel
+                </button>
+                <button type="button" @click="submitPassword()"
+                        class="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition">
+                    Unlock
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 {{-- Legend --}}
@@ -711,6 +762,11 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
         boardQty:       {},   // { [lotteryId]: raw input value }
         adjustedCells:  {},   // { [aId]: { [lId]: true } }
         lockedRows:     {},   // { [aId]: true }
+
+        // ── Edit Lock ──────────────────────────────────────────────────────
+        editLocked:   true,
+        successCount: 0,
+        pwModal:      { open: false, pendingCallback: null, input: '', error: '' },
 
         // ── Lifecycle ──────────────────────────────────────────────────────
         init() {
@@ -857,11 +913,44 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
 
         onCellInput(aId, lId, rawValue) {
             const qty = parseInt(rawValue) || 0;
-            if (!this.grid[aId]) this.grid[aId] = {};
-            this.grid[aId][lId] = qty;
-            this.isDirty = true;
-            // Clear adjustment highlight when user manually edits the cell
-            if (this.adjustedCells[aId]) delete this.adjustedCells[aId][lId];
+            this.requireUnlock(() => {
+                if (!this.grid[aId]) this.grid[aId] = {};
+                this.grid[aId][lId] = qty;
+                this.isDirty = true;
+                // Clear adjustment highlight when user manually edits the cell
+                if (this.adjustedCells[aId]) delete this.adjustedCells[aId][lId];
+            });
+        },
+
+        // ── Edit Lock methods ──────────────────────────────────────────────
+        requireUnlock(cb) {
+            if (!this.editLocked) { cb(); return; }
+            this.pwModal.input = '';
+            this.pwModal.error = '';
+            this.pwModal.pendingCallback = cb;
+            this.pwModal.open = true;
+        },
+        submitPassword() {
+            const EDIT_PASSWORD = '{{ env("TABLE_EDIT_PASSWORD", "admin123") }}';
+            if (this.pwModal.input === EDIT_PASSWORD) {
+                this.successCount++;
+                if (this.successCount >= 2) this.editLocked = false;
+                const cb = this.pwModal.pendingCallback;
+                this.pwModal.open = false;
+                this.pwModal.input = '';
+                this.pwModal.error = '';
+                this.pwModal.pendingCallback = null;
+                if (cb) cb();
+            } else {
+                this.pwModal.error = 'Incorrect password. Please try again.';
+                this.pwModal.input = '';
+            }
+        },
+        cancelPassword() {
+            this.pwModal.open = false;
+            this.pwModal.input = '';
+            this.pwModal.error = '';
+            this.pwModal.pendingCallback = null;
         },
 
         clearGrid() {

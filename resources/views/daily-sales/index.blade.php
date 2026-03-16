@@ -136,7 +136,7 @@
 
 {{-- Alpine.js — Sales Grid + Cash Counter Modal ──────────────────────────── --}}
 <div x-data="salesGrid({{ json_encode($alpineRows) }}, {{ json_encode($assistantNames) }})"
-     @keydown.escape.window="addForm.cashOpen ? (addForm.cashOpen = false) : addForm.open ? (addForm.open = false) : (cashModal.open = false)">
+     @keydown.escape.window="pwModal.open ? cancelPassword() : (addForm.cashOpen ? (addForm.cashOpen = false) : addForm.open ? (addForm.open = false) : (cashModal.open = false))">
 
     {{-- ── Live Day Summary Tiles ──────────────────────────────────────────── --}}
     <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
@@ -165,8 +165,7 @@
 
     {{-- ── Form ─────────────────────────────────────────────────────────────── --}}
     <form id="sales-form" method="POST" action="{{ route('daily-sales.store') }}"
-          @submit="isDirty = false"
-          @input="isDirty = true">
+          @submit="isDirty = false">
         @csrf
         <input type="hidden" name="date" value="{{ $date }}">
 
@@ -194,8 +193,21 @@
                 {{ $parsedDate->format('Y-m-d') }} — {{ $parsedDate->format('l') }}
             </span>
             <div class="flex items-center gap-2">
+
+                {{-- Edit lock badge --}}
+                <span class="flex items-center gap-1.5 rounded-full px-3 py-0.5 text-xs font-bold cursor-default select-none"
+                      :class="editLocked ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'">
+                    <svg x-show="editLocked" class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"/>
+                    </svg>
+                    <svg x-show="!editLocked" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
+                    </svg>
+                    <span x-text="editLocked ? (successCount === 1 ? '1 of 2 verified' : 'Locked') : 'Unlocked'"></span>
+                </span>
+
                 <button type="button"
-                        @click="openAddForm()"
+                        @click="requireUnlock(() => openAddForm())"
                         class="btn-action inline-flex items-center gap-2 rounded-xl border border-indigo-300 dark:border-indigo-700
                                bg-white dark:bg-slate-800
                                px-4 py-2 text-sm font-semibold
@@ -315,7 +327,7 @@
                             <input type="number" min="0" step="1"
                                    class="ds-cell w-full h-8 px-1 text-center text-xs border-0 bg-transparent outline-none text-slate-800 dark:text-slate-200"
                                    :value="rows[{{ $aid }}].qty || ''"
-                                   @input="rows[{{ $aid }}].qty = parseInt($event.target.value) || 0">
+                                   @input="editCell({{ $aid }}, 'qty', $event.target.value, 'int')">
                         </td>
 
                         {{-- Unit Price --}}
@@ -323,7 +335,7 @@
                             <input type="number" min="0" step="0.01"
                                    class="ds-cell w-full h-8 px-1 text-center text-xs border-0 bg-transparent outline-none text-slate-800 dark:text-slate-200"
                                    :value="rows[{{ $aid }}].unitPrice"
-                                   @input="rows[{{ $aid }}].unitPrice = parseFloat($event.target.value) || 0">
+                                   @input="editCell({{ $aid }}, 'unitPrice', $event.target.value, 'float')">
                         </td>
 
                         {{-- Value (auto) --}}
@@ -337,7 +349,7 @@
                                            text-emerald-700 dark:text-emerald-400
                                            bg-emerald-50 dark:bg-emerald-900/20
                                            hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors cursor-pointer"
-                                    @click="openCashCounter({{ $aid }})"
+                                    @click="requireUnlock(() => openCashCounter({{ $aid }}))"
                                     x-text="hasCash({{ $aid }}) ? fmt(cash({{ $aid }})) : '+ Count'">
                             </button>
                         </td>
@@ -347,7 +359,7 @@
                             <input type="number" min="0" step="0.01"
                                    class="ds-cell w-full h-8 px-1 text-center text-xs border-0 bg-transparent outline-none text-slate-800 dark:text-slate-200"
                                    :value="rows[{{ $aid }}].nlbWinning || ''"
-                                   @input="rows[{{ $aid }}].nlbWinning = parseFloat($event.target.value) || 0">
+                                   @input="editCell({{ $aid }}, 'nlbWinning', $event.target.value, 'float')">
                         </td>
 
                         {{-- DLB Winning --}}
@@ -355,7 +367,7 @@
                             <input type="number" min="0" step="0.01"
                                    class="ds-cell w-full h-8 px-1 text-center text-xs border-0 bg-transparent outline-none text-slate-800 dark:text-slate-200"
                                    :value="rows[{{ $aid }}].dlbWinning || ''"
-                                   @input="rows[{{ $aid }}].dlbWinning = parseFloat($event.target.value) || 0">
+                                   @input="editCell({{ $aid }}, 'dlbWinning', $event.target.value, 'float')">
                         </td>
 
                         {{-- TW (auto) --}}
@@ -393,7 +405,7 @@
                             <input type="text"
                                    class="ds-cell w-full h-8 px-2 text-xs border-0 bg-transparent outline-none text-slate-700 dark:text-slate-300 placeholder-slate-400 dark:placeholder-slate-600"
                                    :value="rows[{{ $aid }}].remarks"
-                                   @input="rows[{{ $aid }}].remarks = $event.target.value"
+                                   @input="editCell({{ $aid }}, 'remarks', $event.target.value, 'text')"
                                    placeholder="Notes…">
                         </td>
                     </tr>
@@ -421,6 +433,45 @@
             </table>
         </div>
     </form>
+
+    {{-- ── Password Modal ──────────────────────────────────────────────────── --}}
+    <div x-show="pwModal.open"
+         class="fixed inset-0 z-[60] flex items-center justify-center print:hidden"
+         style="display:none;">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="cancelPassword()"></div>
+        <div class="relative z-10 w-full max-w-sm mx-4 rounded-2xl bg-white dark:bg-slate-800 shadow-2xl p-6"
+             x-effect="if (pwModal.open) $nextTick(() => { const i = $el.querySelector('input[type=password]'); if (i) i.focus(); })">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40 shrink-0">
+                    <svg class="h-5 w-5 text-amber-600 dark:text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-semibold text-gray-900 dark:text-white">Table is Locked</h3>
+                    <p class="text-xs text-gray-500 dark:text-slate-400"
+                       x-text="successCount === 0 ? 'Enter password to make your 1st edit.' : 'Enter password to confirm your 2nd edit.'"></p>
+                </div>
+            </div>
+            <input type="password"
+                   x-model="pwModal.input"
+                   @keydown.enter="submitPassword()"
+                   @keydown.escape.prevent="cancelPassword()"
+                   placeholder="Enter password"
+                   class="w-full rounded-lg border border-gray-300 dark:border-slate-600 px-3 py-2 text-sm text-gray-800 dark:text-white dark:bg-slate-700 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30 mb-1">
+            <p x-show="pwModal.error" x-text="pwModal.error" class="text-xs text-red-600 dark:text-red-400 min-h-[1rem] mb-1"></p>
+            <div class="flex gap-2 mt-3">
+                <button type="button" @click="cancelPassword()"
+                        class="flex-1 rounded-lg border border-gray-200 dark:border-slate-600 px-4 py-2 text-sm font-medium text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition">
+                    Cancel
+                </button>
+                <button type="button" @click="submitPassword()"
+                        class="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition">
+                    Unlock
+                </button>
+            </div>
+        </div>
+    </div>
 
     {{-- ══════════════════════════════════════════════════════════════════════
          CASH COUNTER MODAL
@@ -861,6 +912,11 @@ function salesGrid(initialRows, names) {
         isDirty: false,
         pendingUrl: null,
         _formId: 'sales-form',
+
+        // ── Edit Lock ──────────────────────────────────────────────────────
+        editLocked:   true,
+        successCount: 0,
+        pwModal:      { open: false, pendingCallback: null, input: '', error: '' },
         cashModal: {
             open: false,
             assistantId: null,
@@ -1077,6 +1133,44 @@ function salesGrid(initialRows, names) {
             });
             this.isDirty = true;
             this.addForm.open = false;
+        },
+
+        // ── Edit Lock methods ──────────────────────────────────────────────
+        editCell(id, field, rawValue, type) {
+            let v;
+            if (type === 'int')   v = parseInt(rawValue)   || 0;
+            else if (type === 'float') v = parseFloat(rawValue) || 0;
+            else v = rawValue;
+            this.requireUnlock(() => { this.rows[id][field] = v; this.isDirty = true; });
+        },
+        requireUnlock(cb) {
+            if (!this.editLocked) { cb(); return; }
+            this.pwModal.input = '';
+            this.pwModal.error = '';
+            this.pwModal.pendingCallback = cb;
+            this.pwModal.open = true;
+        },
+        submitPassword() {
+            const EDIT_PASSWORD = '{{ env("TABLE_EDIT_PASSWORD", "admin123") }}';
+            if (this.pwModal.input === EDIT_PASSWORD) {
+                this.successCount++;
+                if (this.successCount >= 2) this.editLocked = false;
+                const cb = this.pwModal.pendingCallback;
+                this.pwModal.open = false;
+                this.pwModal.input = '';
+                this.pwModal.error = '';
+                this.pwModal.pendingCallback = null;
+                if (cb) cb();
+            } else {
+                this.pwModal.error = 'Incorrect password. Please try again.';
+                this.pwModal.input = '';
+            }
+        },
+        cancelPassword() {
+            this.pwModal.open = false;
+            this.pwModal.input = '';
+            this.pwModal.error = '';
+            this.pwModal.pendingCallback = null;
         },
 
         // ── Formatters ────────────────────────────────────────────────────────
