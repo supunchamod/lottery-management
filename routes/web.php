@@ -36,6 +36,15 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
 // ═════════════════════════════════════════════════════════════════════════════
 Route::middleware('auth')->group(function () {
 
+    Route::get('/run-migration', function () {
+        try {
+            Artisan::call('migrate', ['--force' => true]);
+            return "Migration Successful: <br><pre>" . Artisan::output() . "</pre>";
+        } catch (\Exception $e) {
+            return "Error: " . $e->getMessage();
+        }
+    });
+
     // Dashboard
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
@@ -76,12 +85,12 @@ Route::middleware('auth')->group(function () {
     Route::get ('/assistants/{assistant}/edit',   [PageController::class, 'assistantsEdit'])->name('assistants.edit');
     Route::put ('/assistants/{assistant}',        [PageController::class, 'assistantsUpdate'])->name('assistants.update');
     Route::get ('/assistants/{assistant}/ledger', [PageController::class, 'assistantsLedger'])->name('assistants.ledger');
-
+    Route::delete('/assistants/{assistant}', [PageController::class, 'assistantsDestroy'])->name('assistants.destroy');
     // Lotteries
     Route::get ('/lotteries',                [PageController::class, 'lotteriesIndex'])->name('lotteries.index');
     Route::get ('/lotteries/create',         [PageController::class, 'lotteriesCreate'])->name('lotteries.create');
     Route::post('/lotteries',                [PageController::class, 'lotteriesStore'])->name('lotteries.store');
-    Route::get ('/lotteries/{lottery}/edit', [PageController::class, 'lotteriesEdit'])->name('lotteries.edit');
+Route::get ('/lotteries/{lottery}/edit', [PageController::class, 'lotteriesEdit'])->name('lotteries.edit');
     Route::put ('/lotteries/{lottery}',      [PageController::class, 'lotteriesUpdate'])->name('lotteries.update');
 
     // Stock

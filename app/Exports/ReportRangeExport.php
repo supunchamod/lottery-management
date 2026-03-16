@@ -46,7 +46,7 @@ class ReportRangeExport implements
     public function collection(): Collection
     {
         return collect($this->rows)
-            ->filter(fn ($r) => $r['records'] > 0 || $r['gross_commission'] > 0 || $r['total_expenses'] > 0);
+            ->filter(fn ($r) => $r['records'] > 0 || $r['total_expenses'] > 0);
     }
 
     // ── Column headings (row 4, after the 3-row header block) ─────────────────
@@ -58,7 +58,6 @@ class ReportRangeExport implements
             'Returns (Rs.)',
             'Winnings (Rs.)',
             'Cash Collected (Rs.)',
-            'Gross Commission (Rs.)',
             'Total Expenses (Rs.)',
             'Net Profit (Rs.)',
             'Outstanding (Rs.)',
@@ -75,7 +74,6 @@ class ReportRangeExport implements
             $row['returns_val'],
             $row['total_winning'],
             $row['cash_collected'],
-            $row['gross_commission'],
             $row['total_expenses'],
             $row['net_profit'],
             $row['outstanding'],
@@ -94,7 +92,6 @@ class ReportRangeExport implements
             'F' => '#,##0.00',
             'G' => '#,##0.00',
             'H' => '#,##0.00',
-            'I' => '#,##0.00',
         ];
     }
 
@@ -124,7 +121,7 @@ class ReportRangeExport implements
                 $sheet->insertNewRowBefore(1, 3);
 
                 // Row 1 — Agency name + report period
-                $sheet->mergeCells("A1:J1");
+                $sheet->mergeCells("A1:I1");
                 $sheet->setCellValue('A1', 'W.R Soysa Lottery Agency — Profit & Loss Report');
                 $sheet->getStyle('A1')->applyFromArray([
                     'font'      => ['bold' => true, 'size' => 14, 'color' => ['rgb' => 'FFFFFF']],
@@ -134,7 +131,7 @@ class ReportRangeExport implements
                 $sheet->getRowDimension(1)->setRowHeight(28);
 
                 // Row 2 — Sub-heading
-                $sheet->mergeCells("A2:J2");
+                $sheet->mergeCells("A2:I2");
                 $sheet->setCellValue('A2',
                     'NLB · DLB Agent | Girandurukotte & Mahiyanganya | 072-0673295 / 078-4766684'
                 );
@@ -151,9 +148,9 @@ class ReportRangeExport implements
                     'Period: ' . Carbon::parse($this->from)->format('d M Y')
                     . ' → ' . Carbon::parse($this->to)->format('d M Y')
                 );
-                $sheet->mergeCells("F3:J3");
+                $sheet->mergeCells("F3:I3");
                 $sheet->setCellValue('F3', 'Generated: ' . now()->format('d M Y H:i'));
-                $sheet->getStyle('A3:J3')->applyFromArray([
+                $sheet->getStyle('A3:I3')->applyFromArray([
                     'font'      => ['size' => 9, 'italic' => true, 'color' => ['rgb' => '475569']],
                     'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F1F5F9']],
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT],
@@ -169,14 +166,14 @@ class ReportRangeExport implements
 
                 for ($r = $dataStart; $r <= $dataEnd; $r++) {
                     $bgColor = ($r % 2 === 0) ? 'F8FAFC' : 'FFFFFF';
-                    $sheet->getStyle("A{$r}:J{$r}")->applyFromArray([
+                    $sheet->getStyle("A{$r}:I{$r}")->applyFromArray([
                         'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $bgColor]],
                         'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
                     ]);
                     $sheet->getRowDimension($r)->setRowHeight(14);
 
-                    // Colour the Net Profit cell (column H)
-                    $profitCell = "H{$r}";
+                    // Colour the Net Profit cell (column G)
+                    $profitCell = "G{$r}";
                     $val        = $sheet->getCell($profitCell)->getCalculatedValue();
                     if (is_numeric($val)) {
                         $sheet->getStyle($profitCell)->getFont()
@@ -193,13 +190,12 @@ class ReportRangeExport implements
                 $sheet->setCellValue("C{$actualTotalsRow}", $this->totals['returns_val']);
                 $sheet->setCellValue("D{$actualTotalsRow}", $this->totals['total_winning']);
                 $sheet->setCellValue("E{$actualTotalsRow}", $this->totals['cash_collected']);
-                $sheet->setCellValue("F{$actualTotalsRow}", $this->totals['gross_commission']);
-                $sheet->setCellValue("G{$actualTotalsRow}", $this->totals['total_expenses']);
-                $sheet->setCellValue("H{$actualTotalsRow}", $this->totals['net_profit']);
-                $sheet->setCellValue("I{$actualTotalsRow}", $this->totals['outstanding']);
-                $sheet->setCellValue("J{$actualTotalsRow}", $this->totals['records']);
+                $sheet->setCellValue("F{$actualTotalsRow}", $this->totals['total_expenses']);
+                $sheet->setCellValue("G{$actualTotalsRow}", $this->totals['net_profit']);
+                $sheet->setCellValue("H{$actualTotalsRow}", $this->totals['outstanding']);
+                $sheet->setCellValue("I{$actualTotalsRow}", $this->totals['records']);
 
-                $sheet->getStyle("A{$actualTotalsRow}:J{$actualTotalsRow}")->applyFromArray([
+                $sheet->getStyle("A{$actualTotalsRow}:I{$actualTotalsRow}")->applyFromArray([
                     'font'      => ['bold' => true, 'size' => 9, 'color' => ['rgb' => 'FFFFFF']],
                     'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1E3A8A']],
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT],
@@ -210,14 +206,14 @@ class ReportRangeExport implements
                 $sheet->getRowDimension($actualTotalsRow)->setRowHeight(18);
 
                 // Apply number format to totals row numeric cells
-                foreach (['B','C','D','E','F','G','H','I'] as $col) {
+                foreach (['B','C','D','E','F','G','H'] as $col) {
                     $sheet->getStyle("{$col}{$actualTotalsRow}")
                         ->getNumberFormat()
                         ->setFormatCode('#,##0.00');
                 }
 
                 // ── Outer border around the whole data block ───────────────────
-                $sheet->getStyle("A1:J{$actualTotalsRow}")->applyFromArray([
+                $sheet->getStyle("A1:I{$actualTotalsRow}")->applyFromArray([
                     'borders' => [
                         'outline' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['rgb' => '1E3A8A']],
                     ],

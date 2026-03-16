@@ -28,14 +28,14 @@ class DashboardController extends Controller
         // KPI CARDS
         // ══════════════════════════════════════════════════════════════════════
 
-        // ── Net Profit (commission − expenses) ───────────────────────────────
-        $todayComm  = $this->commissionForDate($today);
-        $todayExp   = (float) Expense::whereDate('date', $today)->sum('amount');
-        $todayProfit = $todayComm - $todayExp;
+        // ── Net Profit (cash collected − expenses) ───────────────────────────
+        $todayCash   = $this->cashForDate($today);
+        $todayExp    = (float) Expense::whereDate('date', $today)->sum('amount');
+        $todayProfit = $todayCash - $todayExp;
 
-        $yestComm   = $this->commissionForDate($yesterday);
+        $yestCash   = $this->cashForDate($yesterday);
         $yestExp    = (float) Expense::whereDate('date', $yesterday)->sum('amount');
-        $yestProfit = $yestComm - $yestExp;
+        $yestProfit = $yestCash - $yestExp;
         $profitGrowth = $this->growthPct($todayProfit, $yestProfit);
 
         // ── Tickets Sold Today (qty issued × unit price = value) ─────────────
@@ -62,15 +62,13 @@ class DashboardController extends Controller
         $expenseGrowth = $this->growthPct($monthExpenses, $lastMonthExp);
 
         // ══════════════════════════════════════════════════════════════════════
-        // 7-DAY AREA CHART — Revenue (commission) vs Expenses
+        // 7-DAY AREA CHART — Revenue (cash collected) vs Expenses
         // ══════════════════════════════════════════════════════════════════════
         $last7 = collect(range(6, 0))->map(fn ($d) => today()->subDays($d)->toDateString());
 
-        $commByDay = LotteryStock::whereBetween('lottery_stocks.date', [$last7->first(), $last7->last()])
-            ->join('lotteries', 'lotteries.id', '=', 'lottery_stocks.lottery_id')
-            ->selectRaw('DATE(lottery_stocks.date) AS day,
-                         SUM(lottery_stocks.qty_issued * lotteries.unit_price * lotteries.commission_rate / 100) AS v')
-            ->groupByRaw('DATE(lottery_stocks.date)')
+        $cashByDay = DailySale::whereBetween('date', [$last7->first(), $last7->last()])
+            ->selectRaw('DATE(date) AS day, SUM(cash_collected) AS v')
+            ->groupByRaw('DATE(date)')
             ->pluck('v', 'day');
 
         $expByDay = Expense::whereBetween('date', [$last7->first(), $last7->last()])
@@ -79,7 +77,7 @@ class DashboardController extends Controller
             ->pluck('v', 'day');
 
         $chartLabels   = $last7->map(fn ($d) => Carbon::parse($d)->format('d M'))->values()->toArray();
-        $chartRevenue  = $last7->map(fn ($d) => round((float) ($commByDay[$d]  ?? 0), 2))->values()->toArray();
+        $chartRevenue  = $last7->map(fn ($d) => round((float) ($cashByDay[$d]  ?? 0), 2))->values()->toArray();
         $chartExpenses = $last7->map(fn ($d) => round((float) ($expByDay[$d]   ?? 0), 2))->values()->toArray();
         $chartProfit   = collect($chartRevenue)->map(fn ($v, $i) => round($v - $chartExpenses[$i], 2))->values()->toArray();
 
@@ -197,12 +195,9 @@ class DashboardController extends Controller
 
     // ── Private helpers ────────────────────────────────────────────────────────
 
-    private function commissionForDate($date): float
+    private function cashForDate($date): float
     {
-        return (float) LotteryStock::whereDate('lottery_stocks.date', $date)
-            ->join('lotteries', 'lotteries.id', '=', 'lottery_stocks.lottery_id')
-            ->selectRaw('SUM(lottery_stocks.qty_issued * lotteries.unit_price * lotteries.commission_rate / 100) AS v')
-            ->value('v') ?? 0;
+        return (float) DailySale::whereDate('date', $date)->sum('cash_collected') ?? 0;
     }
 
     private function growthPct(float $current, float $previous): float

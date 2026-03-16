@@ -15,14 +15,12 @@ class Lottery extends Model
         'name',
         'board',
         'unit_price',
-        'commission_rate',
     ];
 
     protected function casts(): array
     {
         return [
-            'unit_price'      => 'decimal:2',
-            'commission_rate' => 'decimal:2',
+            'unit_price' => 'decimal:2',
         ];
     }
 

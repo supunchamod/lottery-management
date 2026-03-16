@@ -64,7 +64,9 @@
 {{-- ══════════════════════════════════════════════════════════════════════
      MAIN FORM
 ═══════════════════════════════════════════════════════════════════════ --}}
-<form method="POST" action="{{ route('bulk-deposits.save-distribution', $bulkDeposit) }}">
+<form id="dist-form" method="POST" action="{{ route('bulk-deposits.save-distribution', $bulkDeposit) }}"
+      @submit="isDirty = false"
+      @input="isDirty = true">
     @csrf
 
 <div class="rounded-2xl bg-white dark:bg-slate-800 shadow-sm ring-1 ring-black/5 dark:ring-white/5 overflow-hidden">
@@ -398,10 +400,85 @@ function bulkDistribute(initialRows, dates) {
     return {
         rows: initialRows,
         dates: dates,
+        isDirty: false,
+        pendingUrl: null,
+        _formId: 'dist-form',
         cashModal: {
             open: false,
             date: null,
             denoms: { 20:0, 50:0, 100:0, 500:0, 1000:0, 5000:0 },
+        },
+
+        // ── DLP lifecycle ─────────────────────────────────────────────────────
+        init() {
+            // 1. Browser-level: warn on tab close / refresh / back-button
+            this._unloadHandler = (e) => {
+                if (!this.isDirty) return;
+                e.preventDefault();
+                e.returnValue = '';
+            };
+            window.addEventListener('beforeunload', this._unloadHandler);
+
+            // 2. App-level: intercept all nav-link clicks when dirty
+            this._clickGuard = (e) => {
+                if (!this.isDirty) return;
+                const a = e.target.closest('a[href]');
+                if (!a) return;
+                const href = a.getAttribute('href');
+                if (!href || href === '#' || href.startsWith('javascript:')) return;
+                e.preventDefault();
+                this._dlpPrompt(a.href);
+            };
+            document.addEventListener('click', this._clickGuard);
+        },
+        destroy() {
+            window.removeEventListener('beforeunload', this._unloadHandler);
+            document.removeEventListener('click', this._clickGuard);
+        },
+
+        // ── SweetAlert2 DLP prompt ────────────────────────────────────────────
+        _dlpPrompt(destUrl) {
+            this.pendingUrl = destUrl;
+            const dark = document.documentElement.classList.contains('dark');
+            Swal.fire({
+                title: 'Unsaved Changes',
+                html: 'Your distribution table has unsaved entries.<br><small style="color:#94a3b8">Choose how to proceed:</small>',
+                icon: 'warning',
+                iconColor: '#f59e0b',
+                background: dark ? '#1e293b' : '#ffffff',
+                color: dark ? '#e2e8f0' : '#1e293b',
+                showConfirmButton: true,
+                showDenyButton: true,
+                showCancelButton: true,
+                confirmButtonText: 'Save &amp; Go',
+                denyButtonText: 'Discard &amp; Leave',
+                cancelButtonText: 'Keep Editing',
+                confirmButtonColor: '#4f46e5',
+                denyButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                showLoaderOnConfirm: true,
+                allowOutsideClick: false,
+                allowEscapeKey: true,
+                preConfirm: async () => {
+                    const form = document.getElementById(this._formId);
+                    const res = await fetch(form.action, { method: 'POST', body: new FormData(form) })
+                        .catch(() => null);
+                    if (!res || !res.ok) {
+                        Swal.showValidationMessage('Save failed — please try again.');
+                        return false;
+                    }
+                    return true;
+                },
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    this.isDirty = false;
+                    window.location.href = this.pendingUrl;
+                } else if (result.isDenied) {
+                    this.isDirty = false;
+                    window.location.href = this.pendingUrl;
+                }
+                // isDismissed = "Keep Editing" → do nothing
+            });
         },
 
         // ── Per-row computed ──────────────────────────────────────────────────
@@ -456,6 +533,7 @@ function bulkDistribute(initialRows, dates) {
                 d20:d[20]||0, d50:d[50]||0, d100:d[100]||0,
                 d500:d[500]||0, d1000:d[1000]||0, d5000:d[5000]||0,
             });
+            this.isDirty = true;
             this.cashModal.open = false;
         },
         resetCash() {

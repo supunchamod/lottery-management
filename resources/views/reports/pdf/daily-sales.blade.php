@@ -196,35 +196,6 @@
 </div>
 @endif
 
-{{-- Commission --}}
-@if($commission->count())
-<div class="section-title">Commission Breakdown</div>
-<table>
-    <thead>
-        <tr>
-            <th style="text-align:left">Lottery</th>
-            <th>Board</th>
-            <th>Commission (Rs.)</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach($commission as $c)
-        <tr>
-            <td>{{ $c->name }}</td>
-            <td style="text-align:center">{{ $c->board }}</td>
-            <td>{{ number_format($c->commission, 2) }}</td>
-        </tr>
-        @endforeach
-    </tbody>
-    <tfoot>
-        <tr>
-            <td colspan="2">GROSS COMMISSION</td>
-            <td>Rs.{{ number_format($totals['commission'], 2) }}</td>
-        </tr>
-    </tfoot>
-</table>
-@endif
-
 {{-- Expenses --}}
 @if($expenses->count())
 <div class="section-title">Expenses</div>
@@ -259,7 +230,7 @@
     <div>
         <div class="profit-label">{{ $totals['net_profit'] >= 0 ? 'Net Profit' : 'Net Loss' }} for {{ \Carbon\Carbon::parse($date)->format('d M Y') }}</div>
         <div style="font-size:8px;color:#64748b;margin-top:2px">
-            Gross Commission Rs.{{ number_format($totals['commission'], 2) }}
+            Cash Collected Rs.{{ number_format($totals['cash'], 2) }}
             − Expenses Rs.{{ number_format($totals['expenses'], 2) }}
         </div>
     </div>

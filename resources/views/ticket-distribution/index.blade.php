@@ -13,6 +13,56 @@
             $alpineGrid[$a->id][$l->id] = $grid[$a->id][$l->id] ?? 0;
         }
     }
+
+    // ── Route Color Map ──────────────────────────────────────────────────────
+    // color_code => Tailwind classes + hex values for sticky-cell inline styles
+    $routeColorMap = [
+        'blue'   => [
+            'headerBg'    => 'bg-blue-200',   'headerText'   => 'text-blue-900',
+            'headerBgHex' => '#bfdbfe',
+            'rowBg'       => 'bg-blue-50',    'rowBgHex'     => '#eff6ff',
+            'rowHoverBg'  => 'bg-blue-100',   'rowHoverHex'  => '#dbeafe',
+            'separator'   => 'border-blue-300',
+        ],
+        'green'  => [
+            'headerBg'    => 'bg-green-200',  'headerText'   => 'text-green-900',
+            'headerBgHex' => '#bbf7d0',
+            'rowBg'       => 'bg-green-50',   'rowBgHex'     => '#f0fdf4',
+            'rowHoverBg'  => 'bg-green-100',  'rowHoverHex'  => '#dcfce7',
+            'separator'   => 'border-green-300',
+        ],
+        'yellow' => [
+            'headerBg'    => 'bg-yellow-200', 'headerText'   => 'text-yellow-900',
+            'headerBgHex' => '#fef08a',
+            'rowBg'       => 'bg-yellow-50',  'rowBgHex'     => '#fefce8',
+            'rowHoverBg'  => 'bg-yellow-100', 'rowHoverHex'  => '#fef9c3',
+            'separator'   => 'border-yellow-300',
+        ],
+        'pink'   => [
+            'headerBg'    => 'bg-pink-200',   'headerText'   => 'text-pink-900',
+            'headerBgHex' => '#fbcfe8',
+            'rowBg'       => 'bg-pink-50',    'rowBgHex'     => '#fdf2f8',
+            'rowHoverBg'  => 'bg-pink-100',   'rowHoverHex'  => '#fce7f3',
+            'separator'   => 'border-pink-300',
+        ],
+    ];
+    $defaultRouteColor = [
+        'headerBg'    => 'bg-gray-100',   'headerText'   => 'text-gray-500',
+        'headerBgHex' => '#f3f4f6',
+        'rowBg'       => 'bg-white',      'rowBgHex'     => '#ffffff',
+        'rowHoverBg'  => 'bg-gray-50',    'rowHoverHex'  => '#f9fafb',
+        'separator'   => 'border-gray-200',
+    ];
+
+    // Group assistants by route; named routes first (alpha), unassigned last
+    $routeGroups = $assistants
+        ->groupBy(fn ($a) => $a->route_id ?? 'unassigned')
+        ->map(fn ($group) => [
+            'route'      => $group->first()->route,
+            'assistants' => $group,
+        ])
+        ->sortBy(fn ($g) => $g['route']?->name ?? 'ZZZZZ')
+        ->values();
 @endphp
 
 {{-- ── Top bar ──────────────────────────────────────────────────────────────── --}}
@@ -137,13 +187,38 @@
             </thead>
 
             <tbody>
-                @foreach($chunk as $i => $a)
+                @php
+                    $printColorHex = [
+                        'blue'   => ['header' => '#bfdbfe', 'row' => '#eff6ff'],
+                        'green'  => ['header' => '#bbf7d0', 'row' => '#f0fdf4'],
+                        'yellow' => ['header' => '#fef08a', 'row' => '#fefce8'],
+                        'pink'   => ['header' => '#fbcfe8', 'row' => '#fdf2f8'],
+                    ];
+                    $printDefaultColor = ['header' => '#f3f4f6', 'row' => '#ffffff'];
+                    $lastRouteId = null;
+                    $printRowNum = 0;
+                @endphp
+                @foreach($chunk as $a)
                     @php
-                        $globalIndex = $pageNum * 26 + $i;
-                        $bg = $i % 2 === 0 ? '#ffffff' : '#f8fafc';
-                        $rowTot = $rowTotals[$a->id] ?? 0;
+                        $printRowNum++;
+                        $globalIndex = $pageNum * 26 + $printRowNum - 1;
+                        $rowTot      = $rowTotals[$a->id] ?? 0;
+                        $routeId     = $a->route_id;
+                        $pColor      = $printColorHex[$a->route?->color_code ?? ''] ?? $printDefaultColor;
                     @endphp
-                    <tr style="background:{{ $bg }}; border-bottom:1px solid #e2e8f0;">
+
+                    {{-- Route group header row (only when route changes) --}}
+                    @if($routeId !== $lastRouteId)
+                        @php $lastRouteId = $routeId; @endphp
+                        <tr style="background:{{ $pColor['header'] }}; border-top:2px solid #94a3b8;">
+                            <td colspan="{{ count($lotteries) + 2 }}"
+                                style="padding:3px 6px; font-weight:700; font-size:7pt; text-transform:uppercase; letter-spacing:0.08em; color:#374151;">
+                                {{ $a->route?->name ?? 'Unassigned' }}
+                            </td>
+                        </tr>
+                    @endif
+
+                    <tr style="background:{{ $pColor['row'] }}; border-bottom:1px solid #e2e8f0;">
                         <td style="padding:4px 6px; font-weight:500; color:#1e293b; white-space:nowrap; border-right:1px solid #e2e8f0;">
                             <span style="color:#94a3b8; font-size:7.5pt; margin-right:4px;">{{ $globalIndex + 1 }}</span>
                             {{ $a->name }}
@@ -201,7 +276,6 @@
         '{{ route('api.ticket-distribution.defaults.get') }}',
         '{{ route('api.ticket-distribution.defaults.save') }}'
      )"
-     x-init="init()"
      @keydown.window="handleArrow($event)"
      class="print:hidden">
 
@@ -302,6 +376,18 @@
                 <span class="rounded-full bg-gray-100 px-3 py-0.5 text-xs font-bold text-gray-600">
                     Grand Total: <span x-text="grandTotal().toLocaleString()" class="text-blue-700"></span>
                 </span>
+
+                {{-- Edit lock badge --}}
+                <span class="flex items-center gap-1.5 rounded-full px-3 py-0.5 text-xs font-bold cursor-default select-none"
+                      :class="editLocked ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'">
+                    <svg x-show="editLocked" class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"/>
+                    </svg>
+                    <svg x-show="!editLocked" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
+                    </svg>
+                    <span x-text="editLocked ? (successCount === 1 ? '1 of 2 verified' : 'Locked') : 'Unlocked'"></span>
+                </span>
             </div>
 
             <div class="flex items-center gap-3">
@@ -350,12 +436,12 @@
 
                 <thead>
                     <tr style="background:#0f172a;">
-                        <th class="sticky left-0 z-20 px-3 py-3 text-left text-white font-medium whitespace-nowrap border-r border-slate-700"
+                        <th class="sticky left-0 z-20 px-3 py-3 text-left text-white font-medium whitespace-nowrap border-x border-slate-600"
                             style="background:#0f172a; min-width:150px;">
                             # &nbsp; Assistant
                         </th>
                         @foreach($lotteries as $l)
-                            <th class="px-2 py-3 text-center font-medium whitespace-nowrap
+                            <th class="px-2 py-3 text-center font-medium whitespace-nowrap border-x border-slate-600
                                        {{ $l->board === 'NLB' ? 'text-blue-300' : 'text-orange-300' }}"
                                 style="min-width:62px;">
                                 {{ $l->name }}
@@ -364,14 +450,14 @@
                                 </span>
                             </th>
                         @endforeach
-                        <th class="px-3 py-3 text-center text-yellow-300 font-semibold whitespace-nowrap">
+                        <th class="px-3 py-3 text-center text-yellow-300 font-semibold whitespace-nowrap border-x border-slate-600">
                             Total
                         </th>
                     </tr>
 
                     {{-- ── Board Received Qty row (Adjustment Mode only) ── --}}
                     <tr x-show="adjustMode" style="background:#fffbeb; border-bottom: 2px solid #fcd34d;">
-                        <td class="sticky left-0 z-20 px-3 py-2 font-semibold text-[11px] border-r border-amber-300 whitespace-nowrap"
+                        <td class="sticky left-0 z-20 px-3 py-2 font-semibold text-[11px] border-x border-amber-300 whitespace-nowrap"
                             style="background:#fffbeb; color:#92400e;">
                             <div class="flex items-center gap-1.5">
                                 <svg class="h-3.5 w-3.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -381,7 +467,7 @@
                             </div>
                         </td>
                         @foreach($lotteries as $l)
-                            <td class="px-1 py-1.5 text-center col-cell-transition"
+                            <td class="px-1 py-1.5 text-center col-cell-transition border-x border-amber-300"
                                 :class="isMismatch({{ $l->id }}) ? 'bg-red-50' : ''">
                                 <input type="number" min="0" step="1"
                                        x-model="boardQty[{{ $l->id }}]"
@@ -392,103 +478,132 @@
                                        placeholder="—">
                             </td>
                         @endforeach
-                        <td class="px-3 py-1.5 text-center text-xs font-bold text-amber-700">
+                        <td class="px-3 py-1.5 text-center text-xs font-bold text-amber-700 border-x border-amber-300">
                             <span x-text="boardGrandTotal().toLocaleString() || '—'"></span>
                         </td>
                     </tr>
 
                     <tr class="border-b-2 border-slate-600" style="background:#1e293b;">
-                        <td class="sticky left-0 z-20 px-3 py-2 text-slate-300 font-semibold text-[11px] border-r border-slate-600"
+                        <td class="sticky left-0 z-20 px-3 py-2 text-slate-300 font-semibold text-[11px] border-x border-slate-600"
                             style="background:#1e293b;">Column Total ↓</td>
                         @foreach($lotteries as $l)
-                            <td class="px-2 py-2 text-center font-bold col-total-cell"
+                            <td class="px-2 py-2 text-center font-bold col-total-cell border-x border-slate-600"
                                 :class="isMismatch({{ $l->id }})
                                     ? 'text-red-300 border-x-2 border-t-2 border-red-500 mismatch-pulse'
                                     : 'text-slate-100'"
                                 x-text="colTotal({{ $l->id }}).toLocaleString()"></td>
                         @endforeach
-                        <td class="px-3 py-2 text-center text-yellow-300 font-bold"
+                        <td class="px-3 py-2 text-center text-yellow-300 font-bold border-x border-slate-600"
                             x-text="grandTotal().toLocaleString()"></td>
                     </tr>
                 </thead>
 
-                <tbody class="divide-y divide-gray-100">
-                    @foreach($assistants as $i => $a)
-                        <tr class="{{ $i % 2 === 0 ? 'bg-white' : 'bg-gray-50/60' }}"
-                            x-bind:class="{
-                                'ring-1 ring-inset ring-blue-300 bg-blue-50': hoveredRow === {{ $a->id }} && !isLocked({{ $a->id }}),
-                                'ring-1 ring-inset ring-amber-400 bg-amber-50': isLocked({{ $a->id }})
-                            }"
-                            @mouseenter="hoveredRow = {{ $a->id }}"
-                            @mouseleave="hoveredRow = null">
+                <tbody>
+                    @php $rowIndex = 0; @endphp
+                    @foreach($routeGroups as $routeGroup)
+                        @php
+                            $route  = $routeGroup['route'];
+                            $colors = $routeColorMap[$route?->color_code ?? ''] ?? $defaultRouteColor;
+                        @endphp
 
-                            <td class="sticky left-0 z-10 px-3 py-1.5 font-medium text-gray-700 whitespace-nowrap border-r border-gray-200"
-                                style="{{ $i % 2 === 0 ? 'background:#fff' : 'background:#f9fafb' }}"
-                                x-bind:style="isLocked({{ $a->id }}) ? 'background:#fffbeb' : (hoveredRow === {{ $a->id }} ? 'background:#eff6ff' : '')">
-                                <div class="flex items-center gap-1.5">
-                                    <span class="text-gray-400 text-[11px] shrink-0">{{ $i + 1 }}</span>
-                                    <span class="truncate">{{ $a->name }}</span>
-                                    {{-- Lock button — only visible in Adjustment Mode --}}
-                                    <button type="button"
-                                            x-show="adjustMode"
-                                            @click.stop="toggleLock({{ $a->id }})"
-                                            :title="isLocked({{ $a->id }}) ? 'Unlock row — auto-adjust will include this assistant' : 'Lock row — auto-adjust will skip this assistant'"
-                                            :class="isLocked({{ $a->id }}) ? 'text-amber-600 hover:text-amber-700' : 'text-gray-300 hover:text-amber-500'"
-                                            class="ml-auto shrink-0 transition-colors">
-                                        {{-- Locked icon --}}
-                                        <svg x-show="isLocked({{ $a->id }})" class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"/>
-                                        </svg>
-                                        {{-- Unlocked icon --}}
-                                        <svg x-show="!isLocked({{ $a->id }})" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
-                                        </svg>
-                                    </button>
-                                </div>
+                        {{-- ── Route Group Header Row ──────────────────────── --}}
+                        <tr class="border-t-2 border-gray-300">
+                            <td class="sticky left-0 z-10 px-3 py-1.5 font-bold text-[11px] uppercase tracking-widest
+                                       {{ $colors['headerText'] }} border-x border-gray-300"
+                                style="background: {{ $colors['headerBgHex'] }};">
+                                {{ $route?->name ?? 'Unassigned' }}
+                                <span class="ml-1.5 font-normal opacity-60 normal-case tracking-normal">
+                                    {{ $routeGroup['assistants']->count() }}
+                                </span>
                             </td>
-
-                            @foreach($lotteries as $j => $l)
-                                <td class="p-0 relative col-cell-transition"
-                                    x-bind:class="{
-                                        'bg-blue-50':   hoveredCol === {{ $l->id }} && !isAdjusted({{ $a->id }}, {{ $l->id }}) && !isMismatch({{ $l->id }}),
-                                        'bg-amber-100': isAdjusted({{ $a->id }}, {{ $l->id }}) && !isMismatch({{ $l->id }}),
-                                        'border-x-2 border-red-400 bg-red-50': isMismatch({{ $l->id }}) && !isAdjusted({{ $a->id }}, {{ $l->id }}),
-                                        'border-x-2 border-red-400 bg-red-100': isMismatch({{ $l->id }}) && isAdjusted({{ $a->id }}, {{ $l->id }})
-                                    }">
-                                    <input
-                                        type="number" min="0" step="1"
-                                        class="dist-cell w-full h-8 px-1 text-center text-xs font-medium border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-400 focus:z-10 relative outline-none"
-                                        :value="grid[{{ $a->id }}][{{ $l->id }}] || ''"
-                                        :class="{
-                                            'text-emerald-700': isDefault({{ $a->id }}, {{ $l->id }}) && !isAdjusted({{ $a->id }}, {{ $l->id }}),
-                                            'text-amber-800 font-semibold is-adjusted': isAdjusted({{ $a->id }}, {{ $l->id }})
-                                        }"
-                                        @focus="hoveredCol = {{ $l->id }}"
-                                        @blur="hoveredCol = null"
-                                        @input="onCellInput({{ $a->id }}, {{ $l->id }}, $event.target.value)"
-                                        data-row="{{ $i }}"
-                                        data-col="{{ $j }}"
-                                        placeholder="">
-                                </td>
-                            @endforeach
-
-                            <td class="px-3 py-1.5 text-center font-bold"
-                                x-bind:class="rowTotal({{ $a->id }}) > 0 ? 'text-blue-700' : 'text-gray-300'"
-                                x-text="rowTotal({{ $a->id }}).toLocaleString()"></td>
+                            <td colspan="{{ count($lotteries) + 1 }}"
+                                class="{{ $colors['headerBg'] }} border-x border-gray-300"></td>
                         </tr>
+
+                        {{-- ── Assistant Rows ──────────────────────────────── --}}
+                        @foreach($routeGroup['assistants'] as $a)
+                            @php
+                                $ri             = $rowIndex++;
+                                $rowBgHex       = $colors['rowBgHex'];
+                                $rowHoverHex    = $colors['rowHoverHex'];
+                                $rowHoverBg     = $colors['rowHoverBg'];
+                            @endphp
+                            <tr class="{{ $colors['rowBg'] }} border-b {{ $colors['separator'] }}"
+                                x-bind:class="{
+                                    '{{ $rowHoverBg }} ring-1 ring-inset ring-blue-400': hoveredRow === {{ $a->id }} && !isLocked({{ $a->id }}),
+                                    '!bg-amber-50 ring-1 ring-inset ring-amber-400': isLocked({{ $a->id }})
+                                }"
+                                @mouseenter="hoveredRow = {{ $a->id }}"
+                                @mouseleave="hoveredRow = null">
+
+                                <td class="sticky left-0 z-10 px-3 py-1.5 font-medium text-gray-700 whitespace-nowrap border-x border-gray-200"
+                                    style="background: {{ $rowBgHex }}"
+                                    x-bind:style="isLocked({{ $a->id }}) ? 'background:#fffbeb' : (hoveredRow === {{ $a->id }} ? 'background:{{ $rowHoverHex }}' : 'background:{{ $rowBgHex }}')">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-gray-400 text-[11px] shrink-0">{{ $ri + 1 }}</span>
+                                        <span class="truncate">{{ $a->name }}</span>
+                                        {{-- Lock button — only visible in Adjustment Mode --}}
+                                        <button type="button"
+                                                x-show="adjustMode"
+                                                @click.stop="toggleLock({{ $a->id }})"
+                                                :title="isLocked({{ $a->id }}) ? 'Unlock row — auto-adjust will include this assistant' : 'Lock row — auto-adjust will skip this assistant'"
+                                                :class="isLocked({{ $a->id }}) ? 'text-amber-600 hover:text-amber-700' : 'text-gray-300 hover:text-amber-500'"
+                                                class="ml-auto shrink-0 transition-colors">
+                                            {{-- Locked icon --}}
+                                            <svg x-show="isLocked({{ $a->id }})" class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"/>
+                                            </svg>
+                                            {{-- Unlocked icon --}}
+                                            <svg x-show="!isLocked({{ $a->id }})" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </td>
+
+                                @foreach($lotteries as $j => $l)
+                                    <td class="p-0 relative col-cell-transition border-x border-gray-200"
+                                        x-bind:class="{
+                                            'bg-blue-50':   hoveredCol === {{ $l->id }} && !isAdjusted({{ $a->id }}, {{ $l->id }}) && !isMismatch({{ $l->id }}),
+                                            'bg-amber-100': isAdjusted({{ $a->id }}, {{ $l->id }}) && !isMismatch({{ $l->id }}),
+                                            'border-x-2 border-red-400 bg-red-50': isMismatch({{ $l->id }}) && !isAdjusted({{ $a->id }}, {{ $l->id }}),
+                                            'border-x-2 border-red-400 bg-red-100': isMismatch({{ $l->id }}) && isAdjusted({{ $a->id }}, {{ $l->id }})
+                                        }">
+                                        <input
+                                            type="number" min="0" step="1"
+                                            class="dist-cell w-full h-8 px-1 text-center text-xs font-medium border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-400 focus:z-10 relative outline-none"
+                                            :value="grid[{{ $a->id }}][{{ $l->id }}] || ''"
+                                            :class="{
+                                                'text-emerald-700': isDefault({{ $a->id }}, {{ $l->id }}) && !isAdjusted({{ $a->id }}, {{ $l->id }}),
+                                                'text-amber-800 font-semibold is-adjusted': isAdjusted({{ $a->id }}, {{ $l->id }})
+                                            }"
+                                            @focus="hoveredCol = {{ $l->id }}"
+                                            @blur="hoveredCol = null"
+                                            @input="onCellInput({{ $a->id }}, {{ $l->id }}, $event.target.value)"
+                                            data-row="{{ $ri }}"
+                                            data-col="{{ $j }}"
+                                            placeholder="">
+                                    </td>
+                                @endforeach
+
+                                <td class="px-3 py-1.5 text-center font-bold border-x border-gray-200"
+                                    x-bind:class="rowTotal({{ $a->id }}) > 0 ? 'text-blue-700' : 'text-gray-300'"
+                                    x-text="rowTotal({{ $a->id }}).toLocaleString()"></td>
+                            </tr>
+                        @endforeach
                     @endforeach
 
                     <tr class="border-t-2 border-gray-300 font-bold" style="background:#f1f5f9;">
-                        <td class="sticky left-0 z-10 px-3 py-2.5 text-gray-700 border-r border-gray-200"
+                        <td class="sticky left-0 z-10 px-3 py-2.5 text-gray-700 border-x border-gray-200"
                             style="background:#f1f5f9;">Column Total ↑</td>
                         @foreach($lotteries as $l)
-                            <td class="px-2 py-2.5 text-center col-cell-transition"
+                            <td class="px-2 py-2.5 text-center col-cell-transition border-x border-gray-200"
                                 :class="isMismatch({{ $l->id }})
                                     ? 'text-red-600 bg-red-50 border-x-2 border-b-2 border-red-500 font-bold'
                                     : 'text-gray-900'"
                                 x-text="colTotal({{ $l->id }}).toLocaleString()"></td>
                         @endforeach
-                        <td class="px-3 py-2.5 text-center text-blue-700"
+                        <td class="px-3 py-2.5 text-center text-blue-700 border-x border-gray-200"
                             x-text="grandTotal().toLocaleString()"></td>
                     </tr>
                 </tbody>
@@ -496,17 +611,69 @@
         </div>
 
     </form>
+
+    {{-- ── Password Modal ──────────────────────────────────────────────────── --}}
+    <div x-show="pwModal.open"
+         class="fixed inset-0 z-[60] flex items-center justify-center print:hidden"
+         style="display:none;">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="cancelPassword()"></div>
+        <div class="relative z-10 w-full max-w-sm mx-4 rounded-2xl bg-white shadow-2xl p-6"
+             x-effect="if (pwModal.open) $nextTick(() => { const i = $el.querySelector('input[type=password]'); if (i) i.focus(); })">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 shrink-0">
+                    <svg class="h-5 w-5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-semibold text-gray-900">Table is Locked</h3>
+                    <p class="text-xs text-gray-500"
+                       x-text="successCount === 0 ? 'Enter password to make your 1st edit.' : 'Enter password to confirm your 2nd edit.'"></p>
+                </div>
+            </div>
+            <input type="password"
+                   x-model="pwModal.input"
+                   @keydown.enter="submitPassword()"
+                   @keydown.escape.prevent="cancelPassword()"
+                   placeholder="Enter password"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 mb-1">
+            <p x-show="pwModal.error" x-text="pwModal.error" class="text-xs text-red-600 min-h-[1rem] mb-1"></p>
+            <div class="flex gap-2 mt-3">
+                <button type="button" @click="cancelPassword()"
+                        class="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition">
+                    Cancel
+                </button>
+                <button type="button" @click="submitPassword()"
+                        class="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition">
+                    Unlock
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 {{-- Legend --}}
-<p class="mt-2 text-xs text-gray-400 print:hidden">
-    <span class="inline-block w-3 h-3 rounded-sm bg-emerald-100 border border-emerald-300 mr-1"></span>
-    Green values were pre-filled from saved defaults for this day of the week.
-    <span class="inline-block w-3 h-3 rounded-sm bg-amber-100 border border-amber-400 mr-1 ml-4"></span>
-    Amber values were automatically adjusted to match Board received quantities.
-    <span class="inline-block w-3 h-3 rounded-sm bg-red-50 border-2 border-red-400 mr-1 ml-4"></span>
-    Red stripe columns have a mismatch between Board Received Qty and Column Total — click Auto-Adjust to resolve.
-</p>
+<div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400 print:hidden">
+    <span>
+        <span class="inline-block w-3 h-3 rounded-sm bg-emerald-100 border border-emerald-300 mr-1"></span>
+        Green values = saved defaults for this weekday.
+    </span>
+    <span>
+        <span class="inline-block w-3 h-3 rounded-sm bg-amber-100 border border-amber-400 mr-1"></span>
+        Amber values = auto-adjusted to match Board qty.
+    </span>
+    <span>
+        <span class="inline-block w-3 h-3 rounded-sm bg-red-50 border-2 border-red-400 mr-1"></span>
+        Red column = Board vs. total mismatch.
+    </span>
+    @foreach($routeGroups as $rg)
+        @php $rc = $routeColorMap[$rg['route']?->color_code ?? ''] ?? $defaultRouteColor; @endphp
+        <span>
+            <span class="inline-block w-3 h-3 rounded-sm {{ $rc['rowBg'] }} border {{ $rc['separator'] }} mr-1"></span>
+            {{ $rg['route']?->name ?? 'Unassigned' }}
+        </span>
+    @endforeach
+</div>
 
 @endif
 
@@ -542,22 +709,33 @@ input.board-qty-cell[type=number] { -moz-appearance: textfield; }
 
 /* ── PRINT STYLES ─────────────────────────────────────────────────────── */
 @media print {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
+    @page { margin: 10mm; size: A4 landscape; }
+    body, html { margin: 0 !important; padding: 0 !important; }
 
     /* Hide all screen-only UI */
     .print\:hidden { display: none !important; }
     aside, header, nav, [class*="sidebar"] { display: none !important; }
-    body, html { margin: 0 !important; padding: 0 !important; }
 
-    /* Hide the Alpine interactive grid */
-    #dist-form  { display: none !important; }
-
-    /* Show the static PHP-rendered print tables */
+    /* Hide the Alpine interactive grid; show the static PHP-rendered tables */
+    #dist-form    { display: none !important; }
     #print-tables { display: block !important; }
 
-    /* Ensure page breaks work correctly */
-    @page { margin: 10mm; size: A4 landscape; }
+    /* ── B&W cell borders: strip every background, force solid black lines ─ */
+    #print-tables table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+    }
+    #print-tables th,
+    #print-tables td {
+        border: 1px solid #000 !important;
+        background: #fff !important;
+        color: #000 !important;
+        box-shadow: none !important;
+    }
+    /* tr-level border-color (route-group header has border-top:2px) → black */
+    #print-tables tr {
+        border-color: #000 !important;
+    }
 }
 </style>
 
@@ -575,12 +753,20 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
         defaultsChecked: false,
         dayName:         '',
         saving:          false,
+        isDirty:         false,
+        pendingUrl:      null,
+        _formId:         'dist-form',
 
         // ── Adjustment Mode ────────────────────────────────────────────────
         adjustMode:     false,
         boardQty:       {},   // { [lotteryId]: raw input value }
         adjustedCells:  {},   // { [aId]: { [lId]: true } }
         lockedRows:     {},   // { [aId]: true }
+
+        // ── Edit Lock ──────────────────────────────────────────────────────
+        editLocked:   true,
+        successCount: 0,
+        pwModal:      { open: false, pendingCallback: null, input: '', error: '' },
 
         // ── Lifecycle ──────────────────────────────────────────────────────
         init() {
@@ -594,6 +780,93 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
                 .then(data => { this.dayName = data.day_name; this.defaultsChecked = true; })
                 .catch(() => {});
             }
+
+            // ── DLP: browser-level (tab close / refresh / back-button) ────────
+            this._unloadHandler = (e) => {
+                if (!this.isDirty) return;
+                e.preventDefault();
+                e.returnValue = '';
+            };
+            window.addEventListener('beforeunload', this._unloadHandler);
+
+            // ── DLP: intercept all sidebar / header nav-link clicks ───────────
+            this._clickGuard = (e) => {
+                if (!this.isDirty) return;
+                const a = e.target.closest('a[href]');
+                if (!a) return;
+                const href = a.getAttribute('href');
+                if (!href || href === '#' || href.startsWith('javascript:')) return;
+                e.preventDefault();
+                this._dlpPrompt(a.href);
+            };
+            document.addEventListener('click', this._clickGuard);
+
+            // ── DLP: intercept the date-picker (inline onchange navigates directly,
+            //         bypassing any click or form guard — so we take it over here) ──
+            const datePicker = document.getElementById('date-picker');
+            if (datePicker) {
+                datePicker.removeAttribute('onchange');
+                this._dateGuard = (e) => {
+                    const url = '{{ route("ticket-distribution.index") }}?date=' + e.target.value;
+                    if (!this.isDirty) { window.location.href = url; return; }
+                    this._dlpPrompt(url);
+                };
+                datePicker.addEventListener('change', this._dateGuard);
+            }
+        },
+
+        destroy() {
+            window.removeEventListener('beforeunload', this._unloadHandler);
+            document.removeEventListener('click', this._clickGuard);
+            const datePicker = document.getElementById('date-picker');
+            if (datePicker && this._dateGuard) {
+                datePicker.removeEventListener('change', this._dateGuard);
+            }
+        },
+
+        // ── SweetAlert2 DLP prompt ────────────────────────────────────────────
+        _dlpPrompt(destUrl) {
+            this.pendingUrl = destUrl;
+            const dark = document.documentElement.classList.contains('dark');
+            Swal.fire({
+                title: 'Unsaved Changes',
+                html: 'You have unsaved ticket distribution data.<br><small style="color:#94a3b8">Choose how to proceed:</small>',
+                icon: 'warning',
+                iconColor: '#f59e0b',
+                background: dark ? '#1e293b' : '#ffffff',
+                color: dark ? '#e2e8f0' : '#1e293b',
+                showConfirmButton: true,
+                showDenyButton: true,
+                showCancelButton: true,
+                confirmButtonText: 'Save &amp; Go',
+                denyButtonText: 'Discard &amp; Leave',
+                cancelButtonText: 'Keep Editing',
+                confirmButtonColor: '#4f46e5',
+                denyButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                showLoaderOnConfirm: true,
+                allowOutsideClick: false,
+                allowEscapeKey: true,
+                preConfirm: async () => {
+                    const form = document.getElementById(this._formId);
+                    const res = await fetch(form.action, { method: 'POST', body: new FormData(form) })
+                        .catch(() => null);
+                    if (!res || !res.ok) {
+                        Swal.showValidationMessage('Save failed — please try again.');
+                        return false;
+                    }
+                    return true;
+                },
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    this.isDirty = false;
+                    window.location.href = this.pendingUrl;
+                } else if (result.isDenied) {
+                    this.isDirty = false;
+                    window.location.href = this.pendingUrl;
+                }
+                // isDismissed = "Keep Editing" → do nothing
+            });
         },
 
         // ── Smart Defaults ─────────────────────────────────────────────────
@@ -640,10 +913,44 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
 
         onCellInput(aId, lId, rawValue) {
             const qty = parseInt(rawValue) || 0;
-            if (!this.grid[aId]) this.grid[aId] = {};
-            this.grid[aId][lId] = qty;
-            // Clear adjustment highlight when user manually edits the cell
-            if (this.adjustedCells[aId]) delete this.adjustedCells[aId][lId];
+            this.requireUnlock(() => {
+                if (!this.grid[aId]) this.grid[aId] = {};
+                this.grid[aId][lId] = qty;
+                this.isDirty = true;
+                // Clear adjustment highlight when user manually edits the cell
+                if (this.adjustedCells[aId]) delete this.adjustedCells[aId][lId];
+            });
+        },
+
+        // ── Edit Lock methods ──────────────────────────────────────────────
+        requireUnlock(cb) {
+            if (!this.editLocked) { cb(); return; }
+            this.pwModal.input = '';
+            this.pwModal.error = '';
+            this.pwModal.pendingCallback = cb;
+            this.pwModal.open = true;
+        },
+        submitPassword() {
+            const EDIT_PASSWORD = '{{ env("TABLE_EDIT_PASSWORD", "admin123") }}';
+            if (this.pwModal.input === EDIT_PASSWORD) {
+                this.successCount++;
+                if (this.successCount >= 2) this.editLocked = false;
+                const cb = this.pwModal.pendingCallback;
+                this.pwModal.open = false;
+                this.pwModal.input = '';
+                this.pwModal.error = '';
+                this.pwModal.pendingCallback = null;
+                if (cb) cb();
+            } else {
+                this.pwModal.error = 'Incorrect password. Please try again.';
+                this.pwModal.input = '';
+            }
+        },
+        cancelPassword() {
+            this.pwModal.open = false;
+            this.pwModal.input = '';
+            this.pwModal.error = '';
+            this.pwModal.pendingCallback = null;
         },
 
         clearGrid() {
@@ -697,6 +1004,7 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
                     });
                     if (!response.ok) throw new Error('Server error ' + response.status);
                 }
+                this.isDirty = false;
                 document.getElementById('dist-form').submit();
             } catch (err) {
                 this.saving = false;
@@ -849,6 +1157,7 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
                         this.grid[aId][lId] = newQty;
                         if (!this.adjustedCells[aId]) this.adjustedCells[aId] = {};
                         this.adjustedCells[aId][lId] = true;
+                        this.isDirty = true;
                     }
                 }
             }

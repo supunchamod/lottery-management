@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AssistantRoute;
 use App\Models\BundleLog;
 use App\Models\Cheque;
 use App\Models\DailySale;
@@ -170,22 +171,34 @@ class PageController extends Controller
 
     public function assistantsIndex()
     {
+        $assistants = SalesAssistant::with('route')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $grouped = $assistants
+            ->groupBy(fn ($a) => $a->route?->name ?? 'Unassigned')
+            ->sortBy(fn ($group, $key) => $key === 'Unassigned' ? 'ZZZZZ' : $key);
+
         return view('assistants.index', [
-            'assistants' => SalesAssistant::orderBy('name')->get(),
+            'assistants' => $assistants,
+            'grouped'    => $grouped,
         ]);
     }
 
     public function assistantsCreate()
     {
-        return view('assistants.create');
+        return view('assistants.create', [
+            'routes' => AssistantRoute::orderBy('name')->get(),
+        ]);
     }
 
     public function assistantsStore(Request $request)
     {
         $data = $request->validate([
-            'name'    => ['required', 'string', 'max:255'],
-            'phone'   => ['required', 'string', 'max:20'],
-            'address' => ['required', 'string'],
+            'name'     => ['required', 'string', 'max:255'],
+            'phone'    => ['required', 'string', 'max:20'],
+            'address'  => ['required', 'string'],
+            'route_id' => ['nullable', 'exists:assistant_routes,id'],
         ]);
 
         SalesAssistant::create($data);
@@ -195,15 +208,19 @@ class PageController extends Controller
 
     public function assistantsEdit(SalesAssistant $assistant)
     {
-        return view('assistants.edit', compact('assistant'));
+        return view('assistants.edit', [
+            'assistant' => $assistant,
+            'routes'    => AssistantRoute::orderBy('name')->get(),
+        ]);
     }
 
     public function assistantsUpdate(Request $request, SalesAssistant $assistant)
     {
         $data = $request->validate([
-            'name'    => ['required', 'string', 'max:255'],
-            'phone'   => ['required', 'string', 'max:20'],
-            'address' => ['required', 'string'],
+            'name'     => ['required', 'string', 'max:255'],
+            'phone'    => ['required', 'string', 'max:20'],
+            'address'  => ['required', 'string'],
+            'route_id' => ['nullable', 'exists:assistant_routes,id'],
         ]);
 
         $assistant->update($data);
@@ -215,6 +232,16 @@ class PageController extends Controller
     {
         $entries = $assistant->ledgers()->orderByDesc('date')->orderByDesc('id')->paginate(30);
         return view('assistants.ledger', compact('assistant', 'entries'));
+    }
+
+    public function assistantsDestroy(SalesAssistant $assistant)
+    {
+        // Check if the assistant has ledger entries or sales before deleting 
+        // to prevent integrity issues, or simply delete if your database allows cascade.
+        $assistant->delete();
+
+        return redirect()->route('assistants.index')
+            ->with('success', "Assistant '{$assistant->name}' has been deleted.");
     }
 
     // ── Lotteries ─────────────────────────────────────────────────────────────
@@ -234,10 +261,9 @@ class PageController extends Controller
     public function lotteriesStore(Request $request)
     {
         $data = $request->validate([
-            'name'            => ['required', 'string', 'max:255'],
-            'board'           => ['required', 'in:NLB,DLB'],
-            'unit_price'      => ['required', 'numeric', 'min:0'],
-            'commission_rate' => ['required', 'numeric', 'min:0', 'max:100'],
+            'name'       => ['required', 'string', 'max:255'],
+            'board'      => ['required', 'in:NLB,DLB'],
+            'unit_price' => ['required', 'numeric', 'min:0'],
         ]);
 
         \App\Models\Lottery::create($data);
@@ -253,10 +279,9 @@ class PageController extends Controller
     public function lotteriesUpdate(Request $request, \App\Models\Lottery $lottery)
     {
         $data = $request->validate([
-            'name'            => ['required', 'string', 'max:255'],
-            'board'           => ['required', 'in:NLB,DLB'],
-            'unit_price'      => ['required', 'numeric', 'min:0'],
-            'commission_rate' => ['required', 'numeric', 'min:0', 'max:100'],
+            'name'       => ['required', 'string', 'max:255'],
+            'board'      => ['required', 'in:NLB,DLB'],
+            'unit_price' => ['required', 'numeric', 'min:0'],
         ]);
 
         $lottery->update($data);

@@ -35,12 +35,25 @@
                 @error('address')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
             </div>
 
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Route</label>
+                <select name="route_id" class="erp-input w-full @error('route_id') border-red-400 @enderror">
+                    <option value="">— Unassigned —</option>
+                    @foreach($routes as $route)
+                        <option value="{{ $route->id }}" {{ old('route_id', $assistant->route_id) == $route->id ? 'selected' : '' }}>
+                            {{ $route->name }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('route_id')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+            </div>
+
             <div class="rounded-lg bg-gray-50 border border-gray-200 px-4 py-3">
                 <p class="text-xs text-gray-500">Current Balance</p>
                 <p class="text-lg font-bold {{ $assistant->current_balance > 0 ? 'text-red-600' : ($assistant->current_balance < 0 ? 'text-emerald-600' : 'text-gray-500') }}">
                     Rs. {{ number_format(abs($assistant->current_balance), 2) }}
-                    @if($assistant->current_balance > 0) <span class="text-xs font-normal text-red-400">(owes)</span>
-                    @elseif($assistant->current_balance < 0) <span class="text-xs font-normal text-emerald-400">(credit)</span>
+                    @if($assistant->current_balance > 0) <span class="text-xs font-normal text-red-400">(credit)</span>
+                    @elseif($assistant->current_balance < 0) <span class="text-xs font-normal text-emerald-400">(Excess)</span>
                     @endif
                 </p>
             </div>
