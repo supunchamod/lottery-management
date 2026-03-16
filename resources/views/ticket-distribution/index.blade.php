@@ -658,22 +658,33 @@ input.board-qty-cell[type=number] { -moz-appearance: textfield; }
 
 /* ── PRINT STYLES ─────────────────────────────────────────────────────── */
 @media print {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
+    @page { margin: 10mm; size: A4 landscape; }
+    body, html { margin: 0 !important; padding: 0 !important; }
 
     /* Hide all screen-only UI */
     .print\:hidden { display: none !important; }
     aside, header, nav, [class*="sidebar"] { display: none !important; }
-    body, html { margin: 0 !important; padding: 0 !important; }
 
-    /* Hide the Alpine interactive grid */
-    #dist-form  { display: none !important; }
-
-    /* Show the static PHP-rendered print tables */
+    /* Hide the Alpine interactive grid; show the static PHP-rendered tables */
+    #dist-form    { display: none !important; }
     #print-tables { display: block !important; }
 
-    /* Ensure page breaks work correctly */
-    @page { margin: 10mm; size: A4 landscape; }
+    /* ── B&W cell borders: strip every background, force solid black lines ─ */
+    #print-tables table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+    }
+    #print-tables th,
+    #print-tables td {
+        border: 1px solid #000 !important;
+        background: #fff !important;
+        color: #000 !important;
+        box-shadow: none !important;
+    }
+    /* tr-level border-color (route-group header has border-top:2px) → black */
+    #print-tables tr {
+        border-color: #000 !important;
+    }
 }
 </style>
 

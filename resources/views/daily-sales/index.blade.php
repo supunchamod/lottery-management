@@ -814,8 +814,42 @@ input.ds-cell:focus {
     box-shadow: inset 0 0 0 2px #818cf8;
 }
 @media print {
-    .print\:hidden { display:none !important; }
-    aside, header { display:none !important; }
+    @page { margin: 10mm; size: A4 landscape; }
+    body, html { margin: 0 !important; padding: 0 !important; }
+
+    /* Hide screen-only UI */
+    .print\:hidden { display: none !important; }
+    aside, header { display: none !important; }
+
+    /* ── B&W table: strip all backgrounds, force solid black cell borders ── */
+    #sales-table {
+        border-collapse: collapse !important;
+    }
+    #sales-table th,
+    #sales-table td {
+        border: 1px solid #000 !important;
+        background: #fff !important;
+        color: #000 !important;
+        box-shadow: none !important;
+        animation: none !important;
+    }
+    /* tr-level border-color (route-group header has border-t-2) → black */
+    #sales-table tr {
+        border-color: #000 !important;
+    }
+    /* Inputs: transparent fill so the cell white shows through; no own border */
+    #sales-table input {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: #000 !important;
+    }
+    /* Cash counter button: strip emerald styling, show value as plain text */
+    #sales-table button {
+        background: transparent !important;
+        border: none !important;
+        color: #000 !important;
+    }
 }
 </style>
 <script>
