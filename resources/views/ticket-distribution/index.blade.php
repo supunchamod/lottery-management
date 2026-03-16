@@ -13,56 +13,6 @@
             $alpineGrid[$a->id][$l->id] = $grid[$a->id][$l->id] ?? 0;
         }
     }
-
-    // ── Route Color Map ──────────────────────────────────────────────────────
-    // color_code => Tailwind classes + hex values for sticky-cell inline styles
-    $routeColorMap = [
-        'blue'   => [
-            'headerBg'    => 'bg-blue-200',   'headerText'   => 'text-blue-900',
-            'headerBgHex' => '#bfdbfe',
-            'rowBg'       => 'bg-blue-50',    'rowBgHex'     => '#eff6ff',
-            'rowHoverBg'  => 'bg-blue-100',   'rowHoverHex'  => '#dbeafe',
-            'separator'   => 'border-blue-300',
-        ],
-        'green'  => [
-            'headerBg'    => 'bg-green-200',  'headerText'   => 'text-green-900',
-            'headerBgHex' => '#bbf7d0',
-            'rowBg'       => 'bg-green-50',   'rowBgHex'     => '#f0fdf4',
-            'rowHoverBg'  => 'bg-green-100',  'rowHoverHex'  => '#dcfce7',
-            'separator'   => 'border-green-300',
-        ],
-        'yellow' => [
-            'headerBg'    => 'bg-yellow-200', 'headerText'   => 'text-yellow-900',
-            'headerBgHex' => '#fef08a',
-            'rowBg'       => 'bg-yellow-50',  'rowBgHex'     => '#fefce8',
-            'rowHoverBg'  => 'bg-yellow-100', 'rowHoverHex'  => '#fef9c3',
-            'separator'   => 'border-yellow-300',
-        ],
-        'pink'   => [
-            'headerBg'    => 'bg-pink-200',   'headerText'   => 'text-pink-900',
-            'headerBgHex' => '#fbcfe8',
-            'rowBg'       => 'bg-pink-50',    'rowBgHex'     => '#fdf2f8',
-            'rowHoverBg'  => 'bg-pink-100',   'rowHoverHex'  => '#fce7f3',
-            'separator'   => 'border-pink-300',
-        ],
-    ];
-    $defaultRouteColor = [
-        'headerBg'    => 'bg-gray-100',   'headerText'   => 'text-gray-500',
-        'headerBgHex' => '#f3f4f6',
-        'rowBg'       => 'bg-white',      'rowBgHex'     => '#ffffff',
-        'rowHoverBg'  => 'bg-gray-50',    'rowHoverHex'  => '#f9fafb',
-        'separator'   => 'border-gray-200',
-    ];
-
-    // Group assistants by route; named routes first (alpha), unassigned last
-    $routeGroups = $assistants
-        ->groupBy(fn ($a) => $a->route_id ?? 'unassigned')
-        ->map(fn ($group) => [
-            'route'      => $group->first()->route,
-            'assistants' => $group,
-        ])
-        ->sortBy(fn ($g) => $g['route']?->name ?? 'ZZZZZ')
-        ->values();
 @endphp
 
 {{-- ── Top bar ──────────────────────────────────────────────────────────────── --}}
@@ -187,38 +137,13 @@
             </thead>
 
             <tbody>
-                @php
-                    $printColorHex = [
-                        'blue'   => ['header' => '#bfdbfe', 'row' => '#eff6ff'],
-                        'green'  => ['header' => '#bbf7d0', 'row' => '#f0fdf4'],
-                        'yellow' => ['header' => '#fef08a', 'row' => '#fefce8'],
-                        'pink'   => ['header' => '#fbcfe8', 'row' => '#fdf2f8'],
-                    ];
-                    $printDefaultColor = ['header' => '#f3f4f6', 'row' => '#ffffff'];
-                    $lastRouteId = null;
-                    $printRowNum = 0;
-                @endphp
-                @foreach($chunk as $a)
+                @foreach($chunk as $i => $a)
                     @php
-                        $printRowNum++;
-                        $globalIndex = $pageNum * 26 + $printRowNum - 1;
-                        $rowTot      = $rowTotals[$a->id] ?? 0;
-                        $routeId     = $a->route_id;
-                        $pColor      = $printColorHex[$a->route?->color_code ?? ''] ?? $printDefaultColor;
+                        $globalIndex = $pageNum * 26 + $i;
+                        $bg = $i % 2 === 0 ? '#ffffff' : '#f8fafc';
+                        $rowTot = $rowTotals[$a->id] ?? 0;
                     @endphp
-
-                    {{-- Route group header row (only when route changes) --}}
-                    @if($routeId !== $lastRouteId)
-                        @php $lastRouteId = $routeId; @endphp
-                        <tr style="background:{{ $pColor['header'] }}; border-top:2px solid #94a3b8;">
-                            <td colspan="{{ count($lotteries) + 2 }}"
-                                style="padding:3px 6px; font-weight:700; font-size:7pt; text-transform:uppercase; letter-spacing:0.08em; color:#374151;">
-                                {{ $a->route?->name ?? 'Unassigned' }}
-                            </td>
-                        </tr>
-                    @endif
-
-                    <tr style="background:{{ $pColor['row'] }}; border-bottom:1px solid #e2e8f0;">
+                    <tr style="background:{{ $bg }}; border-bottom:1px solid #e2e8f0;">
                         <td style="padding:4px 6px; font-weight:500; color:#1e293b; white-space:nowrap; border-right:1px solid #e2e8f0;">
                             <span style="color:#94a3b8; font-size:7.5pt; margin-right:4px;">{{ $globalIndex + 1 }}</span>
                             {{ $a->name }}
@@ -486,99 +411,70 @@
                     </tr>
                 </thead>
 
-                <tbody>
-                    @php $rowIndex = 0; @endphp
-                    @foreach($routeGroups as $routeGroup)
-                        @php
-                            $route  = $routeGroup['route'];
-                            $colors = $routeColorMap[$route?->color_code ?? ''] ?? $defaultRouteColor;
-                        @endphp
+                <tbody class="divide-y divide-gray-100">
+                    @foreach($assistants as $i => $a)
+                        <tr class="{{ $i % 2 === 0 ? 'bg-white' : 'bg-gray-50/60' }}"
+                            x-bind:class="{
+                                'ring-1 ring-inset ring-blue-300 bg-blue-50': hoveredRow === {{ $a->id }} && !isLocked({{ $a->id }}),
+                                'ring-1 ring-inset ring-amber-400 bg-amber-50': isLocked({{ $a->id }})
+                            }"
+                            @mouseenter="hoveredRow = {{ $a->id }}"
+                            @mouseleave="hoveredRow = null">
 
-                        {{-- ── Route Group Header Row ──────────────────────── --}}
-                        <tr class="border-t-2 border-gray-300">
-                            <td class="sticky left-0 z-10 px-3 py-1.5 font-bold text-[11px] uppercase tracking-widest
-                                       {{ $colors['headerText'] }} border-r border-gray-300"
-                                style="background: {{ $colors['headerBgHex'] }};">
-                                {{ $route?->name ?? 'Unassigned' }}
-                                <span class="ml-1.5 font-normal opacity-60 normal-case tracking-normal">
-                                    {{ $routeGroup['assistants']->count() }}
-                                </span>
+                            <td class="sticky left-0 z-10 px-3 py-1.5 font-medium text-gray-700 whitespace-nowrap border-r border-gray-200"
+                                style="{{ $i % 2 === 0 ? 'background:#fff' : 'background:#f9fafb' }}"
+                                x-bind:style="isLocked({{ $a->id }}) ? 'background:#fffbeb' : (hoveredRow === {{ $a->id }} ? 'background:#eff6ff' : '')">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-gray-400 text-[11px] shrink-0">{{ $i + 1 }}</span>
+                                    <span class="truncate">{{ $a->name }}</span>
+                                    {{-- Lock button — only visible in Adjustment Mode --}}
+                                    <button type="button"
+                                            x-show="adjustMode"
+                                            @click.stop="toggleLock({{ $a->id }})"
+                                            :title="isLocked({{ $a->id }}) ? 'Unlock row — auto-adjust will include this assistant' : 'Lock row — auto-adjust will skip this assistant'"
+                                            :class="isLocked({{ $a->id }}) ? 'text-amber-600 hover:text-amber-700' : 'text-gray-300 hover:text-amber-500'"
+                                            class="ml-auto shrink-0 transition-colors">
+                                        {{-- Locked icon --}}
+                                        <svg x-show="isLocked({{ $a->id }})" class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"/>
+                                        </svg>
+                                        {{-- Unlocked icon --}}
+                                        <svg x-show="!isLocked({{ $a->id }})" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+                                        </svg>
+                                    </button>
+                                </div>
                             </td>
-                            <td colspan="{{ count($lotteries) + 1 }}"
-                                class="{{ $colors['headerBg'] }}"></td>
-                        </tr>
 
-                        {{-- ── Assistant Rows ──────────────────────────────── --}}
-                        @foreach($routeGroup['assistants'] as $a)
-                            @php
-                                $ri             = $rowIndex++;
-                                $rowBgHex       = $colors['rowBgHex'];
-                                $rowHoverHex    = $colors['rowHoverHex'];
-                                $rowHoverBg     = $colors['rowHoverBg'];
-                            @endphp
-                            <tr class="{{ $colors['rowBg'] }} border-b {{ $colors['separator'] }}"
-                                x-bind:class="{
-                                    '{{ $rowHoverBg }} ring-1 ring-inset ring-blue-400': hoveredRow === {{ $a->id }} && !isLocked({{ $a->id }}),
-                                    '!bg-amber-50 ring-1 ring-inset ring-amber-400': isLocked({{ $a->id }})
-                                }"
-                                @mouseenter="hoveredRow = {{ $a->id }}"
-                                @mouseleave="hoveredRow = null">
-
-                                <td class="sticky left-0 z-10 px-3 py-1.5 font-medium text-gray-700 whitespace-nowrap border-r border-gray-200"
-                                    style="background: {{ $rowBgHex }}"
-                                    x-bind:style="isLocked({{ $a->id }}) ? 'background:#fffbeb' : (hoveredRow === {{ $a->id }} ? 'background:{{ $rowHoverHex }}' : 'background:{{ $rowBgHex }}')">
-                                    <div class="flex items-center gap-1.5">
-                                        <span class="text-gray-400 text-[11px] shrink-0">{{ $ri + 1 }}</span>
-                                        <span class="truncate">{{ $a->name }}</span>
-                                        {{-- Lock button — only visible in Adjustment Mode --}}
-                                        <button type="button"
-                                                x-show="adjustMode"
-                                                @click.stop="toggleLock({{ $a->id }})"
-                                                :title="isLocked({{ $a->id }}) ? 'Unlock row — auto-adjust will include this assistant' : 'Lock row — auto-adjust will skip this assistant'"
-                                                :class="isLocked({{ $a->id }}) ? 'text-amber-600 hover:text-amber-700' : 'text-gray-300 hover:text-amber-500'"
-                                                class="ml-auto shrink-0 transition-colors">
-                                            {{-- Locked icon --}}
-                                            <svg x-show="isLocked({{ $a->id }})" class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"/>
-                                            </svg>
-                                            {{-- Unlocked icon --}}
-                                            <svg x-show="!isLocked({{ $a->id }})" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
-                                            </svg>
-                                        </button>
-                                    </div>
+                            @foreach($lotteries as $j => $l)
+                                <td class="p-0 relative col-cell-transition"
+                                    x-bind:class="{
+                                        'bg-blue-50':   hoveredCol === {{ $l->id }} && !isAdjusted({{ $a->id }}, {{ $l->id }}) && !isMismatch({{ $l->id }}),
+                                        'bg-amber-100': isAdjusted({{ $a->id }}, {{ $l->id }}) && !isMismatch({{ $l->id }}),
+                                        'border-x-2 border-red-400 bg-red-50': isMismatch({{ $l->id }}) && !isAdjusted({{ $a->id }}, {{ $l->id }}),
+                                        'border-x-2 border-red-400 bg-red-100': isMismatch({{ $l->id }}) && isAdjusted({{ $a->id }}, {{ $l->id }})
+                                    }">
+                                    <input
+                                        type="number" min="0" step="1"
+                                        class="dist-cell w-full h-8 px-1 text-center text-xs font-medium border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-400 focus:z-10 relative outline-none"
+                                        :value="grid[{{ $a->id }}][{{ $l->id }}] || ''"
+                                        :class="{
+                                            'text-emerald-700': isDefault({{ $a->id }}, {{ $l->id }}) && !isAdjusted({{ $a->id }}, {{ $l->id }}),
+                                            'text-amber-800 font-semibold is-adjusted': isAdjusted({{ $a->id }}, {{ $l->id }})
+                                        }"
+                                        @focus="hoveredCol = {{ $l->id }}"
+                                        @blur="hoveredCol = null"
+                                        @input="onCellInput({{ $a->id }}, {{ $l->id }}, $event.target.value)"
+                                        data-row="{{ $i }}"
+                                        data-col="{{ $j }}"
+                                        placeholder="">
                                 </td>
+                            @endforeach
 
-                                @foreach($lotteries as $j => $l)
-                                    <td class="p-0 relative col-cell-transition"
-                                        x-bind:class="{
-                                            'bg-blue-50':   hoveredCol === {{ $l->id }} && !isAdjusted({{ $a->id }}, {{ $l->id }}) && !isMismatch({{ $l->id }}),
-                                            'bg-amber-100': isAdjusted({{ $a->id }}, {{ $l->id }}) && !isMismatch({{ $l->id }}),
-                                            'border-x-2 border-red-400 bg-red-50': isMismatch({{ $l->id }}) && !isAdjusted({{ $a->id }}, {{ $l->id }}),
-                                            'border-x-2 border-red-400 bg-red-100': isMismatch({{ $l->id }}) && isAdjusted({{ $a->id }}, {{ $l->id }})
-                                        }">
-                                        <input
-                                            type="number" min="0" step="1"
-                                            class="dist-cell w-full h-8 px-1 text-center text-xs font-medium border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-400 focus:z-10 relative outline-none"
-                                            :value="grid[{{ $a->id }}][{{ $l->id }}] || ''"
-                                            :class="{
-                                                'text-emerald-700': isDefault({{ $a->id }}, {{ $l->id }}) && !isAdjusted({{ $a->id }}, {{ $l->id }}),
-                                                'text-amber-800 font-semibold is-adjusted': isAdjusted({{ $a->id }}, {{ $l->id }})
-                                            }"
-                                            @focus="hoveredCol = {{ $l->id }}"
-                                            @blur="hoveredCol = null"
-                                            @input="onCellInput({{ $a->id }}, {{ $l->id }}, $event.target.value)"
-                                            data-row="{{ $ri }}"
-                                            data-col="{{ $j }}"
-                                            placeholder="">
-                                    </td>
-                                @endforeach
-
-                                <td class="px-3 py-1.5 text-center font-bold"
-                                    x-bind:class="rowTotal({{ $a->id }}) > 0 ? 'text-blue-700' : 'text-gray-300'"
-                                    x-text="rowTotal({{ $a->id }}).toLocaleString()"></td>
-                            </tr>
-                        @endforeach
+                            <td class="px-3 py-1.5 text-center font-bold"
+                                x-bind:class="rowTotal({{ $a->id }}) > 0 ? 'text-blue-700' : 'text-gray-300'"
+                                x-text="rowTotal({{ $a->id }}).toLocaleString()"></td>
+                        </tr>
                     @endforeach
 
                     <tr class="border-t-2 border-gray-300 font-bold" style="background:#f1f5f9;">
@@ -602,27 +498,14 @@
 </div>
 
 {{-- Legend --}}
-<div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400 print:hidden">
-    <span>
-        <span class="inline-block w-3 h-3 rounded-sm bg-emerald-100 border border-emerald-300 mr-1"></span>
-        Green values = saved defaults for this weekday.
-    </span>
-    <span>
-        <span class="inline-block w-3 h-3 rounded-sm bg-amber-100 border border-amber-400 mr-1"></span>
-        Amber values = auto-adjusted to match Board qty.
-    </span>
-    <span>
-        <span class="inline-block w-3 h-3 rounded-sm bg-red-50 border-2 border-red-400 mr-1"></span>
-        Red column = Board vs. total mismatch.
-    </span>
-    @foreach($routeGroups as $rg)
-        @php $rc = $routeColorMap[$rg['route']?->color_code ?? ''] ?? $defaultRouteColor; @endphp
-        <span>
-            <span class="inline-block w-3 h-3 rounded-sm {{ $rc['rowBg'] }} border {{ $rc['separator'] }} mr-1"></span>
-            {{ $rg['route']?->name ?? 'Unassigned' }}
-        </span>
-    @endforeach
-</div>
+<p class="mt-2 text-xs text-gray-400 print:hidden">
+    <span class="inline-block w-3 h-3 rounded-sm bg-emerald-100 border border-emerald-300 mr-1"></span>
+    Green values were pre-filled from saved defaults for this day of the week.
+    <span class="inline-block w-3 h-3 rounded-sm bg-amber-100 border border-amber-400 mr-1 ml-4"></span>
+    Amber values were automatically adjusted to match Board received quantities.
+    <span class="inline-block w-3 h-3 rounded-sm bg-red-50 border-2 border-red-400 mr-1 ml-4"></span>
+    Red stripe columns have a mismatch between Board Received Qty and Column Total — click Auto-Adjust to resolve.
+</p>
 
 @endif
 
