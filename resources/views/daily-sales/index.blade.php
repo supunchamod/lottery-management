@@ -125,6 +125,8 @@
         @php $aid = $a->id; @endphp
         <input type="hidden" :name="`rows[{{ $aid }}][qty]`"         :value="rows[{{ $aid }}].qty">
         <input type="hidden" :name="`rows[{{ $aid }}][unit_price]`"  :value="rows[{{ $aid }}].unitPrice">
+        <input type="hidden" :name="`rows[{{ $aid }}][d5]`"          :value="rows[{{ $aid }}].d5">
+        <input type="hidden" :name="`rows[{{ $aid }}][d10]`"         :value="rows[{{ $aid }}].d10">
         <input type="hidden" :name="`rows[{{ $aid }}][d20]`"         :value="rows[{{ $aid }}].d20">
         <input type="hidden" :name="`rows[{{ $aid }}][d50]`"         :value="rows[{{ $aid }}].d50">
         <input type="hidden" :name="`rows[{{ $aid }}][d100]`"        :value="rows[{{ $aid }}].d100">

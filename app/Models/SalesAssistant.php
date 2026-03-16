@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SalesAssistant extends Model
@@ -16,6 +17,7 @@ class SalesAssistant extends Model
         'phone',
         'address',
         'current_balance',
+        'route_id',
     ];
 
     protected function casts(): array
@@ -23,6 +25,11 @@ class SalesAssistant extends Model
         return [
             'current_balance' => 'decimal:2',
         ];
+    }
+
+    public function route(): BelongsTo
+    {
+        return $this->belongsTo(AssistantRoute::class, 'route_id');
     }
 
     public function stocks(): HasMany

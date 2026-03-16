@@ -16,7 +16,7 @@ class DailySaleRecord extends Model
     protected $fillable = [
         'date', 'assistant_id',
         'tickets_issued_qty', 'unit_price', 'value',
-        'denom_20', 'denom_50', 'denom_100', 'denom_500', 'denom_1000', 'denom_5000',
+        'denom_5', 'denom_10', 'denom_20', 'denom_50', 'denom_100', 'denom_500', 'denom_1000', 'denom_5000',
         'cash',
         'nlb_winning', 'dlb_winning', 'total_winning',
         'cw', 'balance',
@@ -42,7 +42,9 @@ class DailySaleRecord extends Model
     public function compute(): void
     {
         $this->value         = $this->tickets_issued_qty * $this->unit_price;
-        $this->cash          = ($this->denom_20   * 20)
+        $this->cash          = ($this->denom_5    * 5)
+                             + ($this->denom_10   * 10)
+                             + ($this->denom_20   * 20)
                              + ($this->denom_50   * 50)
                              + ($this->denom_100  * 100)
                              + ($this->denom_500  * 500)
