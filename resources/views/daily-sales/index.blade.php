@@ -184,7 +184,8 @@
         <input type="hidden" :name="`rows[{{ $aid }}][d5000]`"       :value="rows[{{ $aid }}].d5000">
         <input type="hidden" :name="`rows[{{ $aid }}][nlb_winning]`" :value="rows[{{ $aid }}].nlbWinning">
         <input type="hidden" :name="`rows[{{ $aid }}][dlb_winning]`" :value="rows[{{ $aid }}].dlbWinning">
-        <input type="hidden" :name="`rows[{{ $aid }}][remarks]`"     :value="rows[{{ $aid }}].remarks">
+        <input type="hidden" :name="`rows[{{ $aid }}][shortage_reason]`" :value="rows[{{ $aid }}].shortageReason">
+        <input type="hidden" :name="`rows[{{ $aid }}][remarks]`"          :value="rows[{{ $aid }}].remarks">
         @endforeach
 
         {{-- Save bar --}}
@@ -258,6 +259,9 @@
                         <th class="px-2 py-3 text-center text-red-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:90px;">
                             Status<br><span class="text-slate-500 font-normal" style="font-size:10px;">Balance</span>
                         </th>
+                        <th class="px-2 py-3 text-center text-rose-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:120px;">
+                            Shortage<br><span class="text-slate-500 font-normal" style="font-size:10px;">Reason</span>
+                        </th>
                         <th class="px-2 py-3 text-center text-slate-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:130px;">Remarks</th>
                     </tr>
 
@@ -274,6 +278,7 @@
                         <td class="px-2 py-2 text-center text-purple-300 font-bold border-x border-slate-600"  x-text="fmt(totalWinning())"></td>
                         <td class="px-2 py-2 text-center text-cyan-300 font-bold border-x border-slate-600"    x-text="fmt(totalCW())"></td>
                         <td class="px-2 py-2 text-center text-red-300 font-bold border-x border-slate-600"     x-text="fmt(Math.abs(totalBalance()))"></td>
+                        <td class="border-x border-slate-600"></td>
                         <td class="border-x border-slate-600"></td>
                     </tr>
                 </thead>
@@ -296,7 +301,7 @@
                                 {{ $routeGroup['assistants']->count() }}
                             </span>
                         </td>
-                        <td colspan="10" class="{{ $colors['headerBg'] }} border-x border-gray-300 dark:border-slate-600"></td>
+                        <td colspan="11" class="{{ $colors['headerBg'] }} border-x border-gray-300 dark:border-slate-600"></td>
                     </tr>
 
                     {{-- ── Assistant Rows ───────────────────────────────────── --}}
@@ -400,6 +405,22 @@
                             </template>
                         </td>
 
+                        {{-- Shortage Reason (only shown/required when Outstanding) --}}
+                        <td class="p-0 border-x border-gray-200 dark:border-slate-700/40">
+                            <template x-if="balance({{ $aid }}) > 0">
+                                <select class="ds-cell w-full h-8 px-1 text-[10px] border-0 bg-transparent outline-none text-rose-700 dark:text-rose-300 cursor-pointer"
+                                        :value="rows[{{ $aid }}].shortageReason"
+                                        @change="requireUnlock(() => { rows[{{ $aid }}].shortageReason = $event.target.value; isDirty = true; })">
+                                    <option value="">— Select —</option>
+                                    <option value="credit">Credit</option>
+                                    <option value="scam_winning">Scam Winning</option>
+                                </select>
+                            </template>
+                            <template x-if="balance({{ $aid }}) <= 0">
+                                <span class="block text-center text-slate-400 dark:text-slate-600 text-[10px] leading-8">—</span>
+                            </template>
+                        </td>
+
                         {{-- Remarks --}}
                         <td class="p-0 border-x border-gray-200 dark:border-slate-700/40">
                             <input type="text"
@@ -427,6 +448,7 @@
                         <td class="px-2 py-2.5 text-center font-bold border-x border-gray-200 dark:border-slate-600"
                             :class="totalBalance() > 0 ? 'text-red-700 dark:text-red-400' : (totalBalance() < 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400')"
                             x-text="fmt(Math.abs(totalBalance()))"></td>
+                        <td class="border-x border-gray-200 dark:border-slate-600"></td>
                         <td class="border-x border-gray-200 dark:border-slate-600"></td>
                     </tr>
                 </tbody>
@@ -923,16 +945,17 @@ function salesGrid(initialRows, names) {
             denoms: { 5:0, 10:0, 20:0, 50:0, 100:0, 500:0, 1000:0, 5000:0 },
         },
         addForm: {
-            open:        false,
-            dropOpen:    false,
-            cashOpen:    false,
-            assistantId: '',
-            search:      '',
-            qty:         0,
-            unitPrice:   40,
-            nlbWinning:  0,
-            dlbWinning:  0,
-            remarks:     '',
+            open:           false,
+            dropOpen:       false,
+            cashOpen:       false,
+            assistantId:    '',
+            search:         '',
+            qty:            0,
+            unitPrice:      40,
+            nlbWinning:     0,
+            dlbWinning:     0,
+            shortageReason: '',
+            remarks:        '',
             denoms: { 5:0, 10:0, 20:0, 50:0, 100:0, 500:0, 1000:0, 5000:0 },
         },
 
@@ -1068,16 +1091,17 @@ function salesGrid(initialRows, names) {
         // ── Add Form ──────────────────────────────────────────────────────────
         openAddForm() {
             this.addForm = {
-                open:        true,
-                dropOpen:    false,
-                cashOpen:    false,
-                assistantId: '',
-                search:      '',
-                qty:         0,
-                unitPrice:   40,
-                nlbWinning:  0,
-                dlbWinning:  0,
-                remarks:     '',
+                open:           true,
+                dropOpen:       false,
+                cashOpen:       false,
+                assistantId:    '',
+                search:         '',
+                qty:            0,
+                unitPrice:      40,
+                nlbWinning:     0,
+                dlbWinning:     0,
+                shortageReason: '',
+                remarks:        '',
                 denoms: { 5:0, 10:0, 20:0, 50:0, 100:0, 500:0, 1000:0, 5000:0 },
             };
         },
@@ -1094,11 +1118,12 @@ function salesGrid(initialRows, names) {
             // Pre-fill from the existing row so edits show current state
             const r = this.rows[id];
             if (r) {
-                this.addForm.qty        = r.qty        || 0;
-                this.addForm.unitPrice  = r.unitPrice  || 40;
-                this.addForm.nlbWinning = r.nlbWinning || 0;
-                this.addForm.dlbWinning = r.dlbWinning || 0;
-                this.addForm.remarks    = r.remarks    || '';
+                this.addForm.qty            = r.qty            || 0;
+                this.addForm.unitPrice      = r.unitPrice      || 40;
+                this.addForm.nlbWinning     = r.nlbWinning     || 0;
+                this.addForm.dlbWinning     = r.dlbWinning     || 0;
+                this.addForm.shortageReason = r.shortageReason || '';
+                this.addForm.remarks        = r.remarks        || '';
                 this.addForm.denoms = {
                     5:    r.d5    || 0, 10:   r.d10   || 0,
                     20:   r.d20   || 0, 50:   r.d50   || 0,
@@ -1121,15 +1146,16 @@ function salesGrid(initialRows, names) {
             const id = this.addForm.assistantId;
             const d  = this.addForm.denoms;
             Object.assign(this.rows[id], {
-                qty:        this.addForm.qty,
-                unitPrice:  this.addForm.unitPrice,
+                qty:            this.addForm.qty,
+                unitPrice:      this.addForm.unitPrice,
                 d5:    d[5]   ||0, d10:   d[10]  ||0,
                 d20:   d[20]  ||0, d50:   d[50]  ||0,
                 d100:  d[100] ||0, d500:  d[500] ||0,
                 d1000: d[1000]||0, d5000: d[5000]||0,
-                nlbWinning: this.addForm.nlbWinning,
-                dlbWinning: this.addForm.dlbWinning,
-                remarks:    this.addForm.remarks,
+                nlbWinning:     this.addForm.nlbWinning,
+                dlbWinning:     this.addForm.dlbWinning,
+                shortageReason: this.addForm.shortageReason,
+                remarks:        this.addForm.remarks,
             });
             this.isDirty = true;
             this.addForm.open = false;

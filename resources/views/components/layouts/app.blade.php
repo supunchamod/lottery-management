@@ -139,7 +139,7 @@
             $navItems = [
                 ['route' => 'stock.index',               'label' => 'Stock',            'adminOnly' => false, 'icon' => 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4'],
                 ['route' => 'bundle-counter.index',      'label' => 'Bundle Counter',   'adminOnly' => false, 'icon' => 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M12 7h.01M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'],
-                
+
                 ['route' => 'assistants.index',          'label' => 'Sales Assistants',       'adminOnly' => false, 'icon' => 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z'],
                 ['route' => 'daily-sales.index',         'label' => 'Daily Sales',      'adminOnly' => false, 'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01'],
                 ['route' => 'bulk-deposits.index',       'label' => 'Bulk Deposits',    'adminOnly' => false, 'icon' => 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10'],
@@ -174,6 +174,49 @@
                 @endif
             </a>
         @endforeach
+
+        {{-- Returns Dropdown (Credit Logs + Scam Ticket Management) --}}
+        @php
+            $returnsActive = request()->routeIs('credit-logs.*') || request()->routeIs('scam-winnings.*');
+        @endphp
+        <div x-data="{ open: {{ $returnsActive ? 'true' : 'false' }} }">
+            <button @click="open = !open; if(collapsed) { collapsed = false }"
+                    class="group flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150
+                           {{ $returnsActive ? 'bg-white/5 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white' }}"
+                    :title="collapsed ? 'Returns' : ''">
+                <div class="flex items-center gap-3">
+                    <svg class="h-5 w-5 shrink-0 {{ $returnsActive ? 'text-rose-400' : 'text-slate-500 group-hover:text-white transition-colors' }}"
+                         fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/>
+                    </svg>
+                    <span x-show="!collapsed" class="truncate">Returns</span>
+                </div>
+                <svg x-show="!collapsed"
+                     :class="open ? 'rotate-180' : ''"
+                     class="h-4 w-4 shrink-0 transition-transform duration-200"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+
+            <div x-show="open && !collapsed" x-cloak
+                 x-transition:enter="transition ease-out duration-100"
+                 x-transition:enter-start="opacity-0 -translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 class="ml-8 mt-0.5 space-y-0.5 border-l border-white/5 pl-3">
+                <a href="{{ route('credit-logs.index') }}"
+                   class="block rounded-lg px-2 py-2 text-xs transition-colors
+                          {{ request()->routeIs('credit-logs.*') ? 'text-rose-400 font-semibold bg-white/5' : 'text-slate-500 hover:text-white hover:bg-white/5' }}">
+                    Credit Logs
+                </a>
+                <a href="{{ route('scam-winnings.index') }}"
+                   class="block rounded-lg px-2 py-2 text-xs transition-colors
+                          {{ request()->routeIs('scam-winnings.*') ? 'text-rose-400 font-semibold bg-white/5' : 'text-slate-500 hover:text-white hover:bg-white/5' }}">
+                    Scam Ticket Management
+                </a>
+            </div>
+        </div>
     </nav>
 
     {{-- Sidebar collapse toggle (desktop only) --}}

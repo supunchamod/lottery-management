@@ -20,6 +20,7 @@ class DailySaleRecord extends Model
         'cash',
         'nlb_winning', 'dlb_winning', 'total_winning',
         'cw', 'balance',
+        'shortage_reason',
         'remarks',
     ];
 

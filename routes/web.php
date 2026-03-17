@@ -5,12 +5,14 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\BoardSettlementController;
 use App\Http\Controllers\BoardTransactionController;
 use App\Http\Controllers\BulkDepositController;
+use App\Http\Controllers\CreditLogController;
 use App\Http\Controllers\DailyRecordController;
 use App\Http\Controllers\DailySalesController;
 use App\Http\Controllers\DailySummaryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ScamWinningController;
 use App\Http\Controllers\TicketDistributionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WinningController;
@@ -113,6 +115,18 @@ Route::get ('/lotteries/{lottery}/edit', [PageController::class, 'lotteriesEdit'
     Route::put   ('/ticket-distribution/sub-sellers/{subSeller}',         [TicketDistributionController::class, 'subSellersUpdate'])->name('ticket-distribution.sub-sellers.update');
     Route::delete('/ticket-distribution/sub-sellers/{subSeller}/destroy', [TicketDistributionController::class, 'subSellersDestroy'])->name('ticket-distribution.sub-sellers.destroy');
 
+    // ── Returns: Credit Logs ───────────────────────────────────────────────────
+    Route::get   ('/credit-logs',                          [CreditLogController::class, 'index'])->name('credit-logs.index');
+    Route::post  ('/credit-logs/{creditLog}/mark-paid',    [CreditLogController::class, 'markPaid'])->name('credit-logs.mark-paid');
+    Route::delete('/credit-logs/{creditLog}',              [CreditLogController::class, 'destroy'])->name('credit-logs.destroy');
+
+    // ── Returns: Scam Ticket Management ───────────────────────────────────────
+    Route::get   ('/scam-winnings',                              [ScamWinningController::class, 'index'])->name('scam-winnings.index');
+    Route::get   ('/scam-winnings/create',                       [ScamWinningController::class, 'create'])->name('scam-winnings.create');
+    Route::post  ('/scam-winnings',                              [ScamWinningController::class, 'store'])->name('scam-winnings.store');
+    Route::post  ('/scam-winnings/{scamWinning}/mark-paid-back', [ScamWinningController::class, 'markPaidBack'])->name('scam-winnings.mark-paid-back');
+    Route::delete('/scam-winnings/{scamWinning}',                [ScamWinningController::class, 'destroy'])->name('scam-winnings.destroy');
+
     // Board Settlement
     Route::get ('/board-settlement', [BoardSettlementController::class, 'index'])->name('board-settlement.index');
     Route::post('/board-settlement', [BoardSettlementController::class, 'store'])->name('board-settlement.store');
@@ -165,6 +179,9 @@ Route::prefix('api')->name('api.')->middleware('auth')->group(function () {
     Route::post('/daily-records',               [DailyRecordController::class, 'store'])->name('daily-records.store');
     Route::get ('/daily-records/{dailyRecord}', [DailyRecordController::class, 'show'])->name('daily-records.show');
     Route::put ('/daily-records/{dailyRecord}', [DailyRecordController::class, 'update'])->name('daily-records.update');
+
+    // Scam barcode check (returns JSON alert if barcode/assistant has scam history)
+    Route::get('/scam-winnings/check-barcode', [ScamWinningController::class, 'checkBarcode'])->name('scam-winnings.check-barcode');
 
     // Winning calculator
     Route::post('/winnings/calculate', [WinningController::class, 'calculate'])->name('winnings.calculate');

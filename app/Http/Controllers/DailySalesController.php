@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CreditLog;
 use App\Models\DailySaleRecord;
 use App\Models\SalesAssistant;
+use App\Models\ScamWinning;
 use App\Services\LedgerService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -30,19 +32,20 @@ class DailySalesController extends Controller
         foreach ($assistants as $a) {
             $r = $records->get($a->id);
             $alpineRows[$a->id] = [
-                'qty'        => $r->tickets_issued_qty ?? 0,
-                'unitPrice'  => $r ? (float) $r->unit_price  : 40,
-                'd5'         => $r->denom_5    ?? 0,
-                'd10'        => $r->denom_10   ?? 0,
-                'd20'        => $r->denom_20   ?? 0,
-                'd50'        => $r->denom_50   ?? 0,
-                'd100'       => $r->denom_100  ?? 0,
-                'd500'       => $r->denom_500  ?? 0,
-                'd1000'      => $r->denom_1000 ?? 0,
-                'd5000'      => $r->denom_5000 ?? 0,
-                'nlbWinning' => $r ? (float) $r->nlb_winning : 0,
-                'dlbWinning' => $r ? (float) $r->dlb_winning : 0,
-                'remarks'    => $r->remarks ?? '',
+                'qty'            => $r->tickets_issued_qty ?? 0,
+                'unitPrice'      => $r ? (float) $r->unit_price  : 40,
+                'd5'             => $r->denom_5    ?? 0,
+                'd10'            => $r->denom_10   ?? 0,
+                'd20'            => $r->denom_20   ?? 0,
+                'd50'            => $r->denom_50   ?? 0,
+                'd100'           => $r->denom_100  ?? 0,
+                'd500'           => $r->denom_500  ?? 0,
+                'd1000'          => $r->denom_1000 ?? 0,
+                'd5000'          => $r->denom_5000 ?? 0,
+                'nlbWinning'     => $r ? (float) $r->nlb_winning : 0,
+                'dlbWinning'     => $r ? (float) $r->dlb_winning : 0,
+                'shortageReason' => $r->shortage_reason ?? '',
+                'remarks'        => $r->remarks ?? '',
             ];
         }
 
@@ -70,10 +73,11 @@ class DailySalesController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'date'          => 'required|date',
-            'rows'          => 'nullable|array',
-            'rows.*.qty'    => 'nullable|integer|min:0',
-            'rows.*.unit_price' => 'nullable|numeric|min:0',
+            'date'                      => 'required|date',
+            'rows'                      => 'nullable|array',
+            'rows.*.qty'                => 'nullable|integer|min:0',
+            'rows.*.unit_price'         => 'nullable|numeric|min:0',
+            'rows.*.shortage_reason'    => 'nullable|in:credit,scam_winning',
         ]);
 
         $date = $request->input('date');
@@ -109,6 +113,10 @@ class DailySalesController extends Controller
                     'assistant_id' => $assistantId,
                 ]);
 
+                $shortageReason = $data['shortage_reason'] ?? null;
+                // Only persist shortage_reason when balance will be > 0
+                // (we compute after fill, so we handle it post-compute below)
+
                 $rec->fill([
                     'tickets_issued_qty' => $qty,
                     'unit_price'         => $up,
@@ -122,8 +130,40 @@ class DailySalesController extends Controller
                 ]);
                 $rec->compute();
 
+                // Only attach shortage_reason when there is an outstanding balance
+                $rec->shortage_reason = ($rec->balance > 0 && $shortageReason)
+                    ? $shortageReason
+                    : null;
+
                 $isNew = ! $rec->exists;
                 $rec->save();
+
+                // ── Auto-create/update Credit or Scam log on Outstanding ──────
+                if ($rec->balance > 0 && $rec->shortage_reason) {
+                    if ($rec->shortage_reason === 'credit') {
+                        CreditLog::updateOrCreate(
+                            ['daily_sale_record_id' => $rec->id],
+                            [
+                                'assistant_id' => $assistantId,
+                                'date'         => $date,
+                                'amount'       => $rec->balance,
+                            ]
+                        );
+                    } elseif ($rec->shortage_reason === 'scam_winning') {
+                        // Only create if no existing scam for this record without a barcode
+                        ScamWinning::firstOrCreate(
+                            ['daily_sale_record_id' => $rec->id, 'ticket_barcode' => 'PENDING'],
+                            [
+                                'assistant_id'           => $assistantId,
+                                'date'                   => $date,
+                                'ticket_barcode'         => 'PENDING',
+                                'reported_winning_value' => $rec->balance,
+                                'actual_winning_value'   => 0,
+                                'difference'             => $rec->balance,
+                            ]
+                        );
+                    }
+                }
 
                 // Post / re-post ledger entry
                 $assistant = SalesAssistant::find($assistantId);
