@@ -255,7 +255,7 @@
                     <div class="flex items-center justify-between pt-3">
                         <span class="text-base font-bold"
                               :class="balance >= 0 ? 'text-red-700' : 'text-green-700'">
-                            <span x-text="balance >= 0 ? 'Outstanding Balance (Credit)' : 'Overpaid (Excess)'"></span>
+                            <span x-text="balance >= 0 ? 'Credit Balance' : 'Excess'"></span>
                         </span>
                         <span class="text-2xl font-extrabold"
                               :class="balance >= 0 ? 'text-red-600' : 'text-green-600'"

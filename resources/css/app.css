@@ -138,12 +138,12 @@
 .dark .erp-table tbody tr:hover { background-color: rgba(30, 41, 59, 0.8); }
 
 /* ── Balance state badges ──────────────────────────────────────────────────── */
-.balance-owes    { background: #fee2e2; color: #b91c1c; font-weight: 600; }
-.balance-credit  { background: #dcfce7; color: #15803d; font-weight: 600; }
+.balance-credit  { background: #fee2e2; color: #b91c1c; font-weight: 600; }
+.balance-excess  { background: #dcfce7; color: #15803d; font-weight: 600; }
 .balance-settled { background: #f1f5f9; color: #475569; }
 
-.dark .balance-owes    { background: rgba(239, 68, 68, 0.15);   color: #fca5a5; }
-.dark .balance-credit  { background: rgba(34, 197, 94, 0.15);   color: #86efac; }
+.dark .balance-credit  { background: rgba(239, 68, 68, 0.15);   color: #fca5a5; }
+.dark .balance-excess  { background: rgba(34, 197, 94, 0.15);   color: #86efac; }
 .dark .balance-settled { background: rgba(100, 116, 139, 0.15); color: #94a3b8; }
 
 /* ── Button micro-interactions (scale on hover/active) ─────────────────────── */

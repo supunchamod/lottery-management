@@ -55,12 +55,12 @@ class DailySaleRecord extends Model
         $this->balance       = $this->value - $this->cw;
     }
 
-    /** positive balance = assistant owes (Credit/Outstanding) */
+    /** positive balance = assistant owes (Credit) */
     public function statusLabel(): string
     {
-        if ($this->balance > 0) return 'Outstanding';
-        if ($this->balance < 0) return 'Overpaid';
-        return 'Balanced';
+        if ($this->balance > 0) return 'Credit';
+        if ($this->balance < 0) return 'Excess';
+        return 'Settled';
     }
 
     public function assistant(): BelongsTo
