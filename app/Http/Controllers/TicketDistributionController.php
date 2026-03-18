@@ -21,7 +21,7 @@ class TicketDistributionController extends Controller
     public function index(Request $request)
     {
         $date       = $request->input('date', today()->toDateString());
-        $assistants = SalesAssistant::with('route')->orderBy('name')->get();
+        $assistants = SalesAssistant::with('route')->orderBy('created_at', 'asc')->get();
         $lotteries  = Lottery::orderBy('board')->orderBy('name')->get();
 
         // Load all records for this date, keyed as [assistant_id][lottery_id] => quantity
@@ -178,7 +178,7 @@ class TicketDistributionController extends Controller
             $label = $refDate->format('F Y');
         }
 
-        $assistants = SalesAssistant::orderBy('name')->get();
+        $assistants = SalesAssistant::orderBy('created_at', 'asc')->get();
         $lotteries  = Lottery::orderBy('board')->orderBy('name')->get();
 
         $rows = DailyTicketStock::whereBetween('date', [$from->toDateString(), $to->toDateString()])
@@ -211,7 +211,7 @@ class TicketDistributionController extends Controller
 
     public function subSellersIndex(SalesAssistant $assistant)
     {
-        $assistants = SalesAssistant::orderBy('name')->get();
+        $assistants = SalesAssistant::orderBy('created_at', 'asc')->get();
         $subSellers = SubSeller::where('assistant_id', $assistant->id)
             ->orderByDesc('is_active')
             ->orderBy('name')

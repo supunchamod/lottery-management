@@ -18,7 +18,7 @@ class DailySalesController extends Controller
     public function index(Request $request)
     {
         $date       = $request->input('date', today()->toDateString());
-        $assistants = SalesAssistant::with('route')->orderByDesc('created_at')->get();
+        $assistants = SalesAssistant::with('route')->orderBy('created_at', 'asc')->get();
 
         // Load existing records for this date, keyed by assistant_id
         $records = DailySaleRecord::where('date', $date)
@@ -142,7 +142,7 @@ class DailySalesController extends Controller
 
     public function analysis(Request $request)
     {
-        $assistants = SalesAssistant::orderBy('name')->get();
+        $assistants = SalesAssistant::orderBy('created_at', 'asc')->get();
         $allIds     = $assistants->pluck('id')->map(fn ($id) => (int) $id)->all();
 
         // Multi-assistant selector — defaults to all assistants
