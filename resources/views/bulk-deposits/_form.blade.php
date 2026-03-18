@@ -245,7 +245,7 @@ $v = fn(string $field, $fallback = 0) =>
                 {{-- Outstanding --}}
                 <div class="rounded-xl bg-white dark:bg-slate-800 ring-1 ring-black/5 dark:ring-white/5 px-3 py-2.5 text-center">
                     <p class="text-[10px] uppercase tracking-wide font-semibold text-slate-400 dark:text-slate-500 mb-1">
-                        Outstanding
+                        Credit
                     </p>
                     <p class="text-base font-bold"
                        :class="autoOutstanding() > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400'"

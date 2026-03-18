@@ -4,7 +4,7 @@
     <div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h2 class="text-xl font-bold text-gray-900">Assistant Performance</h2>
-            <p class="text-sm text-gray-500">Sales totals, collection rates and outstanding credits per agent.</p>
+            <p class="text-sm text-gray-500">Sales totals, collection rates and credit balances per agent.</p>
         </div>
         <a href="{{ route('reports.index') }}"
            class="text-sm text-blue-600 hover:text-blue-700">← Back to Reports</a>
@@ -81,7 +81,7 @@
                                 <td class="px-4 py-2.5 text-right text-orange-500">{{ number_format($a['total_returns'], 0) }}</td>
                                 <td class="px-4 py-2.5 text-right">
                                     <span class="inline-block rounded px-2 py-0.5 text-xs font-semibold
-                                                 {{ $a['period_balance'] > 0 ? 'balance-owes' : ($a['period_balance'] < 0 ? 'balance-credit' : 'balance-settled') }}">
+                                                 {{ $a['period_balance'] > 0 ? 'balance-credit' : ($a['period_balance'] < 0 ? 'balance-excess' : 'balance-settled') }}">
                                         {{ number_format($a['period_balance'], 0) }}
                                     </span>
                                 </td>
@@ -121,7 +121,7 @@
 
             {{-- Leaderboard: highest outstanding -------------------------------- --}}
             <div class="rounded-xl bg-white border border-gray-100 shadow-sm p-5">
-                <h3 class="mb-3 text-sm font-semibold text-gray-700">Top Outstanding Credits</h3>
+                <h3 class="mb-3 text-sm font-semibold text-gray-700">Top Credit Balances</h3>
                 <div class="space-y-2">
                     @foreach($assistants->sortByDesc('period_balance')->take(6) as $i => $a)
                         @if($a['period_balance'] > 0)

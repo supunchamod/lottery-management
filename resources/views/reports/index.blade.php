@@ -90,7 +90,7 @@
                 ['label'=>'Expenses',       'value'=>$totals['total_expenses'],  'light'=>'bg-rose-50 text-rose-700',       'dark'=>'dark:bg-rose-900/30 dark:text-rose-300'],
                 ['label'=>'Net Profit',     'value'=>$totals['net_profit'],      'light'=>$totals['net_profit']>=0?'bg-emerald-50 text-emerald-700':'bg-red-50 text-red-700', 'dark'=>$totals['net_profit']>=0?'dark:bg-emerald-900/30 dark:text-emerald-300':'dark:bg-red-900/30 dark:text-red-300'],
                 ['label'=>'Winnings',       'value'=>$totals['total_winning'],   'light'=>'bg-violet-50 text-violet-700',   'dark'=>'dark:bg-violet-900/30 dark:text-violet-300'],
-                ['label'=>'Outstanding',    'value'=>$totals['outstanding'],     'light'=>'bg-orange-50 text-orange-700',   'dark'=>'dark:bg-orange-900/30 dark:text-orange-300'],
+                ['label'=>'Credit',         'value'=>$totals['outstanding'],     'light'=>'bg-orange-50 text-orange-700',   'dark'=>'dark:bg-orange-900/30 dark:text-orange-300'],
             ];
         @endphp
         @foreach($kpis as $kpi)
@@ -136,7 +136,7 @@
                         <th class="px-4 py-2.5 text-right font-semibold uppercase tracking-wide text-teal-500">Cash</th>
                         <th class="px-4 py-2.5 text-right font-semibold uppercase tracking-wide text-rose-500">Expenses</th>
                         <th class="px-4 py-2.5 text-right font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Net Profit</th>
-                        <th class="px-4 py-2.5 text-right font-semibold uppercase tracking-wide text-orange-500">Outstanding</th>
+                        <th class="px-4 py-2.5 text-right font-semibold uppercase tracking-wide text-orange-500">Credit</th>
                         <th class="px-4 py-2.5 text-center font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">PDF</th>
                     </tr>
                 </thead>

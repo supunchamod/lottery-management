@@ -111,7 +111,7 @@
             <div class="hs-val">Rs.{{ number_format($totals['cash_collected'], 2) }}</div>
         </div>
         <div class="header-stat">
-            <div class="hs-label">Outstanding</div>
+            <div class="hs-label">Credit</div>
             <div class="hs-val" style="color:#fbbf24">Rs.{{ number_format($totals['outstanding'], 2) }}</div>
         </div>
         <div class="header-stat">
@@ -157,7 +157,7 @@
             <th>Cash</th>
             <th>Expenses</th>
             <th>Net Profit</th>
-            <th>Outstanding</th>
+            <th>Credit</th>
         </tr>
     </thead>
     <tbody>

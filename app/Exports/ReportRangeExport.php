@@ -60,7 +60,7 @@ class ReportRangeExport implements
             'Cash Collected (Rs.)',
             'Total Expenses (Rs.)',
             'Net Profit (Rs.)',
-            'Outstanding (Rs.)',
+            'Credit (Rs.)',
             'Record Count',
         ];
     }

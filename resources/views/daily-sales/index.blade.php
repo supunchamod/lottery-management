@@ -158,7 +158,7 @@
         </div>
         <div class="rounded-2xl px-4 py-3.5 text-white shadow-sm"
              :class="totalBalance() > 0 ? 'bg-red-600 dark:bg-red-600/80' : (totalBalance() < 0 ? 'bg-amber-500 dark:bg-amber-500/80' : 'bg-slate-500 dark:bg-slate-600/80')">
-            <p class="text-xs opacity-75 mb-1 font-medium">Outstanding</p>
+            <p class="text-xs opacity-75 mb-1 font-medium">Credit</p>
             <p class="text-lg font-bold" x-text="'Rs. ' + fmt(Math.abs(totalBalance()))"></p>
         </div>
     </div>
@@ -382,20 +382,20 @@
                         <td class="px-1 py-1.5 text-center border-x border-gray-200 dark:border-slate-700/40">
                             <template x-if="balance({{ $aid }}) > 0">
                                 <div class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 px-1.5 py-0.5 text-center">
-                                    <p class="text-[9px] font-bold text-red-500 dark:text-red-400 uppercase">Outstanding</p>
+                                    <p class="text-[9px] font-bold text-red-500 dark:text-red-400 uppercase">Credit</p>
                                     <p class="text-xs font-bold text-red-700 dark:text-red-300" x-text="fmt(balance({{ $aid }}))"></p>
                                 </div>
                             </template>
                             <template x-if="balance({{ $aid }}) < 0">
                                 <div class="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 px-1.5 py-0.5 text-center">
-                                    <p class="text-[9px] font-bold text-amber-500 dark:text-amber-400 uppercase">Credit</p>
+                                    <p class="text-[9px] font-bold text-amber-500 dark:text-amber-400 uppercase">Excess</p>
                                     <p class="text-xs font-bold text-amber-700 dark:text-amber-300" x-text="fmt(Math.abs(balance({{ $aid }})))"></p>
                                 </div>
                             </template>
                             <template x-if="balance({{ $aid }}) === 0 && value({{ $aid }}) > 0">
                                 <span class="inline-block rounded-full px-2 py-0.5 text-[10px] font-bold
                                              bg-emerald-100 dark:bg-emerald-900/25 text-emerald-700 dark:text-emerald-400">
-                                    Balanced
+                                    Settled
                                 </span>
                             </template>
                         </td>

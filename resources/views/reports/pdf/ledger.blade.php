@@ -131,7 +131,7 @@
         <div class="s-label">Closing Balance</div>
         <div class="s-val" style="color:{{ $closingBal > 0 ? '#dc2626' : '#15803d' }}">
             Rs.{{ number_format(abs($closingBal), 2) }}
-            {{ $closingBal > 0 ? '(Owes)' : ($closingBal < 0 ? '(Credit)' : '') }}
+            {{ $closingBal > 0 ? '(Owes)' : ($closingBal < 0 ? '(Excess)' : '') }}
         </div>
     </div>
     <div class="summary-box" style="background:#f8fafc">

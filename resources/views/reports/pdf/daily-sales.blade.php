@@ -103,7 +103,7 @@
         <div class="kpi-val" style="color:#be123c">Rs.{{ number_format($totals['expenses'], 2) }}</div>
     </div>
     <div class="kpi-box">
-        <div class="kpi-label">Outstanding</div>
+        <div class="kpi-label">Credit</div>
         <div class="kpi-val" style="color:#c2410c">Rs.{{ number_format($totals['balance'], 2) }}</div>
     </div>
 </div>

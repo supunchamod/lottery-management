@@ -311,7 +311,7 @@ function analysisControls() {
             ['label'=>'Total Cash',       'value'=>$stats['totalCash'],        'color'=>'bg-emerald-600 text-white'],
             ['label'=>'Total Winning',    'value'=>$stats['totalWinning'],     'color'=>'bg-violet-600 text-white'],
             ['label'=>'Total C+W',        'value'=>$stats['totalCW'],          'color'=>'bg-blue-600 text-white'],
-            ['label'=>'Outstanding',      'value'=>$stats['totalOutstanding'], 'color'=>'bg-red-600 text-white'],
+            ['label'=>'Credit',           'value'=>$stats['totalOutstanding'], 'color'=>'bg-red-600 text-white'],
         ];
     @endphp
     @foreach($statCards as $c)
@@ -450,11 +450,11 @@ function analysisControls() {
                     <td class="px-3 py-2.5 text-right font-semibold text-cyan-700">{{ number_format($r->cw, 0) }}</td>
                     <td class="px-3 py-2.5 text-center">
                         @if($r->balance > 0)
-                            <span class="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">Outstanding</span>
+                            <span class="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">Credit</span>
                         @elseif($r->balance < 0)
-                            <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">Credit</span>
+                            <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">Excess</span>
                         @else
-                            <span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">Balanced</span>
+                            <span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">Settled</span>
                         @endif
                     </td>
                     <td class="px-3 py-2.5 text-gray-500 italic">{{ $r->remarks ?: '—' }}</td>
