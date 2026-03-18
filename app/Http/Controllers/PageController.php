@@ -172,7 +172,7 @@ class PageController extends Controller
     public function assistantsIndex()
     {
         $assistants = SalesAssistant::with('route')
-            ->orderBy('created_at', 'asc')
+            ->orderBy('sales_assistants.created_at', 'asc')
             ->get();
 
         $grouped = $assistants

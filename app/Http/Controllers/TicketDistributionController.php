@@ -21,7 +21,7 @@ class TicketDistributionController extends Controller
     public function index(Request $request)
     {
         $date       = $request->input('date', today()->toDateString());
-        $assistants = SalesAssistant::with('route')->orderBy('created_at', 'asc')->get();
+        $assistants = SalesAssistant::with('route')->orderBy('sales_assistants.created_at', 'asc')->get();
         $lotteries  = Lottery::orderBy('board')->orderBy('name')->get();
 
         // Load all records for this date, keyed as [assistant_id][lottery_id] => quantity
