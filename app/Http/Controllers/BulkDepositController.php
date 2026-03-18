@@ -30,7 +30,7 @@ class BulkDepositController extends Controller
 
     public function create()
     {
-        $assistants = SalesAssistant::orderBy('name')->get();
+        $assistants = SalesAssistant::orderBy('created_at', 'asc')->get();
 
         return view('bulk-deposits.create', compact('assistants'));
     }
@@ -69,7 +69,7 @@ class BulkDepositController extends Controller
     {
         abort_if($bulkDeposit->isCompleted(), 403, 'Completed bulk deposits cannot be edited.');
 
-        $assistants = SalesAssistant::orderBy('name')->get();
+        $assistants = SalesAssistant::orderBy('created_at', 'asc')->get();
 
         return view('bulk-deposits.edit', compact('bulkDeposit', 'assistants'));
     }

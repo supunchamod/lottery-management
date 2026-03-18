@@ -43,7 +43,7 @@ class PageController extends Controller
         return view('daily-sales.index', [
             'sales'      => $sales,
             'dayTotals'  => $dayTotals,
-            'assistants' => SalesAssistant::orderBy('name')->get(),
+            'assistants' => SalesAssistant::orderBy('created_at', 'asc')->get(),
         ]);
     }
 
@@ -172,7 +172,7 @@ class PageController extends Controller
     public function assistantsIndex()
     {
         $assistants = SalesAssistant::with('route')
-            ->orderByDesc('created_at')
+            ->orderBy('created_at', 'asc')
             ->get();
 
         $grouped = $assistants
@@ -301,7 +301,7 @@ class PageController extends Controller
     public function stockCreate()
     {
         return view('stock.create', [
-            'assistants' => SalesAssistant::orderBy('name')->get(),
+            'assistants' => SalesAssistant::orderBy('created_at', 'asc')->get(),
             'lotteries'  => \App\Models\Lottery::orderBy('name')->get(),
         ]);
     }

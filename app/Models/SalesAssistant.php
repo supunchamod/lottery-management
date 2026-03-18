@@ -12,6 +12,11 @@ class SalesAssistant extends Model
 {
     use HasFactory, LogsActivity;
 
+    protected static function booted(): void
+    {
+        static::addGlobalScope('ordered', fn ($q) => $q->orderBy('created_at', 'asc'));
+    }
+
     protected $fillable = [
         'name',
         'phone',
