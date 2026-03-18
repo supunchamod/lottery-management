@@ -174,6 +174,7 @@ class PageController extends Controller
         $assistants = SalesAssistant::with('route')
             ->withCount('dailySales')
             ->orderBy('created_at', 'asc')
+            ->orderBy('sales_assistants.created_at', 'asc')
             ->get();
 
         $grouped = $assistants
