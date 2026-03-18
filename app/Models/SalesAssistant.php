@@ -14,7 +14,7 @@ class SalesAssistant extends Model
 
     protected static function booted(): void
     {
-        static::addGlobalScope('ordered', fn ($q) => $q->orderBy('created_at', 'asc'));
+        static::addGlobalScope('ordered', fn ($q) => $q->orderBy('sales_assistants.created_at', 'asc'));
     }
 
     protected $fillable = [
