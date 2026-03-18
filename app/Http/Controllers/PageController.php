@@ -172,6 +172,7 @@ class PageController extends Controller
     public function assistantsIndex()
     {
         $assistants = SalesAssistant::with('route')
+            ->withCount('dailySales')
             ->orderBy('created_at', 'asc')
             ->get();
 
