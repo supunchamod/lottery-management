@@ -56,13 +56,15 @@
                                         <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{{ $a->phone }}</p>
                                     </div>
                                 </div>
-                                <span class="rounded-full px-2.5 py-1 text-xs font-bold
-                                             {{ $a->current_balance > 0
-                                                    ? 'bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400'
-                                                    : ($a->current_balance < 0
-                                                        ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                                                        : 'bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400') }}">
-                                    {{ $a->current_balance > 0 ? 'Credit' : ($a->current_balance < 0 ? 'Excess' : 'Settled') }}
+                                @php
+                                    $hasSales = $a->daily_sales_count > 0;
+                                    if ($a->current_balance > 0)      { $statusLabel = 'Credit';    $statusClass = 'bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400'; }
+                                    elseif ($a->current_balance < 0)  { $statusLabel = 'Excess';    $statusClass = 'bg-blue-100 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400'; }
+                                    elseif ($hasSales)                 { $statusLabel = 'Settled';   $statusClass = 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'; }
+                                    else                               { $statusLabel = 'Not Sales'; $statusClass = 'bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400'; }
+                                @endphp
+                                <span class="rounded-full px-2.5 py-1 text-xs font-bold {{ $statusClass }}">
+                                    {{ $statusLabel }}
                                 </span>
                             </div>
 
@@ -73,7 +75,7 @@
                                              {{ $a->current_balance > 0
                                                     ? 'text-red-600 dark:text-red-400'
                                                     : ($a->current_balance < 0
-                                                        ? 'text-emerald-600 dark:text-emerald-400'
+                                                        ? 'text-blue-600 dark:text-blue-400'
                                                         : 'text-slate-500 dark:text-slate-400') }}">
                                     Rs.{{ number_format(abs($a->current_balance), 2) }}
                                 </span>
