@@ -230,14 +230,14 @@
         </div>
 
         {{-- ── GRID TABLE ───────────────────────────────────────────────────── --}}
-        <div class="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700/60
+        <div class="overflow-auto max-h-[600px] rounded-2xl border border-slate-200 dark:border-slate-700/60
                     bg-white dark:bg-slate-800/60 shadow-sm">
             <table class="min-w-full border-collapse text-xs" id="sales-table">
 
                 {{-- Sticky column headers --}}
                 <thead class="sticky top-0 z-20">
                     <tr style="background:#0f172a;">
-                        <th class="sticky left-0 z-20 px-3 py-3 text-left text-white font-medium whitespace-nowrap border-x border-slate-600"
+                        <th class="sticky left-0 z-30 px-3 py-3 text-left text-white font-medium whitespace-nowrap border-x border-slate-600"
                             style="background:#0f172a; min-width:150px;">#&nbsp; Name</th>
                         <th class="px-2 py-3 text-center text-indigo-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:68px;">Amount</th>
                         <th class="px-2 py-3 text-center text-blue-200 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:60px;">Unit<br>Price</th>
@@ -263,7 +263,7 @@
 
                     {{-- Totals row --}}
                     <tr style="background:#1e293b;" class="border-b-2 border-slate-600">
-                        <td class="sticky left-0 z-20 px-3 py-2 text-slate-300 font-semibold text-[11px] border-x border-slate-600"
+                        <td class="sticky left-0 z-30 px-3 py-2 text-slate-300 font-semibold text-[11px] border-x border-slate-600"
                             style="background:#1e293b;">Totals ↓</td>
                         <td class="px-2 py-2 text-center text-slate-200 font-bold border-x border-slate-600" x-text="fmtInt(totalQty())"></td>
                         <td class="px-2 py-2 text-center text-slate-500 border-x border-slate-600">—</td>
@@ -414,8 +414,8 @@
 
                     {{-- Bottom totals row --}}
                     <tr class="border-t-2 border-slate-200 dark:border-slate-600 font-bold bg-slate-50 dark:bg-slate-700/40">
-                        <td class="sticky left-0 z-10 px-3 py-2.5 text-slate-700 dark:text-slate-300 border-x border-gray-200 dark:border-slate-600"
-                            style="background:inherit;">Totals ↑</td>
+                        <td class="sticky left-0 z-10 px-3 py-2.5 text-slate-700 dark:text-slate-300 border-x border-gray-200 dark:border-slate-600 ds-sticky-footer"
+                            style="background:#f8fafc;">Totals ↑</td>
                         <td class="px-2 py-2.5 text-center text-slate-900 dark:text-white border-x border-gray-200 dark:border-slate-600" x-text="fmtInt(totalQty())"></td>
                         <td class="px-2 py-2.5 text-center text-slate-400 dark:text-slate-500 border-x border-gray-200 dark:border-slate-600">—</td>
                         <td class="px-2 py-2.5 text-center text-yellow-700 dark:text-yellow-400 font-bold border-x border-gray-200 dark:border-slate-600" x-text="fmt(totalValue())"></td>
@@ -852,6 +852,19 @@
 
 @push('head')
 <style>
+/* ── Sticky column right-edge shadow ────────────────────────── */
+#sales-table th.sticky,
+#sales-table td.sticky {
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.07);
+}
+.dark #sales-table th.sticky,
+.dark #sales-table td.sticky {
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.30);
+}
+/* Dark-mode solid background for the bottom totals sticky cell */
+.dark #sales-table .ds-sticky-footer {
+    background: #1e293b !important;
+}
 input.ds-cell::-webkit-outer-spin-button,
 input.ds-cell::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input.ds-cell[type=number] { -moz-appearance: textfield; }

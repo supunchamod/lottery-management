@@ -431,12 +431,12 @@
         </div>
 
         {{-- ── Scrollable grid ──────────────────────────────────────────── --}}
-        <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div class="overflow-auto max-h-[600px] rounded-xl border border-gray-200 bg-white shadow-sm">
             <table class="min-w-full border-collapse text-xs" id="dist-table">
 
-                <thead>
+                <thead class="sticky top-0 z-20">
                     <tr style="background:#0f172a;">
-                        <th class="sticky left-0 z-20 px-3 py-3 text-left text-white font-medium whitespace-nowrap border-x border-slate-600"
+                        <th class="sticky left-0 z-30 px-3 py-3 text-left text-white font-medium whitespace-nowrap border-x border-slate-600"
                             style="background:#0f172a; min-width:150px;">
                             # &nbsp; Assistant
                         </th>
@@ -457,7 +457,7 @@
 
                     {{-- ── Board Received Qty row (Adjustment Mode only) ── --}}
                     <tr x-show="adjustMode" style="background:#fffbeb; border-bottom: 2px solid #fcd34d;">
-                        <td class="sticky left-0 z-20 px-3 py-2 font-semibold text-[11px] border-x border-amber-300 whitespace-nowrap"
+                        <td class="sticky left-0 z-30 px-3 py-2 font-semibold text-[11px] border-x border-amber-300 whitespace-nowrap"
                             style="background:#fffbeb; color:#92400e;">
                             <div class="flex items-center gap-1.5">
                                 <svg class="h-3.5 w-3.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -484,7 +484,7 @@
                     </tr>
 
                     <tr class="border-b-2 border-slate-600" style="background:#1e293b;">
-                        <td class="sticky left-0 z-20 px-3 py-2 text-slate-300 font-semibold text-[11px] border-x border-slate-600"
+                        <td class="sticky left-0 z-30 px-3 py-2 text-slate-300 font-semibold text-[11px] border-x border-slate-600"
                             style="background:#1e293b;">Column Total ↓</td>
                         @foreach($lotteries as $l)
                             <td class="px-2 py-2 text-center font-bold col-total-cell border-x border-slate-600"
@@ -679,6 +679,12 @@
 
 @push('head')
 <style>
+/* ── Sticky column right-edge shadow ────────────────────────── */
+#dist-table th.sticky,
+#dist-table td.sticky {
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.07);
+}
+
 /* Remove number input spinners for cleaner grid cells */
 input.dist-cell::-webkit-outer-spin-button,
 input.dist-cell::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
