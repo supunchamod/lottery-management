@@ -91,7 +91,8 @@ Route::middleware('auth')->group(function () {
     Route::get ('/lotteries/create',         [PageController::class, 'lotteriesCreate'])->name('lotteries.create');
     Route::post('/lotteries',                [PageController::class, 'lotteriesStore'])->name('lotteries.store');
 Route::get ('/lotteries/{lottery}/edit', [PageController::class, 'lotteriesEdit'])->name('lotteries.edit');
-    Route::put ('/lotteries/{lottery}',      [PageController::class, 'lotteriesUpdate'])->name('lotteries.update');
+    Route::put   ('/lotteries/{lottery}',    [PageController::class, 'lotteriesUpdate'])->name('lotteries.update');
+    Route::delete('/lotteries/{lottery}',    [PageController::class, 'lotteriesDestroy'])->name('lotteries.destroy');
 
     // Stock
     Route::get ('/stock',        [PageController::class, 'stockIndex'])->name('stock.index');

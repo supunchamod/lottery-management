@@ -291,6 +291,23 @@ class PageController extends Controller
         return redirect()->route('lotteries.index')->with('success', "{$lottery->name} updated.");
     }
 
+    public function lotteriesDestroy(\App\Models\Lottery $lottery)
+    {
+        $hasStocks    = $lottery->stocks()->exists();
+        $hasTickets   = \App\Models\TicketDistribution::where('lottery_id', $lottery->id)->exists();
+        $hasDailySales = \App\Models\DailyTicketStock::where('lottery_id', $lottery->id)->exists();
+
+        if ($hasStocks || $hasTickets || $hasDailySales) {
+            return redirect()->route('lotteries.index')
+                ->with('error', "Cannot delete \"{$lottery->name}\" — it has existing stock or sales history.");
+        }
+
+        $name = $lottery->name;
+        $lottery->delete();
+
+        return redirect()->route('lotteries.index')->with('success', "\"{$name}\" deleted successfully.");
+    }
+
     // ── Stock ─────────────────────────────────────────────────────────────────
 
     public function stockIndex()
