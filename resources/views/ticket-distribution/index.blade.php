@@ -295,7 +295,8 @@
         '{{ route('api.ticket-distribution.defaults.get') }}',
         '{{ route('api.ticket-distribution.defaults.save') }}',
         {{ json_encode($alpineNoSales) }},
-        {{ json_encode($alpineRemarks) }}
+        {{ json_encode($alpineRemarks) }},
+        {{ json_encode($assistants->pluck('name', 'id')->toArray()) }}
      )"
      @keydown.window="handleArrow($event)"
      class="print:hidden">
@@ -453,6 +454,34 @@
             </div>
         </div>
 
+        {{-- ── Search bar ──────────────────────────────────────────────── --}}
+        <div class="mb-2 flex items-center gap-2">
+            <div class="relative w-64">
+                <svg class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400"
+                     fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
+                </svg>
+                <input type="text"
+                       x-model="search"
+                       placeholder="Search assistant name…"
+                       autocomplete="off"
+                       class="w-full rounded-lg border border-gray-200 bg-white pl-8 pr-7 py-1.5 text-xs
+                              text-gray-700 placeholder-gray-400
+                              focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-300">
+                <button x-show="search"
+                        @click="search = ''"
+                        type="button"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        title="Clear search">
+                    <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <span x-show="search && !hasAnyMatch()"
+                  class="text-xs text-gray-400">No results</span>
+        </div>
+
         {{-- ── Scrollable grid ──────────────────────────────────────────── --}}
         <div class="overflow-auto max-h-[600px] rounded-xl border border-gray-200 bg-white shadow-sm">
             <table class="min-w-full border-collapse text-xs" id="dist-table">
@@ -536,7 +565,8 @@
                         @endphp
 
                         {{-- ── Route Group Header Row ──────────────────────── --}}
-                        <tr class="border-t-2 border-gray-300">
+                        <tr class="border-t-2 border-gray-300"
+                            x-show="groupHasMatch({{ json_encode($routeGroup['assistants']->pluck('id')->values()->toArray()) }})">
                             <td class="sticky left-0 z-10 px-3 py-1.5 font-bold text-[11px] uppercase tracking-widest
                                        {{ $colors['headerText'] }} border-x border-gray-300"
                                 style="background: {{ $colors['headerBgHex'] }};">
@@ -558,6 +588,7 @@
                                 $rowHoverBg     = $colors['rowHoverBg'];
                             @endphp
                             <tr class="{{ $colors['rowBg'] }} border-b {{ $colors['separator'] }}"
+                                x-show="matchesSearch({{ $a->id }})"
                                 x-bind:class="{
                                     '!bg-gray-100': noSales[{{ $a->id }}],
                                     '{{ $rowHoverBg }} ring-1 ring-inset ring-blue-400': hoveredRow === {{ $a->id }} && !isLocked({{ $a->id }}) && !noSales[{{ $a->id }}],
@@ -650,6 +681,17 @@
                             </tr>
                         @endforeach
                     @endforeach
+
+                    {{-- No search match --}}
+                    <tr x-show="search && !hasAnyMatch()">
+                        <td colspan="{{ count($lotteries) + 3 }}"
+                            class="py-10 text-center text-sm text-gray-400">
+                            <svg class="mx-auto mb-2 h-8 w-8 text-gray-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
+                            </svg>
+                            No assistant found matching "<span x-text="search" class="font-semibold text-gray-500"></span>"
+                        </td>
+                    </tr>
 
                     <tr class="border-t-2 border-gray-300 font-bold" style="background:#f1f5f9;">
                         <td class="sticky left-0 z-10 px-3 py-2.5 text-gray-700 border-x border-gray-200"
@@ -809,7 +851,7 @@ input.board-qty-cell[type=number] { -moz-appearance: textfield; }
 </style>
 
 <script>
-function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl, initialNoSales, initialRemarks) {
+function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl, initialNoSales, initialRemarks, assistantNames) {
     return {
         // ── State ──────────────────────────────────────────────────────────
         grid:            initialGrid,
@@ -829,6 +871,19 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl, initia
         // ── No Sales & Remarks ─────────────────────────────────────────────
         noSales: initialNoSales || {},   // { [aId]: bool }
         remarks:  initialRemarks  || {}, // { [aId]: string }
+
+        // ── Search / filter ────────────────────────────────────────────────
+        search:         '',
+        assistantNames: assistantNames || {},
+        matchesSearch(id) {
+            return !this.search || (this.assistantNames[id] || '').toLowerCase().includes(this.search.toLowerCase());
+        },
+        groupHasMatch(ids) {
+            return !this.search || ids.some(id => (this.assistantNames[id] || '').toLowerCase().includes(this.search.toLowerCase()));
+        },
+        hasAnyMatch() {
+            return !this.search || Object.values(this.assistantNames).some(n => n.toLowerCase().includes(this.search.toLowerCase()));
+        },
 
         // ── Adjustment Mode ────────────────────────────────────────────────
         adjustMode:     false,

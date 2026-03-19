@@ -229,6 +229,38 @@
             </div>
         </div>
 
+        {{-- ── Search bar ──────────────────────────────────────────────────── --}}
+        <div class="mb-2 flex items-center gap-2 print:hidden">
+            <div class="relative w-64">
+                <svg class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400"
+                     fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
+                </svg>
+                <input type="text"
+                       x-model="search"
+                       placeholder="Search assistant name…"
+                       autocomplete="off"
+                       class="w-full rounded-lg border border-slate-200 dark:border-slate-700
+                              bg-white dark:bg-slate-800
+                              pl-8 pr-7 py-1.5 text-xs
+                              text-slate-700 dark:text-slate-300
+                              placeholder-slate-400 dark:placeholder-slate-500
+                              focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:focus:ring-indigo-500/40 focus:border-indigo-300">
+                <button x-show="search"
+                        @click="search = ''"
+                        type="button"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                        title="Clear search">
+                    <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <span x-show="search"
+                  class="text-xs text-slate-400 dark:text-slate-500"
+                  x-text="hasAnyMatch() ? '' : 'No results'"></span>
+        </div>
+
         {{-- ── GRID TABLE ───────────────────────────────────────────────────── --}}
         <div class="overflow-auto max-h-[600px] rounded-2xl border border-slate-200 dark:border-slate-700/60
                     bg-white dark:bg-slate-800/60 shadow-sm">
@@ -287,7 +319,8 @@
                     @endphp
 
                     {{-- ── Route Group Header ──────────────────────────────── --}}
-                    <tr class="border-t-2 border-slate-300 dark:border-slate-600">
+                    <tr class="border-t-2 border-slate-300 dark:border-slate-600"
+                        x-show="groupHasMatch({{ json_encode($routeGroup['assistants']->pluck('id')->values()->toArray()) }})">
                         <td class="sticky left-0 z-10 px-3 py-1.5 font-bold text-[11px] uppercase tracking-widest
                                    {{ $colors['headerText'] }} border-x border-gray-300 dark:border-slate-600"
                             style="background: {{ $colors['headerBgHex'] }};">
@@ -308,6 +341,7 @@
                         $rowHoverHex = $colors['rowHoverHex'];
                     @endphp
                     <tr class="{{ $colors['rowBg'] }} border-b {{ $colors['separator'] }} dark:border-slate-700/40"
+                        x-show="matchesSearch({{ $aid }})"
                         :class="activeRow === {{ $aid }} ? 'ring-1 ring-inset ring-indigo-300 dark:ring-indigo-500/40 !bg-indigo-50 dark:!bg-indigo-900/20' : ''"
                         @mouseenter="activeRow = {{ $aid }}"
                         @mouseleave="activeRow = null">
@@ -411,6 +445,17 @@
                     </tr>
                     @endforeach
                     @endforeach
+
+                    {{-- No search match --}}
+                    <tr x-show="search && !hasAnyMatch()">
+                        <td colspan="11"
+                            class="py-10 text-center text-sm text-slate-400 dark:text-slate-500">
+                            <svg class="mx-auto mb-2 h-8 w-8 text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
+                            </svg>
+                            No assistant found matching "<span x-text="search" class="font-semibold text-slate-500 dark:text-slate-400"></span>"
+                        </td>
+                    </tr>
 
                     {{-- Bottom totals row --}}
                     <tr class="border-t-2 border-slate-200 dark:border-slate-600 font-bold bg-slate-50 dark:bg-slate-700/40">
@@ -1032,6 +1077,18 @@ function salesGrid(initialRows, names) {
                 }
                 // isDismissed = "Keep Editing" → do nothing
             });
+        },
+
+        // ── Search / filter ───────────────────────────────────────────────────
+        search: '',
+        matchesSearch(id) {
+            return !this.search || (this.names[id] || '').toLowerCase().includes(this.search.toLowerCase());
+        },
+        groupHasMatch(ids) {
+            return !this.search || ids.some(id => (this.names[id] || '').toLowerCase().includes(this.search.toLowerCase()));
+        },
+        hasAnyMatch() {
+            return !this.search || Object.values(this.names).some(n => n.toLowerCase().includes(this.search.toLowerCase()));
         },
 
         // ── Row computed ──────────────────────────────────────────────────────
