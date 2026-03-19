@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DailyTicketNote;
 use App\Models\DailyTicketStock;
 use App\Models\DefaultDistribution;
 use App\Models\Lottery;
@@ -31,6 +32,16 @@ class TicketDistributionController extends Controller
             $grid[$r->assistant_id][$r->lottery_id] = $r->quantity;
         }
 
+        // Load per-assistant notes (no_sales flag + remarks)
+        $notesCollection = DailyTicketNote::where('date', $date)->get()->keyBy('assistant_id');
+        $alpineNoSales   = [];
+        $alpineRemarks   = [];
+        foreach ($assistants as $a) {
+            $note                   = $notesCollection[$a->id] ?? null;
+            $alpineNoSales[$a->id] = (bool) ($note->is_no_sales ?? false);
+            $alpineRemarks[$a->id] = $note->remarks ?? '';
+        }
+
         // PHP-side totals (also used to seed Alpine state)
         $colTotals = [];
         foreach ($lotteries as $l) {
@@ -43,28 +54,58 @@ class TicketDistributionController extends Controller
         $grandTotal = array_sum($colTotals);
 
         return view('ticket-distribution.index', compact(
-            'date', 'assistants', 'lotteries', 'grid', 'colTotals', 'rowTotals', 'grandTotal'
+            'date', 'assistants', 'lotteries', 'grid', 'colTotals', 'rowTotals', 'grandTotal',
+            'notesCollection', 'alpineNoSales', 'alpineRemarks'
         ));
     }
 
     /**
-     * Upsert the full grid for a given date.
-     * Rows with qty = 0 or blank are deleted (keep table clean).
+     * Upsert the full grid for a given date, including no-sales flags and remarks.
+     * Rows with qty = 0 (and not no-sales) are deleted to keep the table clean.
      */
     public function store(Request $request)
     {
         $request->validate([
-            'date'    => 'required|date',
-            'qty'     => 'nullable|array',
-            'qty.*.*' => 'nullable|integer|min:0',
+            'date'       => 'required|date',
+            'qty'        => 'nullable|array',
+            'qty.*.*'    => 'nullable|integer|min:0',
+            'no_sales'   => 'nullable|array',
+            'no_sales.*' => 'nullable|in:0,1',
+            'remarks'    => 'nullable|array',
+            'remarks.*'  => 'nullable|string|max:255',
         ]);
 
-        $date = $request->input('date');
-        $grid = $request->input('qty', []);   // [assistant_id][lottery_id] => qty
+        $date        = $request->input('date');
+        $grid        = $request->input('qty', []);
+        $noSalesMap  = $request->input('no_sales', []);
+        $remarksMap  = $request->input('remarks', []);
 
-        DB::transaction(function () use ($date, $grid) {
-            foreach ($grid as $assistantId => $lotteryQtys) {
-                foreach ($lotteryQtys as $lotteryId => $qty) {
+        // Collect every assistant ID submitted across all inputs
+        $allIds = collect(array_keys($grid + $noSalesMap + $remarksMap))->map('intval')->unique()->all();
+
+        DB::transaction(function () use ($date, $grid, $noSalesMap, $remarksMap, $allIds) {
+            foreach ($allIds as $assistantId) {
+                $isNoSales = ($noSalesMap[$assistantId] ?? '0') === '1';
+                $remarks   = trim($remarksMap[$assistantId] ?? '');
+
+                // Persist or clear the note record
+                if ($isNoSales || $remarks !== '') {
+                    DailyTicketNote::updateOrCreate(
+                        ['date' => $date, 'assistant_id' => $assistantId],
+                        ['is_no_sales' => $isNoSales, 'remarks' => $remarks ?: null]
+                    );
+                } else {
+                    DailyTicketNote::where(['date' => $date, 'assistant_id' => $assistantId])->delete();
+                }
+
+                // No-sales: wipe all lottery rows for this assistant and skip qty processing
+                if ($isNoSales) {
+                    DailyTicketStock::where(['date' => $date, 'assistant_id' => $assistantId])->delete();
+                    continue;
+                }
+
+                // Normal qty upsert / delete
+                foreach ($grid[$assistantId] ?? [] as $lotteryId => $qty) {
                     $qty = (int) ($qty ?? 0);
 
                     if ($qty > 0) {

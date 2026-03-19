@@ -14,6 +14,9 @@
         }
     }
 
+    // ── Alpine seed for no-sales & remarks (passed from controller) ──────────
+    // (already available as $alpineNoSales and $alpineRemarks PHP variables)
+
     // ── Route Color Map ──────────────────────────────────────────────────────
     // color_code => Tailwind classes + hex values for sticky-cell inline styles
     $routeColorMap = [
@@ -168,6 +171,9 @@
                     <th style="padding:5px 6px; text-align:center; color:#fde68a; white-space:nowrap;">
                         Total
                     </th>
+                    <th style="padding:5px 6px; text-align:left; color:#94a3b8; white-space:nowrap; min-width:100px;">
+                        Remarks
+                    </th>
                 </tr>
 
                 {{-- Column totals — top --}}
@@ -183,6 +189,7 @@
                     <td style="padding:4px 6px; text-align:center; color:#fde68a; font-weight:bold;">
                         {{ number_format($grandTotal) }}
                     </td>
+                    <td></td>
                 </tr>
             </thead>
 
@@ -211,20 +218,28 @@
                     @if($routeId !== $lastRouteId)
                         @php $lastRouteId = $routeId; @endphp
                         <tr style="background:{{ $pColor['header'] }}; border-top:2px solid #94a3b8;">
-                            <td colspan="{{ count($lotteries) + 2 }}"
+                            <td colspan="{{ count($lotteries) + 3 }}"
                                 style="padding:3px 6px; font-weight:700; font-size:7pt; text-transform:uppercase; letter-spacing:0.08em; color:#374151;">
                                 {{ $a->route?->name ?? 'Unassigned' }}
                             </td>
                         </tr>
                     @endif
 
-                    <tr style="background:{{ $pColor['row'] }}; border-bottom:1px solid #e2e8f0;">
-                        <td style="padding:4px 6px; font-weight:500; color:#1e293b; white-space:nowrap; border-right:1px solid #e2e8f0;">
+                    @php
+                        $printNote    = $notesCollection[$a->id] ?? null;
+                        $printNoSales = $printNote?->is_no_sales ?? false;
+                        $printRemarks = $printNote?->remarks ?? '';
+                    @endphp
+                    <tr style="background:{{ $printNoSales ? '#f3f4f6' : $pColor['row'] }}; border-bottom:1px solid #e2e8f0;">
+                        <td style="padding:4px 6px; font-weight:500; color:{{ $printNoSales ? '#9ca3af' : '#1e293b' }}; white-space:nowrap; border-right:1px solid #e2e8f0;">
                             <span style="color:#94a3b8; font-size:7.5pt; margin-right:4px;">{{ $globalIndex + 1 }}</span>
                             {{ $a->name }}
+                            @if($printNoSales)
+                                <span style="margin-left:4px; font-size:6.5pt; background:#e5e7eb; color:#6b7280; padding:1px 4px; border-radius:3px;">No Sales</span>
+                            @endif
                         </td>
                         @foreach($lotteries as $l)
-                            @php $qty = $grid[$a->id][$l->id] ?? 0; @endphp
+                            @php $qty = $printNoSales ? 0 : ($grid[$a->id][$l->id] ?? 0); @endphp
                             <td style="padding:4px 3px; text-align:center;
                                        font-weight:{{ $qty > 0 ? '600' : '400' }};
                                        color:{{ $qty > 0 ? '#1e40af' : '#cbd5e1' }};">
@@ -232,8 +247,11 @@
                             </td>
                         @endforeach
                         <td style="padding:4px 6px; text-align:center; font-weight:bold;
-                                   color:{{ $rowTot > 0 ? '#1d4ed8' : '#cbd5e1' }};">
-                            {{ $rowTot > 0 ? number_format($rowTot) : '—' }}
+                                   color:{{ $rowTot > 0 && !$printNoSales ? '#1d4ed8' : '#cbd5e1' }};">
+                            {{ $rowTot > 0 && !$printNoSales ? number_format($rowTot) : '—' }}
+                        </td>
+                        <td style="padding:4px 6px; font-size:7pt; color:#64748b;">
+                            {{ $printRemarks }}
                         </td>
                     </tr>
                 @endforeach
@@ -253,6 +271,7 @@
                     <td style="padding:5px 6px; text-align:center; font-weight:bold; color:#1d4ed8;">
                         {{ number_format($grandTotal) }}
                     </td>
+                    <td></td>
                 </tr>
             </tfoot>
         </table>
@@ -274,7 +293,9 @@
         {{ json_encode($alpineGrid) }},
         '{{ $date }}',
         '{{ route('api.ticket-distribution.defaults.get') }}',
-        '{{ route('api.ticket-distribution.defaults.save') }}'
+        '{{ route('api.ticket-distribution.defaults.save') }}',
+        {{ json_encode($alpineNoSales) }},
+        {{ json_encode($alpineRemarks) }}
      )"
      @keydown.window="handleArrow($event)"
      class="print:hidden">
@@ -365,6 +386,8 @@
                        :name="`qty[{{ $a->id }}][{{ $l->id }}]`"
                        :value="grid[{{ $a->id }}][{{ $l->id }}] || 0">
             @endforeach
+            <input type="hidden" :name="`no_sales[{{ $a->id }}]`" :value="noSales[{{ $a->id }}] ? '1' : '0'">
+            <input type="hidden" :name="`remarks[{{ $a->id }}]`"  :value="remarks[{{ $a->id }}] || ''">
         @endforeach
 
         {{-- ── Toolbar ──────────────────────────────────────────────────── --}}
@@ -453,6 +476,10 @@
                         <th class="px-3 py-3 text-center text-yellow-300 font-semibold whitespace-nowrap border-x border-slate-600">
                             Total
                         </th>
+                        <th class="px-3 py-3 text-left text-slate-400 font-medium whitespace-nowrap border-x border-slate-600"
+                            style="min-width:130px;">
+                            Remarks
+                        </th>
                     </tr>
 
                     {{-- ── Board Received Qty row (Adjustment Mode only) ── --}}
@@ -481,6 +508,7 @@
                         <td class="px-3 py-1.5 text-center text-xs font-bold text-amber-700 border-x border-amber-300">
                             <span x-text="boardGrandTotal().toLocaleString() || '—'"></span>
                         </td>
+                        <td class="border-x border-amber-300"></td>
                     </tr>
 
                     <tr class="border-b-2 border-slate-600" style="background:#1e293b;">
@@ -495,6 +523,7 @@
                         @endforeach
                         <td class="px-3 py-2 text-center text-yellow-300 font-bold border-x border-slate-600"
                             x-text="grandTotal().toLocaleString()"></td>
+                        <td class="border-x border-slate-600"></td>
                     </tr>
                 </thead>
 
@@ -516,7 +545,7 @@
                                     {{ $routeGroup['assistants']->count() }}
                                 </span>
                             </td>
-                            <td colspan="{{ count($lotteries) + 1 }}"
+                            <td colspan="{{ count($lotteries) + 2 }}"
                                 class="{{ $colors['headerBg'] }} border-x border-gray-300"></td>
                         </tr>
 
@@ -530,18 +559,31 @@
                             @endphp
                             <tr class="{{ $colors['rowBg'] }} border-b {{ $colors['separator'] }}"
                                 x-bind:class="{
-                                    '{{ $rowHoverBg }} ring-1 ring-inset ring-blue-400': hoveredRow === {{ $a->id }} && !isLocked({{ $a->id }}),
-                                    '!bg-amber-50 ring-1 ring-inset ring-amber-400': isLocked({{ $a->id }})
+                                    '!bg-gray-100': noSales[{{ $a->id }}],
+                                    '{{ $rowHoverBg }} ring-1 ring-inset ring-blue-400': hoveredRow === {{ $a->id }} && !isLocked({{ $a->id }}) && !noSales[{{ $a->id }}],
+                                    '!bg-amber-50 ring-1 ring-inset ring-amber-400': isLocked({{ $a->id }}) && !noSales[{{ $a->id }}]
                                 }"
                                 @mouseenter="hoveredRow = {{ $a->id }}"
                                 @mouseleave="hoveredRow = null">
 
                                 <td class="sticky left-0 z-10 px-3 py-1.5 font-medium text-gray-700 whitespace-nowrap border-x border-gray-200"
                                     style="background: {{ $rowBgHex }}"
-                                    x-bind:style="isLocked({{ $a->id }}) ? 'background:#fffbeb' : (hoveredRow === {{ $a->id }} ? 'background:{{ $rowHoverHex }}' : 'background:{{ $rowBgHex }}')">
+                                    x-bind:style="noSales[{{ $a->id }}] ? 'background:#f3f4f6' : (isLocked({{ $a->id }}) ? 'background:#fffbeb' : (hoveredRow === {{ $a->id }} ? 'background:{{ $rowHoverHex }}' : 'background:{{ $rowBgHex }}'))">
                                     <div class="flex items-center gap-1.5">
+                                        {{-- No Sales toggle --}}
+                                        <input type="checkbox"
+                                               x-model="noSales[{{ $a->id }}]"
+                                               @change="onNoSalesChange({{ $a->id }})"
+                                               :title="noSales[{{ $a->id }}] ? 'Unmark — assistant is taking tickets today' : 'Mark as No Sales — locks this row'"
+                                               class="h-3 w-3 shrink-0 rounded border-gray-300 text-gray-500 cursor-pointer focus:ring-0 focus:ring-offset-0"
+                                               @click.stop>
                                         <span class="text-gray-400 text-[11px] shrink-0">{{ $ri + 1 }}</span>
-                                        <span class="truncate">{{ $a->name }}</span>
+                                        <span class="truncate" :class="noSales[{{ $a->id }}] ? 'line-through text-gray-400' : ''">{{ $a->name }}</span>
+                                        {{-- No Sales badge — shown when locked --}}
+                                        <span x-show="noSales[{{ $a->id }}]"
+                                              class="ml-auto shrink-0 rounded-full bg-gray-300 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600 leading-none">
+                                            No Sales
+                                        </span>
                                         {{-- Lock button — only visible in Adjustment Mode --}}
                                         <button type="button"
                                                 x-show="adjustMode"
@@ -571,11 +613,13 @@
                                         }">
                                         <input
                                             type="number" min="0" step="1"
-                                            class="dist-cell w-full h-8 px-1 text-center text-xs font-medium border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-400 focus:z-10 relative outline-none"
+                                            class="dist-cell w-full h-8 px-1 text-center text-xs font-medium border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-blue-400 focus:z-10 relative outline-none disabled:cursor-not-allowed"
                                             :value="grid[{{ $a->id }}][{{ $l->id }}] || ''"
+                                            :disabled="noSales[{{ $a->id }}]"
                                             :class="{
-                                                'text-emerald-700': isDefault({{ $a->id }}, {{ $l->id }}) && !isAdjusted({{ $a->id }}, {{ $l->id }}),
-                                                'text-amber-800 font-semibold is-adjusted': isAdjusted({{ $a->id }}, {{ $l->id }})
+                                                'opacity-0 pointer-events-none': noSales[{{ $a->id }}],
+                                                'text-emerald-700': isDefault({{ $a->id }}, {{ $l->id }}) && !isAdjusted({{ $a->id }}, {{ $l->id }}) && !noSales[{{ $a->id }}],
+                                                'text-amber-800 font-semibold is-adjusted': isAdjusted({{ $a->id }}, {{ $l->id }}) && !noSales[{{ $a->id }}]
                                             }"
                                             @focus="hoveredCol = {{ $l->id }}"
                                             @blur="hoveredCol = null"
@@ -589,6 +633,20 @@
                                 <td class="px-3 py-1.5 text-center font-bold border-x border-gray-200"
                                     x-bind:class="rowTotal({{ $a->id }}) > 0 ? 'text-blue-700' : 'text-gray-300'"
                                     x-text="rowTotal({{ $a->id }}).toLocaleString()"></td>
+
+                                {{-- Remarks cell --}}
+                                <td class="px-2 py-1 border-x border-gray-200" style="min-width:130px;">
+                                    <input type="text"
+                                           x-model="remarks[{{ $a->id }}]"
+                                           @input="isDirty = true"
+                                           placeholder="Notes…"
+                                           maxlength="255"
+                                           class="w-full h-7 px-1.5 text-xs text-gray-600 border border-gray-200 rounded bg-transparent
+                                                  focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-300 focus:border-blue-300
+                                                  placeholder-gray-300 disabled:bg-transparent disabled:cursor-default disabled:border-transparent"
+                                           :class="noSales[{{ $a->id }}] ? 'text-gray-500' : ''"
+                                           :placeholder="noSales[{{ $a->id }}] ? 'e.g. Sick leave…' : 'Notes…'">
+                                </td>
                             </tr>
                         @endforeach
                     @endforeach
@@ -605,6 +663,7 @@
                         @endforeach
                         <td class="px-3 py-2.5 text-center text-blue-700 border-x border-gray-200"
                             x-text="grandTotal().toLocaleString()"></td>
+                        <td class="border-x border-gray-200"></td>
                     </tr>
                 </tbody>
             </table>
@@ -654,6 +713,10 @@
 
 {{-- Legend --}}
 <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400 print:hidden">
+    <span>
+        <span class="inline-block w-3 h-3 rounded-sm bg-gray-100 border border-gray-300 mr-1"></span>
+        Gray row = No Sales (assistant not taking tickets today).
+    </span>
     <span>
         <span class="inline-block w-3 h-3 rounded-sm bg-emerald-100 border border-emerald-300 mr-1"></span>
         Green values = saved defaults for this weekday.
@@ -746,7 +809,7 @@ input.board-qty-cell[type=number] { -moz-appearance: textfield; }
 </style>
 
 <script>
-function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
+function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl, initialNoSales, initialRemarks) {
     return {
         // ── State ──────────────────────────────────────────────────────────
         grid:            initialGrid,
@@ -762,6 +825,10 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
         isDirty:         false,
         pendingUrl:      null,
         _formId:         'dist-form',
+
+        // ── No Sales & Remarks ─────────────────────────────────────────────
+        noSales: initialNoSales || {},   // { [aId]: bool }
+        remarks:  initialRemarks  || {}, // { [aId]: string }
 
         // ── Adjustment Mode ────────────────────────────────────────────────
         adjustMode:     false,
@@ -926,6 +993,19 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl) {
                 // Clear adjustment highlight when user manually edits the cell
                 if (this.adjustedCells[aId]) delete this.adjustedCells[aId][lId];
             });
+        },
+
+        // ── No Sales toggle ────────────────────────────────────────────────
+        onNoSalesChange(aId) {
+            if (this.noSales[aId]) {
+                // Zero out all lottery quantities for this assistant
+                if (this.grid[aId]) {
+                    for (const lId of Object.keys(this.grid[aId])) {
+                        this.grid[aId][lId] = 0;
+                    }
+                }
+            }
+            this.isDirty = true;
         },
 
         // ── Edit Lock methods ──────────────────────────────────────────────
