@@ -483,37 +483,39 @@
         </div>
 
         {{-- ── Scrollable grid ──────────────────────────────────────────── --}}
-        <div class="overflow-auto max-h-[600px] rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div class="overflow-auto rounded-xl border border-gray-200 bg-white shadow-sm" style="max-height:70vh;">
             <table class="min-w-full border-collapse text-xs" id="dist-table">
 
-                <thead class="sticky top-0 z-20">
-                    <tr style="background:#0f172a;">
-                        <th class="sticky left-0 z-30 px-3 py-3 text-left text-white font-medium whitespace-nowrap border-x border-slate-600"
+                <thead>
+                    <tr>
+                        {{-- Top-left corner: sticky on both axes — highest z-index --}}
+                        <th class="sticky top-0 left-0 z-50 px-3 py-3 text-left text-white font-medium whitespace-nowrap border-x border-slate-600"
                             style="background:#0f172a; min-width:150px;">
                             # &nbsp; Assistant
                         </th>
                         @foreach($lotteries as $l)
-                            <th class="px-2 py-3 text-center font-medium whitespace-nowrap border-x border-slate-600
+                            <th class="sticky top-0 z-40 px-2 py-3 text-center font-medium whitespace-nowrap border-x border-slate-600
                                        {{ $l->board === 'NLB' ? 'text-blue-300' : 'text-orange-300' }}"
-                                style="min-width:62px;">
+                                style="background:#0f172a; min-width:62px;">
                                 {{ $l->name }}
                                 <span class="block text-gray-500 font-normal" style="font-size:10px;">
                                     Rs.{{ number_format($l->unit_price, 0) }}
                                 </span>
                             </th>
                         @endforeach
-                        <th class="px-3 py-3 text-center text-yellow-300 font-semibold whitespace-nowrap border-x border-slate-600">
+                        <th class="sticky top-0 z-40 px-3 py-3 text-center text-yellow-300 font-semibold whitespace-nowrap border-x border-slate-600"
+                            style="background:#0f172a;">
                             Total
                         </th>
-                        <th class="px-3 py-3 text-left text-slate-400 font-medium whitespace-nowrap border-x border-slate-600"
-                            style="min-width:130px;">
+                        <th class="sticky top-0 z-40 px-3 py-3 text-left text-slate-400 font-medium whitespace-nowrap border-x border-slate-600"
+                            style="background:#0f172a; min-width:130px;">
                             Remarks
                         </th>
                     </tr>
 
                     {{-- ── Board Received Qty row (Adjustment Mode only) ── --}}
-                    <tr x-show="adjustMode" style="background:#fffbeb; border-bottom: 2px solid #fcd34d;">
-                        <td class="sticky left-0 z-30 px-3 py-2 font-semibold text-[11px] border-x border-amber-300 whitespace-nowrap"
+                    <tr x-show="adjustMode" style="border-bottom: 2px solid #fcd34d;">
+                        <td class="sticky top-[52px] left-0 z-50 px-3 py-2 font-semibold text-[11px] border-x border-amber-300 whitespace-nowrap"
                             style="background:#fffbeb; color:#92400e;">
                             <div class="flex items-center gap-1.5">
                                 <svg class="h-3.5 w-3.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -523,8 +525,9 @@
                             </div>
                         </td>
                         @foreach($lotteries as $l)
-                            <td class="px-1 py-1.5 text-center col-cell-transition border-x border-amber-300"
-                                :class="isMismatch({{ $l->id }}) ? 'bg-red-50' : ''">
+                            <td class="sticky top-[52px] z-40 px-1 py-1.5 text-center col-cell-transition border-x border-amber-300"
+                                :class="isMismatch({{ $l->id }}) ? 'bg-red-50' : ''"
+                                :style="isMismatch({{ $l->id }}) ? '' : 'background:#fffbeb;'">
                                 <input type="number" min="0" step="1"
                                        x-model="boardQty[{{ $l->id }}]"
                                        :class="isMismatch({{ $l->id }})
@@ -534,25 +537,37 @@
                                        placeholder="—">
                             </td>
                         @endforeach
-                        <td class="px-3 py-1.5 text-center text-xs font-bold text-amber-700 border-x border-amber-300">
+                        <td class="sticky top-[52px] z-40 px-3 py-1.5 text-center text-xs font-bold text-amber-700 border-x border-amber-300"
+                            style="background:#fffbeb;">
                             <span x-text="boardGrandTotal().toLocaleString() || '—'"></span>
                         </td>
-                        <td class="border-x border-amber-300"></td>
+                        <td class="sticky top-[52px] z-40 border-x border-amber-300"
+                            style="background:#fffbeb;"></td>
                     </tr>
 
-                    <tr class="border-b-2 border-slate-600" style="background:#1e293b;">
-                        <td class="sticky left-0 z-30 px-3 py-2 text-slate-300 font-semibold text-[11px] border-x border-slate-600"
-                            style="background:#1e293b;">Column Total ↓</td>
+                    <tr class="border-b-2 border-slate-600">
+                        {{-- Corner: sticky on both axes in this row too --}}
+                        <td class="sticky top-[52px] left-0 z-50 px-3 py-2 text-slate-300 font-semibold text-[11px] border-x border-slate-600"
+                            style="background:#1e293b;"
+                            x-bind:style="adjustMode ? 'top:104px; background:#1e293b;' : 'top:52px; background:#1e293b;'">
+                            Column Total ↓
+                        </td>
                         @foreach($lotteries as $l)
-                            <td class="px-2 py-2 text-center font-bold col-total-cell border-x border-slate-600"
+                            <td class="sticky top-[52px] z-40 px-2 py-2 text-center font-bold col-total-cell border-x border-slate-600"
+                                style="background:#1e293b;"
+                                x-bind:style="adjustMode ? 'top:104px; background:#1e293b;' : 'top:52px; background:#1e293b;'"
                                 :class="isMismatch({{ $l->id }})
                                     ? 'text-red-300 border-x-2 border-t-2 border-red-500 mismatch-pulse'
                                     : 'text-slate-100'"
                                 x-text="colTotal({{ $l->id }}).toLocaleString()"></td>
                         @endforeach
-                        <td class="px-3 py-2 text-center text-yellow-300 font-bold border-x border-slate-600"
+                        <td class="sticky top-[52px] z-40 px-3 py-2 text-center text-yellow-300 font-bold border-x border-slate-600"
+                            style="background:#1e293b;"
+                            x-bind:style="adjustMode ? 'top:104px; background:#1e293b;' : 'top:52px; background:#1e293b;'"
                             x-text="grandTotal().toLocaleString()"></td>
-                        <td class="border-x border-slate-600"></td>
+                        <td class="sticky top-[52px] z-40 border-x border-slate-600"
+                            style="background:#1e293b;"
+                            x-bind:style="adjustMode ? 'top:104px; background:#1e293b;' : 'top:52px; background:#1e293b;'"></td>
                     </tr>
                 </thead>
 
@@ -567,7 +582,7 @@
                         {{-- ── Route Group Header Row ──────────────────────── --}}
                         <tr class="border-t-2 border-gray-300"
                             x-show="groupHasMatch({{ json_encode($routeGroup['assistants']->pluck('id')->values()->toArray()) }})">
-                            <td class="sticky left-0 z-10 px-3 py-1.5 font-bold text-[11px] uppercase tracking-widest
+                            <td class="sticky left-0 z-30 px-3 py-1.5 font-bold text-[11px] uppercase tracking-widest
                                        {{ $colors['headerText'] }} border-x border-gray-300"
                                 style="background: {{ $colors['headerBgHex'] }};">
                                 {{ $route?->name ?? 'Unassigned' }}
@@ -597,7 +612,7 @@
                                 @mouseenter="hoveredRow = {{ $a->id }}"
                                 @mouseleave="hoveredRow = null">
 
-                                <td class="sticky left-0 z-10 px-3 py-1.5 font-medium text-gray-700 whitespace-nowrap border-x border-gray-200"
+                                <td class="sticky left-0 z-30 px-3 py-1.5 font-medium text-gray-700 whitespace-nowrap border-x border-gray-200"
                                     style="background: {{ $rowBgHex }}"
                                     x-bind:style="noSales[{{ $a->id }}] ? 'background:#f3f4f6' : (isLocked({{ $a->id }}) ? 'background:#fffbeb' : (hoveredRow === {{ $a->id }} ? 'background:{{ $rowHoverHex }}' : 'background:{{ $rowBgHex }}'))">
                                     <div class="flex items-center gap-1.5">
@@ -693,19 +708,22 @@
                         </td>
                     </tr>
 
-                    <tr class="border-t-2 border-gray-300 font-bold" style="background:#f1f5f9;">
-                        <td class="sticky left-0 z-10 px-3 py-2.5 text-gray-700 border-x border-gray-200"
+                    <tr class="border-t-2 border-gray-300 font-bold">
+                        <td class="sticky left-0 z-30 px-3 py-2.5 text-gray-700 border-x border-gray-200"
                             style="background:#f1f5f9;">Column Total ↑</td>
                         @foreach($lotteries as $l)
                             <td class="px-2 py-2.5 text-center col-cell-transition border-x border-gray-200"
+                                style="background:#f1f5f9;"
+                                :style="isMismatch({{ $l->id }}) ? 'background:#fef2f2;' : 'background:#f1f5f9;'"
                                 :class="isMismatch({{ $l->id }})
-                                    ? 'text-red-600 bg-red-50 border-x-2 border-b-2 border-red-500 font-bold'
+                                    ? 'text-red-600 border-x-2 border-b-2 border-red-500 font-bold'
                                     : 'text-gray-900'"
                                 x-text="colTotal({{ $l->id }}).toLocaleString()"></td>
                         @endforeach
                         <td class="px-3 py-2.5 text-center text-blue-700 border-x border-gray-200"
+                            style="background:#f1f5f9;"
                             x-text="grandTotal().toLocaleString()"></td>
-                        <td class="border-x border-gray-200"></td>
+                        <td class="border-x border-gray-200" style="background:#f1f5f9;"></td>
                     </tr>
                 </tbody>
             </table>
@@ -784,10 +802,21 @@
 
 @push('head')
 <style>
-/* ── Sticky column right-edge shadow ────────────────────────── */
-#dist-table th.sticky,
-#dist-table td.sticky {
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.07);
+/* ── Sticky cells: right-edge shadow for the left-pinned name column ── */
+#dist-table th.sticky.left-0,
+#dist-table td.sticky.left-0 {
+    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.10);
+}
+/* ── Sticky cells: bottom-edge shadow for sticky header rows ── */
+#dist-table th.sticky.top-0,
+#dist-table td.sticky.top-0,
+#dist-table td[class*="top-["] {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+}
+/* Corner cells get both shadows */
+#dist-table th.sticky.top-0.left-0,
+#dist-table td.sticky.top-0.left-0 {
+    box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 /* Remove number input spinners for cleaner grid cells */
