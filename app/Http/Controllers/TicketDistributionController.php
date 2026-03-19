@@ -22,7 +22,7 @@ class TicketDistributionController extends Controller
     {
         $date       = $request->input('date', today()->toDateString());
         $assistants = SalesAssistant::with('route')->orderBy('sales_assistants.created_at', 'asc')->get();
-        $lotteries  = Lottery::orderBy('board')->orderBy('name')->get();
+        $lotteries  = Lottery::orderByRaw('sort_order IS NULL, sort_order ASC, created_at ASC')->get();
 
         // Load all records for this date, keyed as [assistant_id][lottery_id] => quantity
         $records = DailyTicketStock::where('date', $date)->get();
@@ -179,7 +179,7 @@ class TicketDistributionController extends Controller
         }
 
         $assistants = SalesAssistant::orderBy('created_at', 'asc')->get();
-        $lotteries  = Lottery::orderBy('board')->orderBy('name')->get();
+        $lotteries  = Lottery::orderByRaw('sort_order IS NULL, sort_order ASC, created_at ASC')->get();
 
         $rows = DailyTicketStock::whereBetween('date', [$from->toDateString(), $to->toDateString()])
             ->select('assistant_id', 'lottery_id', DB::raw('SUM(quantity) as total_qty'))

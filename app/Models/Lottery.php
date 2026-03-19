@@ -15,6 +15,7 @@ class Lottery extends Model
         'name',
         'board',
         'unit_price',
+        'sort_order',
     ];
 
     protected function casts(): array

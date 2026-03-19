@@ -251,7 +251,7 @@ class PageController extends Controller
     public function lotteriesIndex()
     {
         return view('lotteries.index', [
-            'lotteries' => \App\Models\Lottery::orderBy('board')->orderBy('name')->get(),
+            'lotteries' => \App\Models\Lottery::orderBy('created_at', 'asc')->get(),
         ]);
     }
 
@@ -266,6 +266,7 @@ class PageController extends Controller
             'name'       => ['required', 'string', 'max:255'],
             'board'      => ['required', 'in:NLB,DLB'],
             'unit_price' => ['required', 'numeric', 'min:0'],
+            'sort_order' => ['nullable', 'integer', 'min:1'],
         ]);
 
         \App\Models\Lottery::create($data);
@@ -284,6 +285,7 @@ class PageController extends Controller
             'name'       => ['required', 'string', 'max:255'],
             'board'      => ['required', 'in:NLB,DLB'],
             'unit_price' => ['required', 'numeric', 'min:0'],
+            'sort_order' => ['nullable', 'integer', 'min:1'],
         ]);
 
         $lottery->update($data);
@@ -321,7 +323,7 @@ class PageController extends Controller
     {
         return view('stock.create', [
             'assistants' => SalesAssistant::orderBy('created_at', 'asc')->get(),
-            'lotteries'  => \App\Models\Lottery::orderBy('name')->get(),
+            'lotteries'  => \App\Models\Lottery::orderByRaw('sort_order IS NULL, sort_order ASC, created_at ASC')->get(),
         ]);
     }
 
