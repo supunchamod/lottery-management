@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\DailyTicketNote;
 use App\Models\DailyTicketStock;
-use App\Models\DefaultDistribution;
 use App\Models\Lottery;
 use App\Models\SalesAssistant;
 use App\Models\SubSeller;
@@ -129,72 +128,112 @@ class TicketDistributionController extends Controller
             ->with('success', 'Ticket distribution saved for ' . Carbon::parse($date)->format('d M Y') . '.');
     }
 
-    // ── Smart Default Quantity ─────────────────────────────────────────────────
+    // ── Load From Date / Copy To Date ─────────────────────────────────────────
 
     /**
-     * AJAX: Return the default grid for the weekday of the given date.
+     * AJAX: Return the ticket distribution grid saved on a given date.
+     * Used by the "Load Data From…" modal so the user can pre-fill today's
+     * grid from any historical date without a full page reload.
      *
-     * GET /api/ticket-distribution/defaults?date=YYYY-MM-DD
-     *
-     * Response: { day_of_week: 1, day_name: "Monday", defaults: { assistantId: { lotteryId: qty } } }
+     * POST /ticket-distribution/load-from-date
+     * Body: { date }
+     * Response: { date, grid: { [aId]: { [lId]: qty } }, noSales: { [aId]: bool }, remarks: { [aId]: string } }
      */
-    public function getDefaults(Request $request)
+    public function loadFromDate(Request $request)
     {
         $request->validate(['date' => 'required|date']);
+        $date = $request->input('date');
 
-        $carbon     = Carbon::parse($request->input('date'));
-        $dayOfWeek  = $carbon->dayOfWeek;           // 0=Sun … 6=Sat
+        $records = DailyTicketStock::where('date', $date)->get();
+        $grid    = [];
+        foreach ($records as $r) {
+            $grid[$r->assistant_id][$r->lottery_id] = (int) $r->quantity;
+        }
+
+        $notes   = DailyTicketNote::where('date', $date)->get()->keyBy('assistant_id');
+        $noSales = [];
+        $remarks = [];
+        foreach ($notes as $aId => $note) {
+            $noSales[$aId] = (bool) $note->is_no_sales;
+            $remarks[$aId] = $note->remarks ?? '';
+        }
 
         return response()->json([
-            'day_of_week' => $dayOfWeek,
-            'day_name'    => $carbon->format('l'),  // e.g. "Monday"
-            'defaults'    => DefaultDistribution::gridForDay($dayOfWeek),
+            'date'    => $date,
+            'grid'    => $grid,
+            'noSales' => $noSales,
+            'remarks' => $remarks,
         ]);
     }
 
     /**
-     * AJAX: Upsert default quantities for the weekday derived from the given date.
+     * AJAX: Write the current grid to a target date.
+     * Used by the "Copy to Future Date" modal; mirrors the store() logic
+     * exactly but accepts the data as JSON and returns a JSON response.
      *
-     * POST /api/ticket-distribution/defaults
-     * Body: { date: "YYYY-MM-DD", qty: { assistantId: { lotteryId: qty } } }
+     * POST /ticket-distribution/copy-to-date
+     * Body: { target_date, grid: { [aId]: { [lId]: qty } }, no_sales: { [aId]: '0'|'1' }, remarks: { [aId]: string } }
      */
-    public function saveDefaults(Request $request)
+    public function copyToDate(Request $request)
     {
         $request->validate([
-            'date'    => 'required|date',
-            'qty'     => 'required|array',
-            'qty.*.*' => 'nullable|integer|min:0',
+            'target_date'  => 'required|date',
+            'grid'         => 'nullable|array',
+            'grid.*.*'     => 'nullable|integer|min:0',
+            'no_sales'     => 'nullable|array',
+            'no_sales.*'   => 'nullable|in:0,1',
+            'remarks'      => 'nullable|array',
+            'remarks.*'    => 'nullable|string|max:255',
         ]);
 
-        $dayOfWeek = Carbon::parse($request->input('date'))->dayOfWeek;
-        $grid      = $request->input('qty', []);
+        $date       = $request->input('target_date');
+        $grid       = $request->input('grid', []);
+        $noSalesMap = $request->input('no_sales', []);
+        $remarksMap = $request->input('remarks', []);
 
-        DB::transaction(function () use ($dayOfWeek, $grid) {
-            foreach ($grid as $assistantId => $lotteryQtys) {
-                foreach ($lotteryQtys as $lotteryId => $qty) {
+        $allIds = collect(array_keys($grid + $noSalesMap + $remarksMap))->map('intval')->unique()->all();
+
+        DB::transaction(function () use ($date, $grid, $noSalesMap, $remarksMap, $allIds) {
+            foreach ($allIds as $assistantId) {
+                $isNoSales = ($noSalesMap[$assistantId] ?? '0') === '1';
+                $remarks   = trim($remarksMap[$assistantId] ?? '');
+
+                if ($isNoSales || $remarks !== '') {
+                    DailyTicketNote::updateOrCreate(
+                        ['date' => $date, 'assistant_id' => $assistantId],
+                        ['is_no_sales' => $isNoSales, 'remarks' => $remarks ?: null]
+                    );
+                } else {
+                    DailyTicketNote::where(['date' => $date, 'assistant_id' => $assistantId])->delete();
+                }
+
+                if ($isNoSales) {
+                    DailyTicketStock::where(['date' => $date, 'assistant_id' => $assistantId])->delete();
+                    continue;
+                }
+
+                foreach ($grid[$assistantId] ?? [] as $lotteryId => $qty) {
                     $qty = (int) ($qty ?? 0);
-
                     if ($qty > 0) {
-                        DefaultDistribution::updateOrCreate(
-                            [
-                                'assistant_id' => $assistantId,
-                                'lottery_id'   => $lotteryId,
-                                'day_of_week'  => $dayOfWeek,
-                            ],
-                            ['default_qty' => $qty]
+                        DailyTicketStock::updateOrCreate(
+                            ['date' => $date, 'assistant_id' => $assistantId, 'lottery_id' => $lotteryId],
+                            ['quantity' => $qty]
                         );
                     } else {
-                        DefaultDistribution::where([
+                        DailyTicketStock::where([
+                            'date'         => $date,
                             'assistant_id' => $assistantId,
                             'lottery_id'   => $lotteryId,
-                            'day_of_week'  => $dayOfWeek,
                         ])->delete();
                     }
                 }
             }
         });
 
-        return response()->json(['message' => 'Defaults saved.', 'day_of_week' => $dayOfWeek]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Data copied to ' . Carbon::parse($date)->format('d M Y') . '.',
+        ]);
     }
 
     // ── Summary ───────────────────────────────────────────────────────────────
