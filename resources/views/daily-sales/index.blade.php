@@ -135,7 +135,7 @@
 @else
 
 {{-- Alpine.js — Sales Grid + Cash Counter Modal ──────────────────────────── --}}
-<div x-data="salesGrid({{ json_encode($alpineRows) }}, {{ json_encode($assistantNames) }})"
+<div x-data="salesGrid({{ json_encode($alpineRows) }}, {{ json_encode($assistantNames) }}, '{{ $date }}')"
      @keydown.escape.window="pwModal.open ? cancelPassword() : (addForm.cashOpen ? (addForm.cashOpen = false) : addForm.open ? (addForm.open = false) : (cashModal.open = false))">
 
     {{-- ── Live Day Summary Tiles ──────────────────────────────────────────── --}}
@@ -668,7 +668,9 @@
                     <p class="font-bold text-white text-sm mt-0.5"
                        x-text="addForm.cashOpen
                            ? (names[addForm.assistantId] ?? 'Count Cash')
-                           : '{{ $parsedDate->format('d M Y') }}'"></p>
+                           : (addForm.date
+                               ? new Date(addForm.date + 'T00:00:00').toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'})
+                               : '{{ $parsedDate->format('d M Y') }}')"></p>
                 </div>
                 <button type="button" @click="addForm.open = false"
                         class="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
@@ -680,6 +682,19 @@
 
             {{-- ── MAIN FORM PANEL ─────────────────────────────────────────── --}}
             <div x-show="!addForm.cashOpen" class="px-5 py-4 space-y-3.5">
+
+                {{-- Entry Date — editable, defaults to the currently viewed date --}}
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+                        Entry Date
+                    </label>
+                    <input type="date"
+                           x-model="addForm.date"
+                           class="w-full rounded-xl border border-slate-200 dark:border-slate-700
+                                  bg-white dark:bg-slate-700/50 text-slate-900 dark:text-white
+                                  px-3 py-2 text-sm font-medium
+                                  focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500/50">
+                </div>
 
                 {{-- Sales Assistant — searchable dropdown --}}
                 <div>
@@ -833,15 +848,22 @@
                                bg-white dark:bg-slate-800 py-2.5 text-sm font-medium
                                text-slate-700 dark:text-slate-300
                                hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                    Cancel
+                    Close
                 </button>
                 <button type="button"
                         @click="submitAddForm()"
-                        :disabled="!addForm.assistantId"
+                        :disabled="!addForm.assistantId || addForm.saving"
                         class="btn-action flex-[2] rounded-xl bg-indigo-600 hover:bg-indigo-700
                                py-2.5 text-sm font-semibold text-white transition-colors
-                               disabled:opacity-40 disabled:cursor-not-allowed">
-                    Add to Table
+                               disabled:opacity-40 disabled:cursor-not-allowed
+                               flex items-center justify-center gap-2">
+                    <svg x-show="addForm.saving"
+                         class="h-4 w-4 animate-spin"
+                         fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                    </svg>
+                    <span x-text="addForm.saving ? 'Saving…' : 'Save Entry'"></span>
                 </button>
             </div>
 
@@ -903,6 +925,40 @@
             </div>
 
         </div>
+    </div>
+
+    {{-- ── Save toast (bottom-right, driven by showToast()) ─────────────── --}}
+    <div x-show="toast.show"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 translate-y-3"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-3"
+         class="fixed bottom-6 right-6 z-[70] flex items-center gap-3
+                rounded-2xl px-4 py-3 shadow-xl ring-1
+                min-w-[260px] max-w-sm print:hidden"
+         :class="toast.type === 'error'
+             ? 'bg-red-600 ring-red-500/30 text-white'
+             : 'bg-emerald-600 ring-emerald-500/30 text-white'"
+         style="display:none;">
+        {{-- Success icon --}}
+        <svg x-show="toast.type !== 'error'"
+             class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+        </svg>
+        {{-- Error icon --}}
+        <svg x-show="toast.type === 'error'"
+             class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+        </svg>
+        <p class="flex-1 text-sm font-semibold" x-text="toast.message"></p>
+        <button @click="toast.show = false"
+                class="opacity-70 hover:opacity-100 transition-opacity shrink-0">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
     </div>
 
 </div>{{-- /x-data --}}
@@ -1007,14 +1063,25 @@ input.ds-cell:focus {
 }
 </style>
 <script>
-function salesGrid(initialRows, names) {
+function salesGrid(initialRows, names, pageDate) {
     return {
         rows: initialRows,
         names: names,
+        _pageDate: pageDate,          // The date currently displayed in the grid
         activeRow: null,
         isDirty: false,
         pendingUrl: null,
         _formId: 'sales-form',
+
+        // ── Toast ──────────────────────────────────────────────────────────
+        toast: { show: false, message: '', type: 'success', _timer: null },
+        showToast(message, type = 'success') {
+            if (this.toast._timer) clearTimeout(this.toast._timer);
+            this.toast.message = message;
+            this.toast.type    = type;
+            this.toast.show    = true;
+            this.toast._timer  = setTimeout(() => { this.toast.show = false; }, 3500);
+        },
 
         // ── Edit Lock ──────────────────────────────────────────────────────
         editLocked:   true,
@@ -1031,6 +1098,8 @@ function salesGrid(initialRows, names) {
             cashOpen:    false,
             assistantId: '',
             search:      '',
+            date:        '',          // Set to _pageDate when modal opens
+            saving:      false,       // True while the AJAX request is in-flight
             qty:         0,
             unitPrice:   40,
             nlbWinning:  0,
@@ -1188,6 +1257,8 @@ function salesGrid(initialRows, names) {
                 cashOpen:    false,
                 assistantId: '',
                 search:      '',
+                date:        this._pageDate,   // default to the currently viewed date
+                saving:      false,
                 qty:         0,
                 unitPrice:   40,
                 nlbWinning:  0,
@@ -1231,23 +1302,73 @@ function salesGrid(initialRows, names) {
         addFormTW()      { return (this.addForm.nlbWinning||0) + (this.addForm.dlbWinning||0); },
         addFormCW()      { return this.addFormCashTotal() + this.addFormTW(); },
         addFormBalance() { return this.addFormValue() - this.addFormCW(); },
-        submitAddForm() {
+        async submitAddForm() {
             if (!this.addForm.assistantId || !this.rows[this.addForm.assistantId]) return;
-            const id = this.addForm.assistantId;
-            const d  = this.addForm.denoms;
-            Object.assign(this.rows[id], {
-                qty:        this.addForm.qty,
-                unitPrice:  this.addForm.unitPrice,
-                d5:    d[5]   ||0, d10:   d[10]  ||0,
-                d20:   d[20]  ||0, d50:   d[50]  ||0,
-                d100:  d[100] ||0, d500:  d[500] ||0,
-                d1000: d[1000]||0, d5000: d[5000]||0,
-                nlbWinning: this.addForm.nlbWinning,
-                dlbWinning: this.addForm.dlbWinning,
-                remarks:    this.addForm.remarks,
-            });
-            this.isDirty = true;
-            this.addForm.open = false;
+            this.addForm.saving = true;
+
+            const id   = this.addForm.assistantId;
+            const d    = this.addForm.denoms;
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.content
+                      || document.querySelector('[name="_token"]')?.value
+                      || '';
+
+            const body = new FormData();
+            body.append('_token',       csrf);
+            body.append('date',         this.addForm.date        || this._pageDate);
+            body.append('assistant_id', id);
+            body.append('qty',          this.addForm.qty         || 0);
+            body.append('unit_price',   this.addForm.unitPrice   || 0);
+            body.append('d5',           d[5]    || 0);
+            body.append('d10',          d[10]   || 0);
+            body.append('d20',          d[20]   || 0);
+            body.append('d50',          d[50]   || 0);
+            body.append('d100',         d[100]  || 0);
+            body.append('d500',         d[500]  || 0);
+            body.append('d1000',        d[1000] || 0);
+            body.append('d5000',        d[5000] || 0);
+            body.append('nlb_winning',  this.addForm.nlbWinning  || 0);
+            body.append('dlb_winning',  this.addForm.dlbWinning  || 0);
+            body.append('remarks',      this.addForm.remarks      || '');
+
+            try {
+                const res  = await fetch('{{ route('daily-sales.entry') }}', {
+                    method:  'POST',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    body,
+                });
+                const json = await res.json();
+
+                if (!res.ok || !json.success) {
+                    this.showToast(json.message || 'Save failed — please try again.', 'error');
+                    return;
+                }
+
+                // If this entry is for the currently viewed date, sync the live grid row
+                if (json.date === this._pageDate && json.row) {
+                    Object.assign(this.rows[id], json.row);
+                    this.isDirty = false;   // just saved — grid is in sync
+                }
+
+                this.showToast((this.names[id] || 'Record') + ' saved!', 'success');
+
+                // Clear fields for next entry — keep date and modal open
+                const keepDate      = this.addForm.date;
+                this.addForm.assistantId = '';
+                this.addForm.search      = '';
+                this.addForm.qty         = 0;
+                this.addForm.unitPrice   = 40;
+                this.addForm.nlbWinning  = 0;
+                this.addForm.dlbWinning  = 0;
+                this.addForm.remarks     = '';
+                this.addForm.denoms      = { 5:0, 10:0, 20:0, 50:0, 100:0, 500:0, 1000:0, 5000:0 };
+                this.addForm.cashOpen    = false;
+                this.addForm.date        = keepDate;   // preserve selected date
+
+            } catch (_) {
+                this.showToast('Network error — please try again.', 'error');
+            } finally {
+                this.addForm.saving = false;
+            }
         },
 
         // ── Edit Lock methods ──────────────────────────────────────────────

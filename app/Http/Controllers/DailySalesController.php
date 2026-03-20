@@ -138,6 +138,108 @@ class DailySalesController extends Controller
             ->with('success', 'Daily records saved for ' . Carbon::parse($date)->format('d M Y') . '.');
     }
 
+    // ── Single-entry AJAX save (modal "Add to Table" button) ─────────────────
+    // Saves one assistant's record for any date and returns JSON.
+    // The bulk store() endpoint is unchanged and handles the full grid save.
+
+    public function storeSingle(Request $request)
+    {
+        $request->validate([
+            'date'         => 'required|date',
+            'assistant_id' => 'required|exists:sales_assistants,id',
+            'qty'          => 'nullable|integer|min:0',
+            'unit_price'   => 'nullable|numeric|min:0',
+            'nlb_winning'  => 'nullable|numeric|min:0',
+            'dlb_winning'  => 'nullable|numeric|min:0',
+            'd5'           => 'nullable|integer|min:0',
+            'd10'          => 'nullable|integer|min:0',
+            'd20'          => 'nullable|integer|min:0',
+            'd50'          => 'nullable|integer|min:0',
+            'd100'         => 'nullable|integer|min:0',
+            'd500'         => 'nullable|integer|min:0',
+            'd1000'        => 'nullable|integer|min:0',
+            'd5000'        => 'nullable|integer|min:0',
+            'remarks'      => 'nullable|string|max:500',
+        ]);
+
+        $date        = $request->input('date');
+        $assistantId = $request->input('assistant_id');
+
+        $qty  = (int)   $request->input('qty',          0);
+        $up   = (float) $request->input('unit_price',   0);
+        $nlb  = (float) $request->input('nlb_winning',  0);
+        $dlb  = (float) $request->input('dlb_winning',  0);
+        $d5   = (int)   $request->input('d5',   0);
+        $d10  = (int)   $request->input('d10',  0);
+        $d20  = (int)   $request->input('d20',  0);
+        $d50  = (int)   $request->input('d50',  0);
+        $d100 = (int)   $request->input('d100', 0);
+        $d500 = (int)   $request->input('d500', 0);
+        $d1k  = (int)   $request->input('d1000', 0);
+        $d5k  = (int)   $request->input('d5000', 0);
+
+        $isEmpty = ($qty === 0 && $nlb === 0 && $dlb === 0
+            && $d5 === 0 && $d10 === 0 && $d20 === 0
+            && $d50 === 0 && $d100 === 0 && $d500 === 0
+            && $d1k === 0 && $d5k === 0);
+
+        if ($isEmpty) {
+            DailySaleRecord::where(['date' => $date, 'assistant_id' => $assistantId])->delete();
+            return response()->json(['success' => true, 'deleted' => true, 'date' => $date, 'assistant_id' => (int) $assistantId]);
+        }
+
+        $rec = null;
+
+        DB::transaction(function () use (
+            $date, $assistantId, $qty, $up, $nlb, $dlb,
+            $d5, $d10, $d20, $d50, $d100, $d500, $d1k, $d5k, $request, &$rec
+        ) {
+            $rec   = DailySaleRecord::firstOrNew(['date' => $date, 'assistant_id' => $assistantId]);
+            $isNew = ! $rec->exists;
+
+            $rec->fill([
+                'tickets_issued_qty' => $qty,
+                'unit_price'         => $up,
+                'denom_5'    => $d5,   'denom_10'   => $d10,
+                'denom_20'   => $d20,  'denom_50'   => $d50,
+                'denom_100'  => $d100, 'denom_500'  => $d500,
+                'denom_1000' => $d1k,  'denom_5000' => $d5k,
+                'nlb_winning' => $nlb,
+                'dlb_winning' => $dlb,
+                'remarks'     => $request->input('remarks'),
+            ]);
+            $rec->compute();
+            $rec->save();
+
+            $assistant = SalesAssistant::find($assistantId);
+            if ($assistant) {
+                $this->ledger->postOrUpdateDailySaleRecord($assistant, $rec, $isNew);
+            }
+        });
+
+        // Return the saved row in the same shape the Alpine grid uses
+        return response()->json([
+            'success'      => true,
+            'date'         => $date,
+            'assistant_id' => (int) $assistantId,
+            'row'          => [
+                'qty'        => (int)   $rec->tickets_issued_qty,
+                'unitPrice'  => (float) $rec->unit_price,
+                'd5'         => (int)   $rec->denom_5,
+                'd10'        => (int)   $rec->denom_10,
+                'd20'        => (int)   $rec->denom_20,
+                'd50'        => (int)   $rec->denom_50,
+                'd100'       => (int)   $rec->denom_100,
+                'd500'       => (int)   $rec->denom_500,
+                'd1000'      => (int)   $rec->denom_1000,
+                'd5000'      => (int)   $rec->denom_5000,
+                'nlbWinning' => (float) $rec->nlb_winning,
+                'dlbWinning' => (float) $rec->dlb_winning,
+                'remarks'    => $rec->remarks ?? '',
+            ],
+        ]);
+    }
+
     // ── Analysis ──────────────────────────────────────────────────────────────
 
     public function analysis(Request $request)

@@ -51,6 +51,7 @@ Route::middleware('auth')->group(function () {
     // Daily Sales
     Route::get ('/daily-sales',          [DailySalesController::class, 'index'])->name('daily-sales.index');
     Route::post('/daily-sales',          [DailySalesController::class, 'store'])->name('daily-sales.store');
+    Route::post('/daily-sales/entry',    [DailySalesController::class, 'storeSingle'])->name('daily-sales.entry');
     Route::get ('/daily-sales/analysis', [DailySalesController::class, 'analysis'])->name('daily-sales.analysis');
 
     // Bulk Deposits
