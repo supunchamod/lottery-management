@@ -292,52 +292,14 @@
 <div x-data="distGrid(
         {{ json_encode($alpineGrid) }},
         '{{ $date }}',
-        '{{ route('api.ticket-distribution.defaults.get') }}',
-        '{{ route('api.ticket-distribution.defaults.save') }}',
+        '{{ route('ticket-distribution.load-from-date') }}',
+        '{{ route('ticket-distribution.copy-to-date') }}',
         {{ json_encode($alpineNoSales) }},
         {{ json_encode($alpineRemarks) }},
         {{ json_encode($assistants->pluck('name', 'id')->toArray()) }}
      )"
      @keydown.window="handleArrow($event)"
      class="print:hidden">
-
-    {{-- ── Smart Default banner ──────────────────────────────────────────── --}}
-    <div class="mb-3">
-
-        <div x-show="defaultsLoading"
-             x-transition
-             class="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-700">
-            <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-            </svg>
-            Loading smart defaults for <span x-text="dayName" class="font-semibold ml-1"></span>…
-        </div>
-
-        <div x-show="defaultsApplied && !defaultsLoading"
-             x-transition
-             class="flex items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
-            <span>
-                <svg class="inline h-4 w-4 mr-1 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                Smart defaults pre-filled for <strong x-text="dayName"></strong>. Change any value or click Save.
-            </span>
-            <button type="button" @click="clearGrid()" class="text-xs text-emerald-700 underline hover:no-underline">
-                Clear all
-            </button>
-        </div>
-
-        <div x-show="defaultsChecked && !defaultsApplied && !defaultsLoading && gridIsEmpty()"
-             x-transition
-             class="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            No defaults saved for <span x-text="dayName" class="font-semibold mx-1"></span> yet. Fill in the grid and check <em>Save as Default</em> before saving.
-        </div>
-
-    </div>
 
     {{-- ── Adjustment Mode Panel ─────────────────────────────────────────── --}}
     <div x-show="adjustMode"
@@ -429,14 +391,26 @@
                     <span x-text="adjustMode ? 'Exit Adjust Mode' : 'Adjustment Mode'"></span>
                 </button>
 
-                <label class="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-600
-                              rounded-lg border border-gray-200 bg-white px-3 py-1.5 hover:bg-gray-50 transition"
-                       title="Overwrite the stored defaults for {{ $parsedDate->format('l') }} with the current grid values">
-                    <input type="checkbox"
-                           x-model="saveAsDefault"
-                           class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                    <span>Save as Default <span class="font-semibold text-blue-600">({{ $parsedDate->format('l') }})</span></span>
-                </label>
+                {{-- Load data from a past date --}}
+                <button type="button"
+                        @click="loadModal.open = true; loadModal.date = ''"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100 transition"
+                        title="Pre-fill the grid with distribution data from another date">
+                    <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                    </svg>
+                    Load Data From…
+                </button>
+                {{-- Copy current grid to a future date --}}
+                <button type="button"
+                        @click="copyModal.open = true; copyModal.date = ''"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-sm font-medium text-violet-700 hover:bg-violet-100 transition"
+                        title="Copy this grid's data to another date">
+                    <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
+                    Copy to Future Date
+                </button>
 
                 <button type="button"
                         @click="submitForm()"
@@ -664,7 +638,6 @@
                                             :disabled="noSales[{{ $a->id }}]"
                                             :class="{
                                                 'opacity-0 pointer-events-none': noSales[{{ $a->id }}],
-                                                'text-emerald-700': isDefault({{ $a->id }}, {{ $l->id }}) && !isAdjusted({{ $a->id }}, {{ $l->id }}) && !noSales[{{ $a->id }}],
                                                 'text-amber-800 font-semibold is-adjusted': isAdjusted({{ $a->id }}, {{ $l->id }}) && !noSales[{{ $a->id }}]
                                             }"
                                             @focus="hoveredCol = {{ $l->id }}"
@@ -769,6 +742,176 @@
             </div>
         </div>
     </div>
+
+    {{-- ══════════════════════════════════════════════════════════════════════
+         LOAD DATA FROM DATE MODAL
+    ═══════════════════════════════════════════════════════════════════════ --}}
+    <div x-show="loadModal.open"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 print:hidden"
+         @click.self="loadModal.open = false"
+         style="display:none;">
+        <div class="w-full max-w-sm rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 overflow-hidden"
+             @click.stop
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100">
+
+            {{-- Header --}}
+            <div class="flex items-center justify-between bg-blue-600 px-5 py-4">
+                <div>
+                    <p class="text-xs text-blue-200 uppercase tracking-wide font-medium">Ticket Distribution</p>
+                    <p class="font-bold text-white text-sm mt-0.5">Load Data From Date</p>
+                </div>
+                <button type="button" @click="loadModal.open = false"
+                        class="rounded-lg p-1.5 text-blue-200 hover:text-white hover:bg-white/10 transition-colors">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            {{-- Body --}}
+            <div class="px-5 py-5 space-y-4">
+                <p class="text-sm text-gray-600">
+                    Select a date to load its distribution data into the current grid.
+                    <span class="font-semibold text-amber-700">This will overwrite any unsaved changes.</span>
+                </p>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Select Date</label>
+                    <input type="date"
+                           x-model="loadModal.date"
+                           :max="'{{ $date }}'"
+                           class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium
+                                  focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400">
+                </div>
+            </div>
+
+            {{-- Footer --}}
+            <div class="border-t border-gray-100 bg-gray-50 px-5 py-4 flex gap-3">
+                <button type="button"
+                        @click="loadModal.open = false"
+                        class="flex-1 rounded-xl border border-gray-300 bg-white py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                    Cancel
+                </button>
+                <button type="button"
+                        @click="doLoadFromDate()"
+                        :disabled="!loadModal.date || loadModal.loading"
+                        class="flex-[2] rounded-xl bg-blue-600 hover:bg-blue-700 py-2.5 text-sm font-semibold text-white transition-colors
+                               disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    <svg x-show="loadModal.loading" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                    </svg>
+                    <span x-text="loadModal.loading ? 'Loading…' : 'Load Data'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════════════════════════════════
+         COPY TO FUTURE DATE MODAL
+    ═══════════════════════════════════════════════════════════════════════ --}}
+    <div x-show="copyModal.open"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 print:hidden"
+         @click.self="copyModal.open = false"
+         style="display:none;">
+        <div class="w-full max-w-sm rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 overflow-hidden"
+             @click.stop
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100">
+
+            {{-- Header --}}
+            <div class="flex items-center justify-between bg-violet-600 px-5 py-4">
+                <div>
+                    <p class="text-xs text-violet-200 uppercase tracking-wide font-medium">Ticket Distribution</p>
+                    <p class="font-bold text-white text-sm mt-0.5">Copy to Future Date</p>
+                </div>
+                <button type="button" @click="copyModal.open = false"
+                        class="rounded-lg p-1.5 text-violet-200 hover:text-white hover:bg-white/10 transition-colors">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            {{-- Body --}}
+            <div class="px-5 py-5 space-y-4">
+                <p class="text-sm text-gray-600">
+                    Save the <strong>current grid's data</strong> to a different date.
+                    Any existing data on the target date will be overwritten.
+                </p>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Target Date</label>
+                    <input type="date"
+                           x-model="copyModal.date"
+                           class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium
+                                  focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-violet-400">
+                </div>
+            </div>
+
+            {{-- Footer --}}
+            <div class="border-t border-gray-100 bg-gray-50 px-5 py-4 flex gap-3">
+                <button type="button"
+                        @click="copyModal.open = false"
+                        class="flex-1 rounded-xl border border-gray-300 bg-white py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                    Cancel
+                </button>
+                <button type="button"
+                        @click="doCopyToDate()"
+                        :disabled="!copyModal.date || copyModal.loading"
+                        class="flex-[2] rounded-xl bg-violet-600 hover:bg-violet-700 py-2.5 text-sm font-semibold text-white transition-colors
+                               disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    <svg x-show="copyModal.loading" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                    </svg>
+                    <span x-text="copyModal.loading ? 'Copying…' : 'Copy Data'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- ── Toast notification (bottom-right, driven by showToast()) ──────────── --}}
+    <div x-show="toast.show"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 translate-y-3"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-3"
+         class="fixed bottom-6 right-6 z-[70] flex items-center gap-3
+                rounded-2xl px-4 py-3 shadow-xl ring-1 min-w-[260px] max-w-sm print:hidden"
+         :class="toast.type === 'error'
+             ? 'bg-red-600 ring-red-500/30 text-white'
+             : 'bg-emerald-600 ring-emerald-500/30 text-white'"
+         style="display:none;">
+        <svg x-show="toast.type !== 'error'" class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+        </svg>
+        <svg x-show="toast.type === 'error'" class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+        </svg>
+        <p class="flex-1 text-sm font-semibold" x-text="toast.message"></p>
+        <button @click="toast.show = false" class="opacity-70 hover:opacity-100 transition-opacity shrink-0">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+    </div>
+
 </div>
 
 {{-- Legend --}}
@@ -776,10 +919,6 @@
     <span>
         <span class="inline-block w-3 h-3 rounded-sm bg-gray-100 border border-gray-300 mr-1"></span>
         Gray row = No Sales (assistant not taking tickets today).
-    </span>
-    <span>
-        <span class="inline-block w-3 h-3 rounded-sm bg-emerald-100 border border-emerald-300 mr-1"></span>
-        Green values = saved defaults for this weekday.
     </span>
     <span>
         <span class="inline-block w-3 h-3 rounded-sm bg-amber-100 border border-amber-400 mr-1"></span>
@@ -880,22 +1019,30 @@ input.board-qty-cell[type=number] { -moz-appearance: textfield; }
 </style>
 
 <script>
-function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl, initialNoSales, initialRemarks, assistantNames) {
+function distGrid(initialGrid, currentDate, loadFromDateUrl, copyToDateUrl, initialNoSales, initialRemarks, assistantNames) {
     return {
         // ── State ──────────────────────────────────────────────────────────
-        grid:            initialGrid,
-        defaultsGrid:    {},
-        hoveredRow:      null,
-        hoveredCol:      null,
-        saveAsDefault:   false,
-        defaultsLoading: false,
-        defaultsApplied: false,
-        defaultsChecked: false,
-        dayName:         '',
-        saving:          false,
-        isDirty:         false,
-        pendingUrl:      null,
-        _formId:         'dist-form',
+        grid:       initialGrid,
+        hoveredRow: null,
+        hoveredCol: null,
+        saving:     false,
+        isDirty:    false,
+        pendingUrl: null,
+        _formId:    'dist-form',
+
+        // ── Load / Copy modals ─────────────────────────────────────────────
+        loadModal: { open: false, date: '', loading: false },
+        copyModal: { open: false, date: '', loading: false },
+
+        // ── Toast ──────────────────────────────────────────────────────────
+        toast: { show: false, message: '', type: 'success', _timer: null },
+        showToast(message, type = 'success') {
+            clearTimeout(this.toast._timer);
+            this.toast.message = message;
+            this.toast.type    = type;
+            this.toast.show    = true;
+            this.toast._timer  = setTimeout(() => { this.toast.show = false; }, 4000);
+        },
 
         // ── No Sales & Remarks ─────────────────────────────────────────────
         noSales: initialNoSales || {},   // { [aId]: bool }
@@ -927,17 +1074,6 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl, initia
 
         // ── Lifecycle ──────────────────────────────────────────────────────
         init() {
-            if (this.grandTotal() === 0) {
-                this.fetchDefaults();
-            } else {
-                fetch(defaultsUrl + '?date=' + encodeURIComponent(currentDate), {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
-                })
-                .then(r => r.json())
-                .then(data => { this.dayName = data.day_name; this.defaultsChecked = true; })
-                .catch(() => {});
-            }
-
             // ── DLP: browser-level (tab close / refresh / back-button) ────────
             this._unloadHandler = (e) => {
                 if (!this.isDirty) return;
@@ -1026,48 +1162,71 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl, initia
             });
         },
 
-        // ── Smart Defaults ─────────────────────────────────────────────────
-        fetchDefaults() {
-            this.defaultsLoading = true;
-            this.defaultsApplied = false;
-            this.defaultsChecked = false;
+        // ── Load From Date ─────────────────────────────────────────────────
+        async doLoadFromDate() {
+            if (!this.loadModal.date) return;
+            this.loadModal.loading = true;
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            try {
+                const body = new FormData();
+                body.append('_token', csrf);
+                body.append('date', this.loadModal.date);
+                const res  = await fetch(loadFromDateUrl, { method: 'POST', headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf }, body });
+                const data = await res.json();
+                if (!res.ok) throw new Error('Server error');
 
-            fetch(defaultsUrl + '?date=' + encodeURIComponent(currentDate), {
-                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
-            })
-            .then(r => r.json())
-            .then(data => {
-                this.dayName = data.day_name;
-                const defaults = data.defaults || {};
-                let applied = false;
-
-                for (const [aId, lotteries] of Object.entries(defaults)) {
+                // Merge loaded grid into current grid
+                for (const [aId, lotteries] of Object.entries(data.grid || {})) {
+                    if (!this.grid[aId]) this.grid[aId] = {};
                     for (const [lId, qty] of Object.entries(lotteries)) {
-                        if (qty > 0) {
-                            if (!this.grid[aId]) this.grid[aId] = {};
-                            this.grid[aId][lId] = qty;
-                            if (!this.defaultsGrid[aId]) this.defaultsGrid[aId] = {};
-                            this.defaultsGrid[aId][lId] = qty;
-                            applied = true;
-                        }
+                        this.grid[aId][lId] = qty;
                     }
                 }
-                this.defaultsApplied = applied;
-            })
-            .catch(() => {})
-            .finally(() => {
-                this.defaultsLoading = false;
-                this.defaultsChecked = true;
-            });
+                // Merge no-sales and remarks
+                for (const [aId, val] of Object.entries(data.noSales || {})) {
+                    this.noSales[aId] = val;
+                }
+                for (const [aId, val] of Object.entries(data.remarks || {})) {
+                    this.remarks[aId] = val;
+                }
+
+                this.isDirty = true;
+                this.loadModal.open = false;
+                this.showToast('Data loaded from ' + this.loadModal.date + '.', 'success');
+            } catch (_) {
+                this.showToast('Failed to load data. Please try again.', 'error');
+            } finally {
+                this.loadModal.loading = false;
+            }
+        },
+
+        // ── Copy To Date ───────────────────────────────────────────────────
+        async doCopyToDate() {
+            if (!this.copyModal.date) return;
+            this.copyModal.loading = true;
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            try {
+                const noSalesPayload = {};
+                for (const [aId, val] of Object.entries(this.noSales)) {
+                    noSalesPayload[aId] = val ? '1' : '0';
+                }
+                const res  = await fetch(copyToDateUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    body: JSON.stringify({ target_date: this.copyModal.date, grid: this.grid, no_sales: noSalesPayload, remarks: this.remarks }),
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) throw new Error('Server error');
+                this.copyModal.open = false;
+                this.showToast(data.message || 'Data copied successfully.', 'success');
+            } catch (_) {
+                this.showToast('Failed to copy data. Please try again.', 'error');
+            } finally {
+                this.copyModal.loading = false;
+            }
         },
 
         // ── Cell helpers ───────────────────────────────────────────────────
-        isDefault(aId, lId) {
-            const defVal = (this.defaultsGrid[aId] ?? {})[lId] ?? 0;
-            const curVal = (this.grid[aId] ?? {})[lId] ?? 0;
-            return defVal > 0 && defVal === curVal;
-        },
-
         onCellInput(aId, lId, rawValue) {
             const qty = parseInt(rawValue) || 0;
             this.requireUnlock(() => {
@@ -1129,10 +1288,8 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl, initia
                     this.grid[aId][lId] = 0;
                 }
             }
-            this.defaultsGrid    = {};
-            this.defaultsApplied = false;
-            this.adjustedCells   = {};
-            this.boardQty        = {};
+            this.adjustedCells = {};
+            this.boardQty      = {};
         },
 
         gridIsEmpty() { return this.grandTotal() === 0; },
@@ -1157,29 +1314,10 @@ function distGrid(initialGrid, currentDate, defaultsUrl, saveDefaultsUrl, initia
         },
 
         // ── Form submission ────────────────────────────────────────────────
-        async submitForm() {
-            this.saving = true;
-            try {
-                if (this.saveAsDefault) {
-                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                    const response  = await fetch(saveDefaultsUrl, {
-                        method:  'POST',
-                        headers: {
-                            'Content-Type':     'application/json',
-                            'Accept':           'application/json',
-                            'X-CSRF-TOKEN':     csrfToken,
-                            'X-Requested-With': 'XMLHttpRequest',
-                        },
-                        body: JSON.stringify({ date: currentDate, qty: this.grid }),
-                    });
-                    if (!response.ok) throw new Error('Server error ' + response.status);
-                }
-                this.isDirty = false;
-                document.getElementById('dist-form').submit();
-            } catch (err) {
-                this.saving = false;
-                alert('Failed to save defaults. Please try again.');
-            }
+        submitForm() {
+            this.saving  = true;
+            this.isDirty = false;
+            document.getElementById('dist-form').submit();
         },
 
         // ── Keyboard navigation ────────────────────────────────────────────
