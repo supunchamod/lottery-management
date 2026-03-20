@@ -216,7 +216,6 @@ function analysisControls() {
                 <label class="block text-xs font-medium text-gray-500 mb-1">Start Date</label>
                 <input type="date"
                        x-model="startDate"
-                       :max="endDate"
                        class="erp-input text-sm h-9">
             </div>
             <div>
@@ -224,7 +223,6 @@ function analysisControls() {
                 <input type="date"
                        x-model="endDate"
                        :min="startDate"
-                       max="{{ today()->toDateString() }}"
                        class="erp-input text-sm h-9">
             </div>
             <button type="submit"
