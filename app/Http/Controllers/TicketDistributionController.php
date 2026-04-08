@@ -26,7 +26,7 @@ class TicketDistributionController extends Controller
             ->leftJoin('assistant_routes', 'sales_assistants.route_id', '=', 'assistant_routes.id')
             ->select('sales_assistants.*')
             ->orderByRaw('assistant_routes.name IS NULL, assistant_routes.name ASC')
-            ->orderBy('sales_assistants.created_at', 'asc')
+            ->orderBy('sales_assistants.id', 'asc')
             ->get();
         $lotteries  = Lottery::orderByRaw('sort_order IS NULL, sort_order ASC, created_at ASC')->get();
 
