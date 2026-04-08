@@ -129,6 +129,27 @@ class PageController extends Controller
         return redirect()->route('expenses.index')->with('success', 'Expense recorded.');
     }
 
+    public function expensesUpdate(Request $request, Expense $expense)
+    {
+        $data = $request->validate([
+            'date'        => ['required', 'date'],
+            'title'       => ['required', 'string', 'max:255'],
+            'amount'      => ['required', 'numeric', 'min:0'],
+            'description' => ['nullable', 'string'],
+        ]);
+
+        $expense->update($data);
+
+        return redirect()->route('expenses.index')->with('success', 'Expense updated.');
+    }
+
+    public function expensesDestroy(Expense $expense)
+    {
+        $expense->delete();
+
+        return redirect()->route('expenses.index')->with('success', 'Expense deleted.');
+    }
+
     // ── Cheques ───────────────────────────────────────────────────────────────
 
     public function chequesIndex()

@@ -70,8 +70,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/winnings',        [PageController::class, 'winningsStore'])->name('winnings.store');
 
     // Expenses
-    Route::get ('/expenses', [PageController::class, 'expensesIndex'])->name('expenses.index');
-    Route::post('/expenses', [PageController::class, 'expensesStore'])->name('expenses.store');
+    Route::get   ('/expenses',            [PageController::class, 'expensesIndex'])->name('expenses.index');
+    Route::post  ('/expenses',            [PageController::class, 'expensesStore'])->name('expenses.store');
+    Route::put   ('/expenses/{expense}',  [PageController::class, 'expensesUpdate'])->name('expenses.update');
+    Route::delete('/expenses/{expense}',  [PageController::class, 'expensesDestroy'])->name('expenses.destroy');
 
     // Cheques
     Route::get   ('/cheques',                [PageController::class, 'chequesIndex'])->name('cheques.index');
