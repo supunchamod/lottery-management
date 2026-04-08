@@ -991,29 +991,51 @@ input.board-qty-cell[type=number] { -moz-appearance: textfield; }
     @page { margin: 10mm; size: A4 landscape; }
     body, html { margin: 0 !important; padding: 0 !important; }
 
-    /* Hide all screen-only UI */
+    /* ── Hide all web-only UI: nav, sidebar, buttons, toolbars ── */
     .print\:hidden { display: none !important; }
-    aside, header, nav, [class*="sidebar"] { display: none !important; }
+    aside, header, nav, footer,
+    [class*="sidebar"], [class*="navbar"],
+    [class*="topbar"], [class*="nav-"] { display: none !important; }
 
-    /* Hide the Alpine interactive grid; show the static PHP-rendered tables */
+    /* ── Hide the Alpine interactive grid; show the static PHP-rendered tables ── */
     #dist-form    { display: none !important; }
     #print-tables { display: block !important; }
 
-    /* ── B&W cell borders: strip every background, force solid black lines ─ */
+    /* ── Force table to fill the page width and use auto column sizing ── */
     #print-tables table {
         border-collapse: collapse !important;
         width: 100% !important;
+        table-layout: auto !important;
     }
+
+    /* ── Readable font size for all cells ── */
     #print-tables th,
     #print-tables td {
         border: 1px solid #000 !important;
         background: #fff !important;
         color: #000 !important;
         box-shadow: none !important;
+        font-size: 12pt !important;
+        padding: 4px 6px !important;
     }
-    /* tr-level border-color (route-group header has border-top:2px) → black */
+
+    /* ── Preserve route-group structure: avoid splitting a row across pages ── */
     #print-tables tr {
         border-color: #000 !important;
+        page-break-inside: avoid !important;
+    }
+
+    /* ── Keep each data row together on the same page where possible ── */
+    #print-tables tbody tr {
+        page-break-inside: avoid !important;
+    }
+
+    /* ── Override any Tailwind/Bootstrap utility that may shrink the table ── */
+    #print-tables * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        max-width: none !important;
+        overflow: visible !important;
     }
 }
 </style>
