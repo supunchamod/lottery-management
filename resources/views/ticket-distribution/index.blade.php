@@ -132,7 +132,13 @@
      PRINT-ONLY STATIC TABLES — hidden on screen, visible on print
      26 assistants per page, pure PHP (no Alpine dependency)
      ══════════════════════════════════════════════════════════════════════════ --}}
-@php $chunks = $assistants->chunk(26); $totalPages = $chunks->count(); @endphp
+@php
+    // Flatten route groups in the same order used by the screen grid so print
+    // grouping is always consistent — named routes alphabetically, unassigned last.
+    $printAssistants = $routeGroups->flatMap(fn ($g) => $g['assistants']->values());
+    $chunks          = $printAssistants->chunk(26);
+    $totalPages      = $chunks->count();
+@endphp
 
 <div id="print-tables" style="display:none;">
     @foreach($chunks as $pageNum => $chunk)
