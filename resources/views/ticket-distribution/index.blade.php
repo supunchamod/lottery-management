@@ -152,7 +152,7 @@
         </div>
 
         {{-- Table --}}
-        <table style="width:100%; border-collapse:collapse; font-size:8pt;">
+        <table style="width:100%; border-collapse:collapse; font-size:13pt;">
             <thead>
                 {{-- Lottery header --}}
                 <tr style="background:#0f172a;">
