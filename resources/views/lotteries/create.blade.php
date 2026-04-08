@@ -39,6 +39,15 @@
                 @error('unit_price')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
             </div>
 
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Sort Order</label>
+                <input type="number" name="sort_order" value="{{ old('sort_order') }}"
+                       min="1" step="1" placeholder="e.g. 1"
+                       class="erp-input w-full @error('sort_order') border-red-400 @enderror">
+                <p class="mt-1 text-xs text-gray-400">Controls column position in Ticket Distribution & Sales tables. Leave blank to use creation order.</p>
+                @error('sort_order')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+            </div>
+
             <div class="pt-2 flex gap-3">
                 <button type="submit"
                         class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition">

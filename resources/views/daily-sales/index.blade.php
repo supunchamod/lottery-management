@@ -135,7 +135,7 @@
 @else
 
 {{-- Alpine.js — Sales Grid + Cash Counter Modal ──────────────────────────── --}}
-<div x-data="salesGrid({{ json_encode($alpineRows) }}, {{ json_encode($assistantNames) }})"
+<div x-data="salesGrid({{ json_encode($alpineRows) }}, {{ json_encode($assistantNames) }}, '{{ $date }}')"
      @keydown.escape.window="pwModal.open ? cancelPassword() : (addForm.cashOpen ? (addForm.cashOpen = false) : addForm.open ? (addForm.open = false) : (cashModal.open = false))">
 
     {{-- ── Live Day Summary Tiles ──────────────────────────────────────────── --}}
@@ -229,52 +229,106 @@
             </div>
         </div>
 
+        {{-- ── Search bar ──────────────────────────────────────────────────── --}}
+        <div class="mb-2 flex items-center gap-2 print:hidden">
+            <div class="relative w-64">
+                <svg class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400"
+                     fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
+                </svg>
+                <input type="text"
+                       x-model="search"
+                       placeholder="Search assistant name…"
+                       autocomplete="off"
+                       class="w-full rounded-lg border border-slate-200 dark:border-slate-700
+                              bg-white dark:bg-slate-800
+                              pl-8 pr-7 py-1.5 text-xs
+                              text-slate-700 dark:text-slate-300
+                              placeholder-slate-400 dark:placeholder-slate-500
+                              focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:focus:ring-indigo-500/40 focus:border-indigo-300">
+                <button x-show="search"
+                        @click="search = ''"
+                        type="button"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                        title="Clear search">
+                    <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <span x-show="search"
+                  class="text-xs text-slate-400 dark:text-slate-500"
+                  x-text="hasAnyMatch() ? '' : 'No results'"></span>
+        </div>
+
         {{-- ── GRID TABLE ───────────────────────────────────────────────────── --}}
-        <div class="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700/60
-                    bg-white dark:bg-slate-800/60 shadow-sm">
+        <div class="overflow-auto rounded-2xl border border-slate-200 dark:border-slate-700/60
+                    bg-white dark:bg-slate-800/60 shadow-sm" style="max-height:70vh;">
             <table class="min-w-full border-collapse text-xs" id="sales-table">
 
-                {{-- Sticky column headers --}}
-                <thead class="sticky top-0 z-20">
-                    <tr style="background:#0f172a;">
-                        <th class="sticky left-0 z-20 px-3 py-3 text-left text-white font-medium whitespace-nowrap border-x border-slate-600"
+                {{-- ── Sticky column headers (per-cell sticky — reliable in overflow:auto) --}}
+                <thead>
+                    {{-- Row 1: column labels — each cell sticky top-0 with explicit solid bg --}}
+                    <tr>
+                        {{-- Top-left corner: sticky on both axes — highest z-index --}}
+                        <th class="sticky top-0 left-0 z-50 px-3 py-3 text-left text-white font-medium whitespace-nowrap border-x border-slate-600"
                             style="background:#0f172a; min-width:150px;">#&nbsp; Name</th>
-                        <th class="px-2 py-3 text-center text-indigo-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:68px;">Amount</th>
-                        <th class="px-2 py-3 text-center text-blue-200 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:60px;">Unit<br>Price</th>
-                        <th class="px-2 py-3 text-center text-yellow-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:72px;">
-                            Value<br><span class="text-slate-500 font-normal" style="font-size:10px;">auto</span>
+                        <th class="sticky top-0 z-40 px-2 py-3 text-center text-indigo-300 font-medium whitespace-nowrap border-x border-slate-600"
+                            style="background:#0f172a; min-width:68px;">Amount</th>
+                        <th class="sticky top-0 z-40 px-2 py-3 text-center text-blue-200 font-medium whitespace-nowrap border-x border-slate-600"
+                            style="background:#0f172a; min-width:60px;">Unit<br>Price</th>
+                        <th class="sticky top-0 z-40 px-2 py-3 text-center text-yellow-300 font-medium whitespace-nowrap border-x border-slate-600"
+                            style="background:#0f172a; min-width:72px;">
+                            Value<br><span class="text-slate-600 font-normal" style="font-size:10px;">auto</span>
                         </th>
-                        <th class="px-2 py-3 text-center text-emerald-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:80px;">
-                            Cash<br><span class="text-slate-500 font-normal" style="font-size:10px;">click to count</span>
+                        <th class="sticky top-0 z-40 px-2 py-3 text-center text-emerald-300 font-medium whitespace-nowrap border-x border-slate-600"
+                            style="background:#0f172a; min-width:80px;">
+                            Cash<br><span class="text-slate-600 font-normal" style="font-size:10px;">click to count</span>
                         </th>
-                        <th class="px-2 py-3 text-center text-violet-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:66px;">NLB<br>Winning</th>
-                        <th class="px-2 py-3 text-center text-violet-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:66px;">DLB<br>Winning</th>
-                        <th class="px-2 py-3 text-center text-purple-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:62px;">
-                            TW<br><span class="text-slate-500 font-normal" style="font-size:10px;">auto</span>
+                        <th class="sticky top-0 z-40 px-2 py-3 text-center text-violet-300 font-medium whitespace-nowrap border-x border-slate-600"
+                            style="background:#0f172a; min-width:66px;">NLB<br>Winning</th>
+                        <th class="sticky top-0 z-40 px-2 py-3 text-center text-violet-300 font-medium whitespace-nowrap border-x border-slate-600"
+                            style="background:#0f172a; min-width:66px;">DLB<br>Winning</th>
+                        <th class="sticky top-0 z-40 px-2 py-3 text-center text-purple-300 font-medium whitespace-nowrap border-x border-slate-600"
+                            style="background:#0f172a; min-width:62px;">
+                            TW<br><span class="text-slate-600 font-normal" style="font-size:10px;">auto</span>
                         </th>
-                        <th class="px-2 py-3 text-center text-cyan-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:62px;">
-                            C+W<br><span class="text-slate-500 font-normal" style="font-size:10px;">auto</span>
+                        <th class="sticky top-0 z-40 px-2 py-3 text-center text-cyan-300 font-medium whitespace-nowrap border-x border-slate-600"
+                            style="background:#0f172a; min-width:62px;">
+                            C+W<br><span class="text-slate-600 font-normal" style="font-size:10px;">auto</span>
                         </th>
-                        <th class="px-2 py-3 text-center text-red-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:90px;">
-                            Status<br><span class="text-slate-500 font-normal" style="font-size:10px;">Balance</span>
+                        <th class="sticky top-0 z-40 px-2 py-3 text-center text-red-300 font-medium whitespace-nowrap border-x border-slate-600"
+                            style="background:#0f172a; min-width:90px;">
+                            Status<br><span class="text-slate-600 font-normal" style="font-size:10px;">Balance</span>
                         </th>
-                        <th class="px-2 py-3 text-center text-slate-300 font-medium whitespace-nowrap border-x border-slate-600" style="min-width:130px;">Remarks</th>
+                        <th class="sticky top-0 z-40 px-2 py-3 text-center text-slate-300 font-medium whitespace-nowrap border-x border-slate-600"
+                            style="background:#0f172a; min-width:130px;">Remarks</th>
                     </tr>
 
-                    {{-- Totals row --}}
-                    <tr style="background:#1e293b;" class="border-b-2 border-slate-600">
-                        <td class="sticky left-0 z-20 px-3 py-2 text-slate-300 font-semibold text-[11px] border-x border-slate-600"
+                    {{-- Row 2: live totals — offset by Row 1 height (~52px) so it pins directly below --}}
+                    <tr class="border-b-2 border-slate-600">
+                        <td class="sticky top-[52px] left-0 z-50 px-3 py-2 text-slate-300 font-semibold text-[11px] border-x border-slate-600"
                             style="background:#1e293b;">Totals ↓</td>
-                        <td class="px-2 py-2 text-center text-slate-200 font-bold border-x border-slate-600" x-text="fmtInt(totalQty())"></td>
-                        <td class="px-2 py-2 text-center text-slate-500 border-x border-slate-600">—</td>
-                        <td class="px-2 py-2 text-center text-yellow-300 font-bold border-x border-slate-600"  x-text="fmt(totalValue())"></td>
-                        <td class="px-2 py-2 text-center text-emerald-300 font-bold border-x border-slate-600" x-text="fmt(totalCash())"></td>
-                        <td class="px-2 py-2 text-center text-violet-300 font-bold border-x border-slate-600"  x-text="fmt(totalNlb())"></td>
-                        <td class="px-2 py-2 text-center text-violet-300 font-bold border-x border-slate-600"  x-text="fmt(totalDlb())"></td>
-                        <td class="px-2 py-2 text-center text-purple-300 font-bold border-x border-slate-600"  x-text="fmt(totalWinning())"></td>
-                        <td class="px-2 py-2 text-center text-cyan-300 font-bold border-x border-slate-600"    x-text="fmt(totalCW())"></td>
-                        <td class="px-2 py-2 text-center text-red-300 font-bold border-x border-slate-600"     x-text="fmt(Math.abs(totalBalance()))"></td>
-                        <td class="border-x border-slate-600"></td>
+                        <td class="sticky top-[52px] z-40 px-2 py-2 text-center text-slate-200 font-bold border-x border-slate-600"
+                            style="background:#1e293b;" x-text="fmtInt(totalQty())"></td>
+                        <td class="sticky top-[52px] z-40 px-2 py-2 text-center text-slate-500 border-x border-slate-600"
+                            style="background:#1e293b;">—</td>
+                        <td class="sticky top-[52px] z-40 px-2 py-2 text-center text-yellow-300 font-bold border-x border-slate-600"
+                            style="background:#1e293b;" x-text="fmt(totalValue())"></td>
+                        <td class="sticky top-[52px] z-40 px-2 py-2 text-center text-emerald-300 font-bold border-x border-slate-600"
+                            style="background:#1e293b;" x-text="fmt(totalCash())"></td>
+                        <td class="sticky top-[52px] z-40 px-2 py-2 text-center text-violet-300 font-bold border-x border-slate-600"
+                            style="background:#1e293b;" x-text="fmt(totalNlb())"></td>
+                        <td class="sticky top-[52px] z-40 px-2 py-2 text-center text-violet-300 font-bold border-x border-slate-600"
+                            style="background:#1e293b;" x-text="fmt(totalDlb())"></td>
+                        <td class="sticky top-[52px] z-40 px-2 py-2 text-center text-purple-300 font-bold border-x border-slate-600"
+                            style="background:#1e293b;" x-text="fmt(totalWinning())"></td>
+                        <td class="sticky top-[52px] z-40 px-2 py-2 text-center text-cyan-300 font-bold border-x border-slate-600"
+                            style="background:#1e293b;" x-text="fmt(totalCW())"></td>
+                        <td class="sticky top-[52px] z-40 px-2 py-2 text-center text-red-300 font-bold border-x border-slate-600"
+                            style="background:#1e293b;" x-text="fmt(Math.abs(totalBalance()))"></td>
+                        <td class="sticky top-[52px] z-40 border-x border-slate-600"
+                            style="background:#1e293b;"></td>
                     </tr>
                 </thead>
 
@@ -287,8 +341,9 @@
                     @endphp
 
                     {{-- ── Route Group Header ──────────────────────────────── --}}
-                    <tr class="border-t-2 border-slate-300 dark:border-slate-600">
-                        <td class="sticky left-0 z-10 px-3 py-1.5 font-bold text-[11px] uppercase tracking-widest
+                    <tr class="border-t-2 border-slate-300 dark:border-slate-600"
+                        x-show="groupHasMatch({{ json_encode($routeGroup['assistants']->pluck('id')->values()->toArray()) }})">
+                        <td class="sticky left-0 z-20 px-3 py-1.5 font-bold text-[11px] uppercase tracking-widest
                                    {{ $colors['headerText'] }} border-x border-gray-300 dark:border-slate-600"
                             style="background: {{ $colors['headerBgHex'] }};">
                             {{ $route?->name ?? 'Unassigned' }}
@@ -308,12 +363,13 @@
                         $rowHoverHex = $colors['rowHoverHex'];
                     @endphp
                     <tr class="{{ $colors['rowBg'] }} border-b {{ $colors['separator'] }} dark:border-slate-700/40"
+                        x-show="matchesSearch({{ $aid }})"
                         :class="activeRow === {{ $aid }} ? 'ring-1 ring-inset ring-indigo-300 dark:ring-indigo-500/40 !bg-indigo-50 dark:!bg-indigo-900/20' : ''"
                         @mouseenter="activeRow = {{ $aid }}"
                         @mouseleave="activeRow = null">
 
                         {{-- Sticky name cell --}}
-                        <td class="sticky left-0 z-10 px-3 py-1.5 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap border-x border-gray-200 dark:border-slate-700/40"
+                        <td class="sticky left-0 z-20 px-3 py-1.5 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap border-x border-gray-200 dark:border-slate-700/40"
                             style="background: {{ $rowBgHex }}"
                             :style="activeRow === {{ $aid }}
                                 ? (document.documentElement.classList.contains('dark') ? 'background:rgba(99,102,241,0.15)' : 'background:{{ $rowHoverHex }}')
@@ -412,22 +468,43 @@
                     @endforeach
                     @endforeach
 
+                    {{-- No search match --}}
+                    <tr x-show="search && !hasAnyMatch()">
+                        <td colspan="11"
+                            class="py-10 text-center text-sm text-slate-400 dark:text-slate-500">
+                            <svg class="mx-auto mb-2 h-8 w-8 text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
+                            </svg>
+                            No assistant found matching "<span x-text="search" class="font-semibold text-slate-500 dark:text-slate-400"></span>"
+                        </td>
+                    </tr>
+
                     {{-- Bottom totals row --}}
-                    <tr class="border-t-2 border-slate-200 dark:border-slate-600 font-bold bg-slate-50 dark:bg-slate-700/40">
-                        <td class="sticky left-0 z-10 px-3 py-2.5 text-slate-700 dark:text-slate-300 border-x border-gray-200 dark:border-slate-600"
-                            style="background:inherit;">Totals ↑</td>
-                        <td class="px-2 py-2.5 text-center text-slate-900 dark:text-white border-x border-gray-200 dark:border-slate-600" x-text="fmtInt(totalQty())"></td>
-                        <td class="px-2 py-2.5 text-center text-slate-400 dark:text-slate-500 border-x border-gray-200 dark:border-slate-600">—</td>
-                        <td class="px-2 py-2.5 text-center text-yellow-700 dark:text-yellow-400 font-bold border-x border-gray-200 dark:border-slate-600" x-text="fmt(totalValue())"></td>
-                        <td class="px-2 py-2.5 text-center text-emerald-700 dark:text-emerald-400 font-bold border-x border-gray-200 dark:border-slate-600" x-text="fmt(totalCash())"></td>
-                        <td class="px-2 py-2.5 text-center text-violet-700 dark:text-violet-400 border-x border-gray-200 dark:border-slate-600" x-text="fmt(totalNlb())"></td>
-                        <td class="px-2 py-2.5 text-center text-violet-700 dark:text-violet-400 border-x border-gray-200 dark:border-slate-600" x-text="fmt(totalDlb())"></td>
-                        <td class="px-2 py-2.5 text-center text-purple-700 dark:text-purple-400 font-bold border-x border-gray-200 dark:border-slate-600" x-text="fmt(totalWinning())"></td>
-                        <td class="px-2 py-2.5 text-center text-cyan-700 dark:text-cyan-400 font-bold border-x border-gray-200 dark:border-slate-600" x-text="fmt(totalCW())"></td>
+                    <tr class="border-t-2 border-slate-200 dark:border-slate-600 font-bold">
+                        <td class="sticky left-0 z-20 px-3 py-2.5 text-slate-700 dark:text-slate-300 border-x border-gray-200 dark:border-slate-600 ds-sticky-footer"
+                            style="background:#f8fafc;">Totals ↑</td>
+                        <td class="px-2 py-2.5 text-center text-slate-900 dark:text-white border-x border-gray-200 dark:border-slate-600"
+                            style="background:#f8fafc;" x-text="fmtInt(totalQty())"></td>
+                        <td class="px-2 py-2.5 text-center text-slate-400 dark:text-slate-500 border-x border-gray-200 dark:border-slate-600"
+                            style="background:#f8fafc;">—</td>
+                        <td class="px-2 py-2.5 text-center text-yellow-700 dark:text-yellow-400 font-bold border-x border-gray-200 dark:border-slate-600"
+                            style="background:#f8fafc;" x-text="fmt(totalValue())"></td>
+                        <td class="px-2 py-2.5 text-center text-emerald-700 dark:text-emerald-400 font-bold border-x border-gray-200 dark:border-slate-600"
+                            style="background:#f8fafc;" x-text="fmt(totalCash())"></td>
+                        <td class="px-2 py-2.5 text-center text-violet-700 dark:text-violet-400 border-x border-gray-200 dark:border-slate-600"
+                            style="background:#f8fafc;" x-text="fmt(totalNlb())"></td>
+                        <td class="px-2 py-2.5 text-center text-violet-700 dark:text-violet-400 border-x border-gray-200 dark:border-slate-600"
+                            style="background:#f8fafc;" x-text="fmt(totalDlb())"></td>
+                        <td class="px-2 py-2.5 text-center text-purple-700 dark:text-purple-400 font-bold border-x border-gray-200 dark:border-slate-600"
+                            style="background:#f8fafc;" x-text="fmt(totalWinning())"></td>
+                        <td class="px-2 py-2.5 text-center text-cyan-700 dark:text-cyan-400 font-bold border-x border-gray-200 dark:border-slate-600"
+                            style="background:#f8fafc;" x-text="fmt(totalCW())"></td>
                         <td class="px-2 py-2.5 text-center font-bold border-x border-gray-200 dark:border-slate-600"
+                            style="background:#f8fafc;"
                             :class="totalBalance() > 0 ? 'text-red-700 dark:text-red-400' : (totalBalance() < 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400')"
                             x-text="fmt(Math.abs(totalBalance()))"></td>
-                        <td class="border-x border-gray-200 dark:border-slate-600"></td>
+                        <td class="border-x border-gray-200 dark:border-slate-600"
+                            style="background:#f8fafc;"></td>
                     </tr>
                 </tbody>
             </table>
@@ -591,7 +668,9 @@
                     <p class="font-bold text-white text-sm mt-0.5"
                        x-text="addForm.cashOpen
                            ? (names[addForm.assistantId] ?? 'Count Cash')
-                           : '{{ $parsedDate->format('d M Y') }}'"></p>
+                           : (addForm.date
+                               ? new Date(addForm.date + 'T00:00:00').toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'})
+                               : '{{ $parsedDate->format('d M Y') }}')"></p>
                 </div>
                 <button type="button" @click="addForm.open = false"
                         class="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
@@ -603,6 +682,19 @@
 
             {{-- ── MAIN FORM PANEL ─────────────────────────────────────────── --}}
             <div x-show="!addForm.cashOpen" class="px-5 py-4 space-y-3.5">
+
+                {{-- Entry Date — editable, defaults to the currently viewed date --}}
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+                        Entry Date
+                    </label>
+                    <input type="date"
+                           x-model="addForm.date"
+                           class="w-full rounded-xl border border-slate-200 dark:border-slate-700
+                                  bg-white dark:bg-slate-700/50 text-slate-900 dark:text-white
+                                  px-3 py-2 text-sm font-medium
+                                  focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500/50">
+                </div>
 
                 {{-- Sales Assistant — searchable dropdown --}}
                 <div>
@@ -756,15 +848,22 @@
                                bg-white dark:bg-slate-800 py-2.5 text-sm font-medium
                                text-slate-700 dark:text-slate-300
                                hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                    Cancel
+                    Close
                 </button>
                 <button type="button"
                         @click="submitAddForm()"
-                        :disabled="!addForm.assistantId"
+                        :disabled="!addForm.assistantId || addForm.saving"
                         class="btn-action flex-[2] rounded-xl bg-indigo-600 hover:bg-indigo-700
                                py-2.5 text-sm font-semibold text-white transition-colors
-                               disabled:opacity-40 disabled:cursor-not-allowed">
-                    Add to Table
+                               disabled:opacity-40 disabled:cursor-not-allowed
+                               flex items-center justify-center gap-2">
+                    <svg x-show="addForm.saving"
+                         class="h-4 w-4 animate-spin"
+                         fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                    </svg>
+                    <span x-text="addForm.saving ? 'Saving…' : 'Save Entry'"></span>
                 </button>
             </div>
 
@@ -828,6 +927,40 @@
         </div>
     </div>
 
+    {{-- ── Save toast (bottom-right, driven by showToast()) ─────────────── --}}
+    <div x-show="toast.show"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 translate-y-3"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-3"
+         class="fixed bottom-6 right-6 z-[70] flex items-center gap-3
+                rounded-2xl px-4 py-3 shadow-xl ring-1
+                min-w-[260px] max-w-sm print:hidden"
+         :class="toast.type === 'error'
+             ? 'bg-red-600 ring-red-500/30 text-white'
+             : 'bg-emerald-600 ring-emerald-500/30 text-white'"
+         style="display:none;">
+        {{-- Success icon --}}
+        <svg x-show="toast.type !== 'error'"
+             class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+        </svg>
+        {{-- Error icon --}}
+        <svg x-show="toast.type === 'error'"
+             class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+        </svg>
+        <p class="flex-1 text-sm font-semibold" x-text="toast.message"></p>
+        <button @click="toast.show = false"
+                class="opacity-70 hover:opacity-100 transition-opacity shrink-0">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+    </div>
+
 </div>{{-- /x-data --}}
 
 {{-- ══════════════════════════════════════════════════════════════════════
@@ -852,6 +985,32 @@
 
 @push('head')
 <style>
+/* ── Sticky cells: right-edge shadow for left-pinned name column ── */
+#sales-table td.sticky.left-0 {
+    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.08);
+}
+.dark #sales-table td.sticky.left-0 {
+    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.35);
+}
+/* ── Sticky cells: bottom-edge shadow for sticky header rows ── */
+#sales-table th.sticky.top-0,
+#sales-table td.sticky.top-0,
+#sales-table td[class*="top-["] {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+}
+/* ── Corner cells (top-0 + left-0): both shadows ── */
+#sales-table th.sticky.top-0.left-0,
+#sales-table td.sticky.top-0.left-0 {
+    box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.15);
+}
+.dark #sales-table th.sticky.top-0.left-0,
+.dark #sales-table td.sticky.top-0.left-0 {
+    box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.45);
+}
+/* Dark-mode override for bottom totals sticky cell */
+.dark #sales-table .ds-sticky-footer {
+    background: #1e293b !important;
+}
 input.ds-cell::-webkit-outer-spin-button,
 input.ds-cell::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input.ds-cell[type=number] { -moz-appearance: textfield; }
@@ -904,14 +1063,25 @@ input.ds-cell:focus {
 }
 </style>
 <script>
-function salesGrid(initialRows, names) {
+function salesGrid(initialRows, names, pageDate) {
     return {
         rows: initialRows,
         names: names,
+        _pageDate: pageDate,          // The date currently displayed in the grid
         activeRow: null,
         isDirty: false,
         pendingUrl: null,
         _formId: 'sales-form',
+
+        // ── Toast ──────────────────────────────────────────────────────────
+        toast: { show: false, message: '', type: 'success', _timer: null },
+        showToast(message, type = 'success') {
+            if (this.toast._timer) clearTimeout(this.toast._timer);
+            this.toast.message = message;
+            this.toast.type    = type;
+            this.toast.show    = true;
+            this.toast._timer  = setTimeout(() => { this.toast.show = false; }, 3500);
+        },
 
         // ── Edit Lock ──────────────────────────────────────────────────────
         editLocked:   true,
@@ -928,6 +1098,8 @@ function salesGrid(initialRows, names) {
             cashOpen:    false,
             assistantId: '',
             search:      '',
+            date:        '',          // Set to _pageDate when modal opens
+            saving:      false,       // True while the AJAX request is in-flight
             qty:         0,
             unitPrice:   40,
             nlbWinning:  0,
@@ -1021,6 +1193,18 @@ function salesGrid(initialRows, names) {
             });
         },
 
+        // ── Search / filter ───────────────────────────────────────────────────
+        search: '',
+        matchesSearch(id) {
+            return !this.search || (this.names[id] || '').toLowerCase().includes(this.search.toLowerCase());
+        },
+        groupHasMatch(ids) {
+            return !this.search || ids.some(id => (this.names[id] || '').toLowerCase().includes(this.search.toLowerCase()));
+        },
+        hasAnyMatch() {
+            return !this.search || Object.values(this.names).some(n => n.toLowerCase().includes(this.search.toLowerCase()));
+        },
+
         // ── Row computed ──────────────────────────────────────────────────────
         value(id)   { return (this.rows[id].qty||0) * (this.rows[id].unitPrice||0); },
         cash(id)    {
@@ -1073,6 +1257,8 @@ function salesGrid(initialRows, names) {
                 cashOpen:    false,
                 assistantId: '',
                 search:      '',
+                date:        this._pageDate,   // default to the currently viewed date
+                saving:      false,
                 qty:         0,
                 unitPrice:   40,
                 nlbWinning:  0,
@@ -1116,23 +1302,73 @@ function salesGrid(initialRows, names) {
         addFormTW()      { return (this.addForm.nlbWinning||0) + (this.addForm.dlbWinning||0); },
         addFormCW()      { return this.addFormCashTotal() + this.addFormTW(); },
         addFormBalance() { return this.addFormValue() - this.addFormCW(); },
-        submitAddForm() {
+        async submitAddForm() {
             if (!this.addForm.assistantId || !this.rows[this.addForm.assistantId]) return;
-            const id = this.addForm.assistantId;
-            const d  = this.addForm.denoms;
-            Object.assign(this.rows[id], {
-                qty:        this.addForm.qty,
-                unitPrice:  this.addForm.unitPrice,
-                d5:    d[5]   ||0, d10:   d[10]  ||0,
-                d20:   d[20]  ||0, d50:   d[50]  ||0,
-                d100:  d[100] ||0, d500:  d[500] ||0,
-                d1000: d[1000]||0, d5000: d[5000]||0,
-                nlbWinning: this.addForm.nlbWinning,
-                dlbWinning: this.addForm.dlbWinning,
-                remarks:    this.addForm.remarks,
-            });
-            this.isDirty = true;
-            this.addForm.open = false;
+            this.addForm.saving = true;
+
+            const id   = this.addForm.assistantId;
+            const d    = this.addForm.denoms;
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.content
+                      || document.querySelector('[name="_token"]')?.value
+                      || '';
+
+            const body = new FormData();
+            body.append('_token',       csrf);
+            body.append('date',         this.addForm.date        || this._pageDate);
+            body.append('assistant_id', id);
+            body.append('qty',          this.addForm.qty         || 0);
+            body.append('unit_price',   this.addForm.unitPrice   || 0);
+            body.append('d5',           d[5]    || 0);
+            body.append('d10',          d[10]   || 0);
+            body.append('d20',          d[20]   || 0);
+            body.append('d50',          d[50]   || 0);
+            body.append('d100',         d[100]  || 0);
+            body.append('d500',         d[500]  || 0);
+            body.append('d1000',        d[1000] || 0);
+            body.append('d5000',        d[5000] || 0);
+            body.append('nlb_winning',  this.addForm.nlbWinning  || 0);
+            body.append('dlb_winning',  this.addForm.dlbWinning  || 0);
+            body.append('remarks',      this.addForm.remarks      || '');
+
+            try {
+                const res  = await fetch('{{ route('daily-sales.entry') }}', {
+                    method:  'POST',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    body,
+                });
+                const json = await res.json();
+
+                if (!res.ok || !json.success) {
+                    this.showToast(json.message || 'Save failed — please try again.', 'error');
+                    return;
+                }
+
+                // If this entry is for the currently viewed date, sync the live grid row
+                if (json.date === this._pageDate && json.row) {
+                    Object.assign(this.rows[id], json.row);
+                    this.isDirty = false;   // just saved — grid is in sync
+                }
+
+                this.showToast((this.names[id] || 'Record') + ' saved!', 'success');
+
+                // Clear fields for next entry — keep date and modal open
+                const keepDate      = this.addForm.date;
+                this.addForm.assistantId = '';
+                this.addForm.search      = '';
+                this.addForm.qty         = 0;
+                this.addForm.unitPrice   = 40;
+                this.addForm.nlbWinning  = 0;
+                this.addForm.dlbWinning  = 0;
+                this.addForm.remarks     = '';
+                this.addForm.denoms      = { 5:0, 10:0, 20:0, 50:0, 100:0, 500:0, 1000:0, 5000:0 };
+                this.addForm.cashOpen    = false;
+                this.addForm.date        = keepDate;   // preserve selected date
+
+            } catch (_) {
+                this.showToast('Network error — please try again.', 'error');
+            } finally {
+                this.addForm.saving = false;
+            }
         },
 
         // ── Edit Lock methods ──────────────────────────────────────────────

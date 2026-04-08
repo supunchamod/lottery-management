@@ -51,6 +51,7 @@ Route::middleware('auth')->group(function () {
     // Daily Sales
     Route::get ('/daily-sales',          [DailySalesController::class, 'index'])->name('daily-sales.index');
     Route::post('/daily-sales',          [DailySalesController::class, 'store'])->name('daily-sales.store');
+    Route::post('/daily-sales/entry',    [DailySalesController::class, 'storeSingle'])->name('daily-sales.entry');
     Route::get ('/daily-sales/analysis', [DailySalesController::class, 'analysis'])->name('daily-sales.analysis');
 
     // Bulk Deposits
@@ -91,7 +92,8 @@ Route::middleware('auth')->group(function () {
     Route::get ('/lotteries/create',         [PageController::class, 'lotteriesCreate'])->name('lotteries.create');
     Route::post('/lotteries',                [PageController::class, 'lotteriesStore'])->name('lotteries.store');
 Route::get ('/lotteries/{lottery}/edit', [PageController::class, 'lotteriesEdit'])->name('lotteries.edit');
-    Route::put ('/lotteries/{lottery}',      [PageController::class, 'lotteriesUpdate'])->name('lotteries.update');
+    Route::put   ('/lotteries/{lottery}',    [PageController::class, 'lotteriesUpdate'])->name('lotteries.update');
+    Route::delete('/lotteries/{lottery}',    [PageController::class, 'lotteriesDestroy'])->name('lotteries.destroy');
 
     // Stock
     Route::get ('/stock',        [PageController::class, 'stockIndex'])->name('stock.index');
@@ -103,9 +105,11 @@ Route::get ('/lotteries/{lottery}/edit', [PageController::class, 'lotteriesEdit'
     Route::post('/bundle-counter/save', [PageController::class, 'bundleCounterStore'])->name('bundle-counter.store');
 
     // Ticket Distribution
-    Route::get ('/ticket-distribution',         [TicketDistributionController::class, 'index'])->name('ticket-distribution.index');
-    Route::post('/ticket-distribution',         [TicketDistributionController::class, 'store'])->name('ticket-distribution.store');
-    Route::get ('/ticket-distribution/summary', [TicketDistributionController::class, 'summary'])->name('ticket-distribution.summary');
+    Route::get ('/ticket-distribution',                 [TicketDistributionController::class, 'index'])->name('ticket-distribution.index');
+    Route::post('/ticket-distribution',                 [TicketDistributionController::class, 'store'])->name('ticket-distribution.store');
+    Route::get ('/ticket-distribution/summary',         [TicketDistributionController::class, 'summary'])->name('ticket-distribution.summary');
+    Route::post('/ticket-distribution/load-from-date',  [TicketDistributionController::class, 'loadFromDate'])->name('ticket-distribution.load-from-date');
+    Route::post('/ticket-distribution/copy-to-date',    [TicketDistributionController::class, 'copyToDate'])->name('ticket-distribution.copy-to-date');
 
     // Sub-sellers (nested under an assistant)
     Route::get   ('/ticket-distribution/{assistant}/sub-sellers',         [TicketDistributionController::class, 'subSellersIndex'])->name('ticket-distribution.sub-sellers.index');
@@ -151,10 +155,6 @@ Route::get ('/lotteries/{lottery}/edit', [PageController::class, 'lotteriesEdit'
 // JSON API routes  (for AJAX / future mobile client)
 // ═════════════════════════════════════════════════════════════════════════════
 Route::prefix('api')->name('api.')->middleware('auth')->group(function () {
-
-    // Smart Default Quantity  (Ticket Distribution)
-    Route::get ('/ticket-distribution/defaults', [TicketDistributionController::class, 'getDefaults'])->name('ticket-distribution.defaults.get');
-    Route::post('/ticket-distribution/defaults', [TicketDistributionController::class, 'saveDefaults'])->name('ticket-distribution.defaults.save');
 
     // Daily P&L summary
     Route::get('/daily-summary',       [DailySummaryController::class, 'show'])->name('daily-summary');
