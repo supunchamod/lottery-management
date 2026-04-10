@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\TicketDistributionExport;
 use App\Models\DailyTicketNote;
 use App\Models\DailyTicketStock;
 use App\Models\Lottery;
@@ -10,6 +11,7 @@ use App\Models\SubSeller;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 class TicketDistributionController extends Controller
 {
@@ -132,6 +134,20 @@ class TicketDistributionController extends Controller
         return redirect()
             ->route('ticket-distribution.index', ['date' => $date])
             ->with('success', 'Ticket distribution saved for ' . Carbon::parse($date)->format('d M Y') . '.');
+    }
+
+    // ── Excel Export ──────────────────────────────────────────────────────────
+
+    /**
+     * Stream an Excel download of the ticket distribution for a given date.
+     * The row order matches the screen exactly: Route ASC (NULLs last), then ID ASC.
+     */
+    public function exportExcel(Request $request)
+    {
+        $date     = $request->input('date', today()->toDateString());
+        $filename = 'ticket-distribution-' . $date . '.xlsx';
+
+        return Excel::download(new TicketDistributionExport($date), $filename);
     }
 
     // ── Load From Date / Copy To Date ─────────────────────────────────────────
