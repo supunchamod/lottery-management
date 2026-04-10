@@ -110,6 +110,7 @@ Route::get ('/lotteries/{lottery}/edit', [PageController::class, 'lotteriesEdit'
     Route::get ('/ticket-distribution',                 [TicketDistributionController::class, 'index'])->name('ticket-distribution.index');
     Route::post('/ticket-distribution',                 [TicketDistributionController::class, 'store'])->name('ticket-distribution.store');
     Route::get ('/ticket-distribution/summary',         [TicketDistributionController::class, 'summary'])->name('ticket-distribution.summary');
+    Route::get ('/ticket-distribution/export-excel',    [TicketDistributionController::class, 'exportExcel'])->name('ticket-distribution.export-excel');
     Route::post('/ticket-distribution/load-from-date',  [TicketDistributionController::class, 'loadFromDate'])->name('ticket-distribution.load-from-date');
     Route::post('/ticket-distribution/copy-to-date',    [TicketDistributionController::class, 'copyToDate'])->name('ticket-distribution.copy-to-date');
 
