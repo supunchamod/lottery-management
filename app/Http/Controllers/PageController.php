@@ -112,7 +112,6 @@ class PageController extends Controller
 
         $query->when($request->filled('search'), fn ($q) =>
             $q->where('description', 'like', '%' . $request->search . '%')
-              ->orWhere('title', 'like', '%' . $request->search . '%')
         );
 
         $query->when($request->filled('date_from'), fn ($q) =>
@@ -148,9 +147,8 @@ class PageController extends Controller
     public function expensesStore(Request $request)
     {
         $data = $request->validate([
-            'category_id' => ['nullable', 'exists:expense_categories,id'],
+            'category_id' => ['required', 'exists:expense_categories,id'],
             'date'        => ['required', 'date'],
-            'title'       => ['required', 'string', 'max:255'],
             'amount'      => ['required', 'numeric', 'min:0'],
             'description' => ['nullable', 'string'],
         ]);
@@ -163,9 +161,8 @@ class PageController extends Controller
     public function expensesUpdate(Request $request, Expense $expense)
     {
         $data = $request->validate([
-            'category_id' => ['nullable', 'exists:expense_categories,id'],
+            'category_id' => ['required', 'exists:expense_categories,id'],
             'date'        => ['required', 'date'],
-            'title'       => ['required', 'string', 'max:255'],
             'amount'      => ['required', 'numeric', 'min:0'],
             'description' => ['nullable', 'string'],
         ]);

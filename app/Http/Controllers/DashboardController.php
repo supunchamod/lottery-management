@@ -232,17 +232,17 @@ class DashboardController extends Controller
             ]);
 
         // Expenses (last 5)
-        $expItems = Expense::orderByDesc('date')->orderByDesc('id')
+        $expItems = Expense::with('category')->orderByDesc('date')->orderByDesc('id')
             ->limit(5)
             ->get()
             ->map(fn ($e) => [
                 'date'   => $e->date,
                 'type'   => 'expense',
-                'label'  => $e->title ?? 'Expense',
+                'label'  => $e->category?->name ?? 'Expense',
                 'amount' => (float) $e->amount,
                 'sign'   => '-',
                 'badge'  => ['text' => 'Expense', 'class' => 'bg-rose-100 text-rose-700'],
-                'sub'    => $e->category ?? 'General',
+                'sub'    => $e->category?->name ?? 'General',
                 'icon'   => 'expense',
             ]);
 

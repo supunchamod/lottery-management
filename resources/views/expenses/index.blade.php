@@ -43,14 +43,14 @@
 
                 {{-- Search --}}
                 <div class="xl:col-span-2">
-                    <label class="mb-1 block text-xs font-medium text-gray-500">Search</label>
+                    <label class="mb-1 block text-xs font-medium text-gray-500">Search Description</label>
                     <div class="relative">
                         <svg class="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
                              fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z"/>
                         </svg>
                         <input type="text" name="search" value="{{ $filters['search'] ?? '' }}"
-                               placeholder="Title or description…"
+                               placeholder="Search by description…"
                                class="erp-input pl-8 text-sm">
                     </div>
                 </div>
@@ -124,7 +124,6 @@
                 <thead>
                     <tr class="border-b border-gray-100 bg-gray-50/60">
                         <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
-                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Title</th>
                         <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Category</th>
                         <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Amount</th>
                         <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Description</th>
@@ -135,7 +134,6 @@
                     @forelse($expenses ?? [] as $e)
                         <tr>
                             <td class="px-5 py-3 text-gray-600 whitespace-nowrap">{{ $e->date->format('d M Y') }}</td>
-                            <td class="px-5 py-3 font-medium text-gray-800">{{ $e->title }}</td>
                             <td class="px-5 py-3">
                                 @if($e->category)
                                     <span class="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 border border-indigo-100">
@@ -154,7 +152,6 @@
                                             onclick="openEditModal(
                                                 {{ $e->id }},
                                                 '{{ $e->date->format('Y-m-d') }}',
-                                                @js($e->title),
                                                 '{{ number_format($e->amount, 2, '.', '') }}',
                                                 @js($e->description ?? ''),
                                                 {{ $e->category_id ?? 'null' }}
@@ -168,7 +165,7 @@
 
                                     {{-- Delete --}}
                                     <button type="button"
-                                            onclick="confirmDelete({{ $e->id }}, @js($e->title))"
+                                            onclick="confirmDelete({{ $e->id }}, @js($e->category?->name ?? 'this expense'))"
                                             class="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-100 transition-colors">
                                         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -179,7 +176,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="py-12 text-center text-sm text-gray-400">No expenses found.</td></tr>
+                        <tr><td colspan="5" class="py-12 text-center text-sm text-gray-400">No expenses found.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -209,20 +206,16 @@
                         <input type="date" name="date" value="{{ now()->toDateString() }}" class="erp-input" required>
                     </div>
                     <div>
-                        <label class="mb-1 block text-xs font-medium text-gray-600">Title</label>
-                        <input type="text" name="title" class="erp-input" placeholder="e.g. Office Supplies" required>
-                    </div>
-                    <div>
-                        <label class="mb-1 block text-xs font-medium text-gray-600">Category</label>
-                        <select name="category_id" class="erp-input">
-                            <option value="">— No Category —</option>
+                        <label class="mb-1 block text-xs font-medium text-gray-600">Category <span class="text-rose-500">*</span></label>
+                        <select name="category_id" class="erp-input" required>
+                            <option value="">— Select Category —</option>
                             @foreach($categories as $cat)
                                 <option value="{{ $cat->id }}">{{ $cat->name }}</option>
                             @endforeach
                         </select>
                     </div>
                     <div>
-                        <label class="mb-1 block text-xs font-medium text-gray-600">Amount (Rs.)</label>
+                        <label class="mb-1 block text-xs font-medium text-gray-600">Amount (Rs.) <span class="text-rose-500">*</span></label>
                         <input type="number" name="amount" step="0.01" min="0" class="erp-input" placeholder="0.00" required>
                     </div>
                     <div>
@@ -256,20 +249,16 @@
                         <input type="date" name="date" id="edit_date" class="erp-input" required>
                     </div>
                     <div>
-                        <label class="mb-1 block text-xs font-medium text-gray-600">Title</label>
-                        <input type="text" name="title" id="edit_title" class="erp-input" placeholder="e.g. Office Supplies" required>
-                    </div>
-                    <div>
-                        <label class="mb-1 block text-xs font-medium text-gray-600">Category</label>
-                        <select name="category_id" id="edit_category_id" class="erp-input">
-                            <option value="">— No Category —</option>
+                        <label class="mb-1 block text-xs font-medium text-gray-600">Category <span class="text-rose-500">*</span></label>
+                        <select name="category_id" id="edit_category_id" class="erp-input" required>
+                            <option value="">— Select Category —</option>
                             @foreach($categories as $cat)
                                 <option value="{{ $cat->id }}">{{ $cat->name }}</option>
                             @endforeach
                         </select>
                     </div>
                     <div>
-                        <label class="mb-1 block text-xs font-medium text-gray-600">Amount (Rs.)</label>
+                        <label class="mb-1 block text-xs font-medium text-gray-600">Amount (Rs.) <span class="text-rose-500">*</span></label>
                         <input type="number" name="amount" id="edit_amount" step="0.01" min="0" class="erp-input" placeholder="0.00" required>
                     </div>
                     <div>
@@ -297,11 +286,10 @@
             document.getElementById('expenseModal').classList.remove('hidden');
         }
 
-        function openEditModal(id, date, title, amount, description, categoryId) {
+        function openEditModal(id, date, amount, description, categoryId) {
             const form = document.getElementById('editExpenseForm');
             form.action = '/expenses/' + id;
             document.getElementById('edit_date').value        = date;
-            document.getElementById('edit_title').value       = title;
             document.getElementById('edit_amount').value      = amount;
             document.getElementById('edit_description').value = description;
 
@@ -311,10 +299,10 @@
             document.getElementById('editExpenseModal').classList.remove('hidden');
         }
 
-        function confirmDelete(id, title) {
+        function confirmDelete(id, label) {
             Swal.fire({
                 title: 'Delete Expense?',
-                html: 'Are you sure you want to delete <strong>' + title + '</strong>?<br><small style="color:#94a3b8">This action cannot be undone.</small>',
+                html: 'Are you sure you want to delete <strong>' + label + '</strong>?<br><small style="color:#94a3b8">This action cannot be undone.</small>',
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonText: 'Yes, delete it',
