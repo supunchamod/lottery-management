@@ -11,6 +11,7 @@ class Expense extends Model
     use HasFactory, LogsActivity;
 
     protected $fillable = [
+        'category_id',
         'date',
         'title',
         'amount',
@@ -23,5 +24,10 @@ class Expense extends Model
             'date'   => 'date',
             'amount' => 'decimal:2',
         ];
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(ExpenseCategory::class, 'category_id');
     }
 }

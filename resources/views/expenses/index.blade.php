@@ -36,6 +36,88 @@
         </div>
     </div>
 
+    {{-- ── Filter Panel ──────────────────────────────────────────────────────── --}}
+    <div class="mb-4 rounded-xl bg-white border border-gray-100 shadow-sm p-4">
+        <form method="GET" action="{{ route('expenses.index') }}" id="filterForm">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+
+                {{-- Search --}}
+                <div class="xl:col-span-2">
+                    <label class="mb-1 block text-xs font-medium text-gray-500">Search</label>
+                    <div class="relative">
+                        <svg class="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
+                             fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z"/>
+                        </svg>
+                        <input type="text" name="search" value="{{ $filters['search'] ?? '' }}"
+                               placeholder="Title or description…"
+                               class="erp-input pl-8 text-sm">
+                    </div>
+                </div>
+
+                {{-- Date From --}}
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-gray-500">From Date</label>
+                    <input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}" class="erp-input text-sm">
+                </div>
+
+                {{-- Date To --}}
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-gray-500">To Date</label>
+                    <input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" class="erp-input text-sm">
+                </div>
+
+                {{-- Category --}}
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-gray-500">Category</label>
+                    <select name="category_id" class="erp-input text-sm">
+                        <option value="">All Categories</option>
+                        @foreach($categories as $cat)
+                            <option value="{{ $cat->id }}" @selected(($filters['category_id'] ?? '') == $cat->id)>
+                                {{ $cat->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Amount Range --}}
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-gray-500">Amount Range (Rs.)</label>
+                    <div class="flex items-center gap-1">
+                        <input type="number" name="amount_min" value="{{ $filters['amount_min'] ?? '' }}"
+                               placeholder="Min" min="0" step="0.01"
+                               class="erp-input text-sm w-1/2">
+                        <span class="text-gray-400 text-xs">–</span>
+                        <input type="number" name="amount_max" value="{{ $filters['amount_max'] ?? '' }}"
+                               placeholder="Max" min="0" step="0.01"
+                               class="erp-input text-sm w-1/2">
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="mt-3 flex items-center gap-2">
+                <button type="submit"
+                        class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/>
+                    </svg>
+                    Apply Filters
+                </button>
+                @if(array_filter($filters ?? []))
+                    <a href="{{ route('expenses.index') }}"
+                       class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                        Clear
+                    </a>
+                @endif
+            </div>
+        </form>
+    </div>
+
+    {{-- ── Expenses Table ────────────────────────────────────────────────────── --}}
     <div class="rounded-xl bg-white border border-gray-100 shadow-sm">
         <div class="overflow-x-auto">
             <table class="erp-table w-full text-sm">
@@ -43,6 +125,7 @@
                     <tr class="border-b border-gray-100 bg-gray-50/60">
                         <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
                         <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Title</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Category</th>
                         <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Amount</th>
                         <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Description</th>
                         <th class="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-500">Actions</th>
@@ -51,9 +134,18 @@
                 <tbody class="divide-y divide-gray-50">
                     @forelse($expenses ?? [] as $e)
                         <tr>
-                            <td class="px-5 py-3 text-gray-600">{{ $e->date->format('d M Y') }}</td>
+                            <td class="px-5 py-3 text-gray-600 whitespace-nowrap">{{ $e->date->format('d M Y') }}</td>
                             <td class="px-5 py-3 font-medium text-gray-800">{{ $e->title }}</td>
-                            <td class="px-5 py-3 text-right font-semibold text-rose-600">Rs.{{ number_format($e->amount, 2) }}</td>
+                            <td class="px-5 py-3">
+                                @if($e->category)
+                                    <span class="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 border border-indigo-100">
+                                        {{ $e->category->name }}
+                                    </span>
+                                @else
+                                    <span class="text-xs text-gray-400">—</span>
+                                @endif
+                            </td>
+                            <td class="px-5 py-3 text-right font-semibold text-rose-600 whitespace-nowrap">Rs.{{ number_format($e->amount, 2) }}</td>
                             <td class="px-5 py-3 text-gray-500 text-xs">{{ $e->description }}</td>
                             <td class="px-5 py-3 text-center">
                                 <div class="flex items-center justify-center gap-2">
@@ -64,7 +156,8 @@
                                                 '{{ $e->date->format('Y-m-d') }}',
                                                 @js($e->title),
                                                 '{{ number_format($e->amount, 2, '.', '') }}',
-                                                @js($e->description ?? '')
+                                                @js($e->description ?? ''),
+                                                {{ $e->category_id ?? 'null' }}
                                             )"
                                             class="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors">
                                         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -86,7 +179,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="py-12 text-center text-sm text-gray-400">No expenses recorded.</td></tr>
+                        <tr><td colspan="6" class="py-12 text-center text-sm text-gray-400">No expenses found.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -118,6 +211,15 @@
                     <div>
                         <label class="mb-1 block text-xs font-medium text-gray-600">Title</label>
                         <input type="text" name="title" class="erp-input" placeholder="e.g. Office Supplies" required>
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-gray-600">Category</label>
+                        <select name="category_id" class="erp-input">
+                            <option value="">— No Category —</option>
+                            @foreach($categories as $cat)
+                                <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                            @endforeach
+                        </select>
                     </div>
                     <div>
                         <label class="mb-1 block text-xs font-medium text-gray-600">Amount (Rs.)</label>
@@ -158,6 +260,15 @@
                         <input type="text" name="title" id="edit_title" class="erp-input" placeholder="e.g. Office Supplies" required>
                     </div>
                     <div>
+                        <label class="mb-1 block text-xs font-medium text-gray-600">Category</label>
+                        <select name="category_id" id="edit_category_id" class="erp-input">
+                            <option value="">— No Category —</option>
+                            @foreach($categories as $cat)
+                                <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
                         <label class="mb-1 block text-xs font-medium text-gray-600">Amount (Rs.)</label>
                         <input type="number" name="amount" id="edit_amount" step="0.01" min="0" class="erp-input" placeholder="0.00" required>
                     </div>
@@ -186,13 +297,17 @@
             document.getElementById('expenseModal').classList.remove('hidden');
         }
 
-        function openEditModal(id, date, title, amount, description) {
+        function openEditModal(id, date, title, amount, description, categoryId) {
             const form = document.getElementById('editExpenseForm');
             form.action = '/expenses/' + id;
             document.getElementById('edit_date').value        = date;
             document.getElementById('edit_title').value       = title;
             document.getElementById('edit_amount').value      = amount;
             document.getElementById('edit_description').value = description;
+
+            const catSelect = document.getElementById('edit_category_id');
+            catSelect.value = categoryId ?? '';
+
             document.getElementById('editExpenseModal').classList.remove('hidden');
         }
 

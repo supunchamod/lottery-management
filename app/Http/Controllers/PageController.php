@@ -7,6 +7,7 @@ use App\Models\BundleLog;
 use App\Models\Cheque;
 use App\Models\DailySale;
 use App\Models\Expense;
+use App\Models\ExpenseCategory;
 use App\Models\LotteryStock;
 use App\Models\SalesAssistant;
 use App\Models\Winning;
@@ -105,10 +106,39 @@ class PageController extends Controller
 
     // ── Expenses ─────────────────────────────────────────────────────────────
 
-    public function expensesIndex()
+    public function expensesIndex(Request $request)
     {
+        $query = Expense::with('category')->orderByDesc('date')->orderByDesc('id');
+
+        $query->when($request->filled('search'), fn ($q) =>
+            $q->where('description', 'like', '%' . $request->search . '%')
+              ->orWhere('title', 'like', '%' . $request->search . '%')
+        );
+
+        $query->when($request->filled('date_from'), fn ($q) =>
+            $q->whereDate('date', '>=', $request->date_from)
+        );
+
+        $query->when($request->filled('date_to'), fn ($q) =>
+            $q->whereDate('date', '<=', $request->date_to)
+        );
+
+        $query->when($request->filled('category_id'), fn ($q) =>
+            $q->where('category_id', $request->category_id)
+        );
+
+        $query->when($request->filled('amount_min'), fn ($q) =>
+            $q->where('amount', '>=', $request->amount_min)
+        );
+
+        $query->when($request->filled('amount_max'), fn ($q) =>
+            $q->where('amount', '<=', $request->amount_max)
+        );
+
         return view('expenses.index', [
-            'expenses'   => Expense::orderByDesc('date')->orderByDesc('id')->paginate(30),
+            'expenses'   => $query->paginate(30)->withQueryString(),
+            'categories' => ExpenseCategory::orderBy('name')->get(),
+            'filters'    => $request->only(['search', 'date_from', 'date_to', 'category_id', 'amount_min', 'amount_max']),
             'todayTotal' => Expense::whereDate('date', now())->sum('amount'),
             'monthTotal' => Expense::whereMonth('date', now()->month)->whereYear('date', now()->year)->sum('amount'),
             'monthCount' => Expense::whereMonth('date', now()->month)->whereYear('date', now()->year)->count(),
@@ -118,6 +148,7 @@ class PageController extends Controller
     public function expensesStore(Request $request)
     {
         $data = $request->validate([
+            'category_id' => ['nullable', 'exists:expense_categories,id'],
             'date'        => ['required', 'date'],
             'title'       => ['required', 'string', 'max:255'],
             'amount'      => ['required', 'numeric', 'min:0'],
@@ -132,6 +163,7 @@ class PageController extends Controller
     public function expensesUpdate(Request $request, Expense $expense)
     {
         $data = $request->validate([
+            'category_id' => ['nullable', 'exists:expense_categories,id'],
             'date'        => ['required', 'date'],
             'title'       => ['required', 'string', 'max:255'],
             'amount'      => ['required', 'numeric', 'min:0'],
