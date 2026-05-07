@@ -5,13 +5,22 @@
             <h2 class="text-xl font-bold text-gray-900">Expenses</h2>
             <p class="text-sm text-gray-500">Track and manage daily operational expenses.</p>
         </div>
-        <button onclick="openAddModal()"
-                class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-            </svg>
-            Add Expense
-        </button>
+        <div class="flex items-center gap-2">
+            <button onclick="openAnalysisModal()"
+                    class="flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-medium text-violet-700 hover:bg-violet-100 transition-colors">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                Analyze Expenses
+            </button>
+            <button onclick="openAddModal()"
+                    class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add Expense
+            </button>
+        </div>
     </div>
 
     @if(session('success'))
@@ -153,96 +162,6 @@
             </div>
         </form>
     </div>
-
-    {{-- ── Category Summary ─────────────────────────────────────────────────── --}}
-    @if(($categorySummary ?? collect())->isNotEmpty())
-    <div class="mb-4 rounded-xl bg-white border border-gray-100 shadow-sm">
-
-        {{-- Header --}}
-        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-5 py-3">
-            <div>
-                <h3 class="text-sm font-semibold text-gray-800">Category Summary</h3>
-                @php
-                    $periodLabel = '';
-                    $f = $filters ?? [];
-                    if (!empty($f['date_from']) && !empty($f['date_to'])) {
-                        $periodLabel = \Carbon\Carbon::parse($f['date_from'])->format('d M Y')
-                                     . ' – '
-                                     . \Carbon\Carbon::parse($f['date_to'])->format('d M Y');
-                    } elseif (!empty($f['date_from'])) {
-                        $periodLabel = 'From ' . \Carbon\Carbon::parse($f['date_from'])->format('d M Y');
-                    } elseif (!empty($f['date_to'])) {
-                        $periodLabel = 'Up to ' . \Carbon\Carbon::parse($f['date_to'])->format('d M Y');
-                    } else {
-                        $periodLabel = 'All Time';
-                    }
-                @endphp
-                <p class="text-xs text-gray-400">{{ $periodLabel }}</p>
-            </div>
-            <div class="text-right">
-                <p class="text-xs text-gray-400">Period Total</p>
-                <p class="text-base font-bold text-gray-900">Rs.{{ number_format($filteredTotal ?? 0, 2) }}</p>
-            </div>
-        </div>
-
-        {{-- Summary table --}}
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="border-b border-gray-100 bg-gray-50/60">
-                        <th class="px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Category</th>
-                        <th class="px-5 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-gray-500">Entries</th>
-                        <th class="px-5 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Total (Rs.)</th>
-                        <th class="px-5 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 w-32">Share</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-50">
-                    @foreach($categorySummary as $row)
-                        @php
-                            $share = ($filteredTotal ?? 0) > 0
-                                ? ($row->total_amount / $filteredTotal) * 100
-                                : 0;
-                        @endphp
-                        <tr class="hover:bg-gray-50/40">
-                            <td class="px-5 py-2.5">
-                                <span class="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 border border-indigo-100">
-                                    {{ $row->category?->name ?? '—' }}
-                                </span>
-                            </td>
-                            <td class="px-5 py-2.5 text-center text-gray-500">{{ $row->entry_count }}</td>
-                            <td class="px-5 py-2.5 text-right font-semibold text-rose-600">
-                                Rs.{{ number_format($row->total_amount, 2) }}
-                            </td>
-                            <td class="px-5 py-2.5">
-                                <div class="flex items-center justify-end gap-2">
-                                    <div class="h-1.5 w-20 overflow-hidden rounded-full bg-gray-100">
-                                        <div class="h-full rounded-full bg-indigo-400"
-                                             style="width: {{ number_format($share, 1) }}%"></div>
-                                    </div>
-                                    <span class="w-10 text-right text-xs text-gray-500">
-                                        {{ number_format($share, 1) }}%
-                                    </span>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-                <tfoot>
-                    <tr class="border-t-2 border-gray-200 bg-gray-50">
-                        <td class="px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-700">Total</td>
-                        <td class="px-5 py-2.5 text-center text-xs font-bold text-gray-700">
-                            {{ ($categorySummary ?? collect())->sum('entry_count') }}
-                        </td>
-                        <td class="px-5 py-2.5 text-right text-xs font-bold text-rose-600">
-                            Rs.{{ number_format($filteredTotal ?? 0, 2) }}
-                        </td>
-                        <td class="px-5 py-2.5 text-right text-xs text-gray-400">100%</td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-    </div>
-    @endif
 
     {{-- ── Expenses Table ────────────────────────────────────────────────────── --}}
     <div class="rounded-xl bg-white border border-gray-100 shadow-sm">
@@ -408,7 +327,146 @@
         @method('DELETE')
     </form>
 
+    {{-- ── Analysis Modal ───────────────────────────────────────────────────── --}}
+    @php
+        $f = $filters ?? [];
+        if (!empty($f['date_from']) && !empty($f['date_to'])) {
+            $analysisPeriod = \Carbon\Carbon::parse($f['date_from'])->format('d M Y')
+                            . ' – '
+                            . \Carbon\Carbon::parse($f['date_to'])->format('d M Y');
+        } elseif (!empty($f['date_from'])) {
+            $analysisPeriod = 'From ' . \Carbon\Carbon::parse($f['date_from'])->format('d M Y');
+        } elseif (!empty($f['date_to'])) {
+            $analysisPeriod = 'Up to ' . \Carbon\Carbon::parse($f['date_to'])->format('d M Y');
+        } else {
+            $analysisPeriod = 'All Time';
+        }
+    @endphp
+
+    <div id="analysisModal"
+         class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+         onclick="if(event.target===this) closeAnalysisModal()">
+
+        <div class="w-full max-w-2xl rounded-2xl bg-white shadow-2xl flex flex-col max-h-[90vh]">
+
+            {{-- Modal header --}}
+            <div class="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-4">
+                <div>
+                    <h3 class="text-base font-semibold text-gray-900">Category-wise Expense Analysis</h3>
+                    <p class="mt-0.5 text-xs text-gray-400">{{ $analysisPeriod }}</p>
+                </div>
+                <div class="flex items-center gap-3 shrink-0">
+                    <div class="text-right">
+                        <p class="text-xs text-gray-400">Grand Total</p>
+                        <p class="text-lg font-bold text-rose-600">Rs.{{ number_format($filteredTotal ?? 0, 2) }}</p>
+                    </div>
+                    <button onclick="closeAnalysisModal()"
+                            class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            {{-- Modal body: scrollable table --}}
+            <div class="overflow-y-auto flex-1">
+                @if(($categorySummary ?? collect())->isEmpty())
+                    <p class="py-16 text-center text-sm text-gray-400">No expense data matches the current filters.</p>
+                @else
+                    <table class="w-full text-sm">
+                        <thead class="sticky top-0 z-10">
+                            <tr class="border-b border-gray-100 bg-gray-50">
+                                <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">#</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Category</th>
+                                <th class="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-500">Entries</th>
+                                <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Total (Rs.)</th>
+                                <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 w-36">Share</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-50">
+                            @foreach($categorySummary as $i => $row)
+                                @php
+                                    $share = ($filteredTotal ?? 0) > 0
+                                        ? ($row->total_amount / $filteredTotal) * 100
+                                        : 0;
+                                @endphp
+                                <tr class="hover:bg-violet-50/40 transition-colors">
+                                    <td class="px-6 py-3 text-xs text-gray-400">{{ $i + 1 }}</td>
+                                    <td class="px-6 py-3">
+                                        <span class="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 border border-indigo-100">
+                                            {{ $row->category?->name ?? '—' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-3 text-center text-gray-500">{{ $row->entry_count }}</td>
+                                    <td class="px-6 py-3 text-right font-semibold text-rose-600 tabular-nums">
+                                        Rs.{{ number_format($row->total_amount, 2) }}
+                                    </td>
+                                    <td class="px-6 py-3">
+                                        <div class="flex items-center justify-end gap-2">
+                                            <div class="h-1.5 w-20 overflow-hidden rounded-full bg-gray-100">
+                                                <div class="h-full rounded-full bg-violet-400 transition-all"
+                                                     style="width: {{ number_format($share, 1) }}%"></div>
+                                            </div>
+                                            <span class="w-10 text-right text-xs tabular-nums text-gray-500">
+                                                {{ number_format($share, 1) }}%
+                                            </span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                        <tfoot>
+                            <tr class="border-t-2 border-gray-200 bg-gray-50/80">
+                                <td class="px-6 py-3 text-xs font-bold uppercase tracking-wide text-gray-700" colspan="2">Grand Total</td>
+                                <td class="px-6 py-3 text-center text-xs font-bold text-gray-700">
+                                    {{ ($categorySummary ?? collect())->sum('entry_count') }}
+                                </td>
+                                <td class="px-6 py-3 text-right text-sm font-bold text-rose-600 tabular-nums">
+                                    Rs.{{ number_format($filteredTotal ?? 0, 2) }}
+                                </td>
+                                <td class="px-6 py-3 text-right text-xs text-gray-400">100%</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                @endif
+            </div>
+
+            {{-- Modal footer --}}
+            <div class="flex items-center justify-between border-t border-gray-100 px-6 py-3">
+                <a href="{{ route('expenses.export') }}?{{ http_build_query(array_filter($filters ?? [])) }}"
+                   class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                    </svg>
+                    Export Excel
+                </a>
+                <button onclick="closeAnalysisModal()"
+                        class="rounded-lg border border-gray-200 px-5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                    Close
+                </button>
+            </div>
+
+        </div>
+    </div>
+
     <script>
+        function openAnalysisModal() {
+            const modal = document.getElementById('analysisModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeAnalysisModal() {
+            const modal = document.getElementById('analysisModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeAnalysisModal();
+        });
+
         function openAddModal() {
             document.getElementById('expenseModal').classList.remove('hidden');
         }
