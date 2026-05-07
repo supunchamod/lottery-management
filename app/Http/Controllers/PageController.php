@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\ExpenseExport;
 use App\Models\AssistantRoute;
 use App\Models\BundleLog;
 use App\Models\Cheque;
@@ -13,6 +14,7 @@ use App\Models\SalesAssistant;
 use App\Models\Winning;
 use App\Services\LedgerService;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 /**
  * Thin controller that serves the Blade views for all remaining nav pages.
@@ -108,43 +110,52 @@ class PageController extends Controller
 
     public function expensesIndex(Request $request)
     {
+        $filters = $request->only([
+            'search', 'date_from', 'date_to', 'category_id',
+            'amount_min', 'amount_max', 'preset',
+        ]);
+
+        // Expand preset into a concrete date range (only when no manual dates given)
+        if (!empty($filters['preset']) && empty($filters['date_from']) && empty($filters['date_to'])) {
+            match ($filters['preset']) {
+                'this_week'  => [$filters['date_from'], $filters['date_to']] = [
+                    now()->startOfWeek()->toDateString(), now()->toDateString(),
+                ],
+                'this_month' => [$filters['date_from'], $filters['date_to']] = [
+                    now()->startOfMonth()->toDateString(), now()->toDateString(),
+                ],
+                default => null,
+            };
+        }
+
+        $applyFilters = $this->buildExpenseFilters($filters);
+
+        // ── Main paginated list ───────────────────────────────────────────────
         $query = Expense::with('category')->orderByDesc('date')->orderByDesc('id');
+        $applyFilters($query);
 
-        $query->when($request->filled('search'), function ($q) use ($request) {
-            $term = '%' . $request->search . '%';
-            $q->where(function ($inner) use ($term) {
-                $inner->where('description', 'like', $term)
-                      ->orWhereHas('category', fn ($cat) => $cat->where('name', 'like', $term));
-            });
-        });
+        // ── Category summary (grouped, same filters) ──────────────────────────
+        $summaryQuery = Expense::query()
+            ->selectRaw('category_id, SUM(amount) as total_amount, COUNT(*) as entry_count')
+            ->groupBy('category_id');
+        $applyFilters($summaryQuery);
+        $categorySummary = $summaryQuery->with('category')->orderByDesc('total_amount')->get();
 
-        $query->when($request->filled('date_from'), fn ($q) =>
-            $q->whereDate('date', '>=', $request->date_from)
-        );
-
-        $query->when($request->filled('date_to'), fn ($q) =>
-            $q->whereDate('date', '<=', $request->date_to)
-        );
-
-        $query->when($request->filled('category_id'), fn ($q) =>
-            $q->where('category_id', $request->category_id)
-        );
-
-        $query->when($request->filled('amount_min'), fn ($q) =>
-            $q->where('amount', '>=', $request->amount_min)
-        );
-
-        $query->when($request->filled('amount_max'), fn ($q) =>
-            $q->where('amount', '<=', $request->amount_max)
-        );
+        $filteredTotal = (float) $categorySummary->sum('total_amount');
+        $filteredCount = (int)   $categorySummary->sum('entry_count');
 
         return view('expenses.index', [
-            'expenses'   => $query->paginate(30)->withQueryString(),
-            'categories' => ExpenseCategory::orderBy('name')->get(),
-            'filters'    => $request->only(['search', 'date_from', 'date_to', 'category_id', 'amount_min', 'amount_max']),
-            'todayTotal' => Expense::whereDate('date', now())->sum('amount'),
-            'monthTotal' => Expense::whereMonth('date', now()->month)->whereYear('date', now()->year)->sum('amount'),
-            'monthCount' => Expense::whereMonth('date', now()->month)->whereYear('date', now()->year)->count(),
+            'expenses'        => $query->paginate(30)->withQueryString(),
+            'categories'      => ExpenseCategory::orderBy('name')->get(),
+            'filters'         => $filters,
+            'categorySummary' => $categorySummary,
+            'filteredTotal'   => $filteredTotal,
+            'filteredCount'   => $filteredCount,
+            'todayTotal'      => Expense::whereDate('date', now())->sum('amount'),
+            'monthTotal'      => Expense::whereMonth('date', now()->month)
+                                        ->whereYear('date', now()->year)->sum('amount'),
+            'monthCount'      => Expense::whereMonth('date', now()->month)
+                                        ->whereYear('date', now()->year)->count(),
         ]);
     }
 
@@ -181,6 +192,89 @@ class PageController extends Controller
         $expense->delete();
 
         return redirect()->route('expenses.index')->with('success', 'Expense deleted.');
+    }
+
+    public function expensesExport(Request $request)
+    {
+        $filters = $request->only([
+            'search', 'date_from', 'date_to', 'category_id',
+            'amount_min', 'amount_max', 'preset',
+        ]);
+
+        if (!empty($filters['preset']) && empty($filters['date_from']) && empty($filters['date_to'])) {
+            match ($filters['preset']) {
+                'this_week'  => [$filters['date_from'], $filters['date_to']] = [
+                    now()->startOfWeek()->toDateString(), now()->toDateString(),
+                ],
+                'this_month' => [$filters['date_from'], $filters['date_to']] = [
+                    now()->startOfMonth()->toDateString(), now()->toDateString(),
+                ],
+                default => null,
+            };
+        }
+
+        $applyFilters = $this->buildExpenseFilters($filters);
+
+        $expenses = Expense::with('category')->orderByDesc('date')->orderByDesc('id');
+        $applyFilters($expenses);
+
+        $summaryQuery = Expense::query()
+            ->selectRaw('category_id, SUM(amount) as total_amount, COUNT(*) as entry_count')
+            ->groupBy('category_id');
+        $applyFilters($summaryQuery);
+        $summary = $summaryQuery->with('category')->orderByDesc('total_amount')->get();
+
+        $periodLabel = $this->expensePeriodLabel($filters);
+        $filename    = 'expenses-' . now()->format('Y-m-d') . '.xlsx';
+
+        return Excel::download(
+            new ExpenseExport($expenses->get(), $summary, $periodLabel),
+            $filename
+        );
+    }
+
+    private function buildExpenseFilters(array $filters): \Closure
+    {
+        return function ($q) use ($filters) {
+            if (!empty($filters['search'])) {
+                $term = '%' . $filters['search'] . '%';
+                $q->where(function ($inner) use ($term) {
+                    $inner->where('description', 'like', $term)
+                          ->orWhereHas('category', fn ($cat) => $cat->where('name', 'like', $term));
+                });
+            }
+            if (!empty($filters['date_from'])) {
+                $q->whereDate('date', '>=', $filters['date_from']);
+            }
+            if (!empty($filters['date_to'])) {
+                $q->whereDate('date', '<=', $filters['date_to']);
+            }
+            if (!empty($filters['category_id'])) {
+                $q->where('category_id', $filters['category_id']);
+            }
+            if (!empty($filters['amount_min'])) {
+                $q->where('amount', '>=', $filters['amount_min']);
+            }
+            if (!empty($filters['amount_max'])) {
+                $q->where('amount', '<=', $filters['amount_max']);
+            }
+        };
+    }
+
+    private function expensePeriodLabel(array $filters): string
+    {
+        if (!empty($filters['date_from']) && !empty($filters['date_to'])) {
+            return \Carbon\Carbon::parse($filters['date_from'])->format('d M Y')
+                . ' – '
+                . \Carbon\Carbon::parse($filters['date_to'])->format('d M Y');
+        }
+        if (!empty($filters['date_from'])) {
+            return 'From ' . \Carbon\Carbon::parse($filters['date_from'])->format('d M Y');
+        }
+        if (!empty($filters['date_to'])) {
+            return 'Up to ' . \Carbon\Carbon::parse($filters['date_to'])->format('d M Y');
+        }
+        return 'All Time';
     }
 
     // ── Cheques ───────────────────────────────────────────────────────────────

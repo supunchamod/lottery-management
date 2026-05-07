@@ -21,6 +21,7 @@
     @endif
 
     {{-- Stats --}}
+    @php $hasFilter = array_filter($filters ?? []); @endphp
     <div class="mb-5 grid grid-cols-3 gap-4">
         <div class="rounded-xl bg-white border border-gray-100 shadow-sm p-4">
             <p class="text-xs text-gray-400">This Month</p>
@@ -30,15 +31,42 @@
             <p class="text-xs text-gray-400">Today</p>
             <p class="text-xl font-bold text-gray-900">Rs.{{ number_format($todayTotal ?? 0, 2) }}</p>
         </div>
-        <div class="rounded-xl bg-white border border-gray-100 shadow-sm p-4">
-            <p class="text-xs text-gray-400">Entries This Month</p>
-            <p class="text-xl font-bold text-gray-900">{{ $monthCount ?? 0 }}</p>
+        <div class="rounded-xl bg-white border border-gray-100 shadow-sm p-4 {{ $hasFilter ? 'ring-2 ring-blue-100' : '' }}">
+            @if($hasFilter)
+                <p class="text-xs text-blue-500 font-medium">Filtered Entries</p>
+                <p class="text-xl font-bold text-gray-900">{{ $filteredCount ?? 0 }}</p>
+                <p class="text-xs text-gray-400 mt-0.5">Rs.{{ number_format($filteredTotal ?? 0, 2) }}</p>
+            @else
+                <p class="text-xs text-gray-400">Entries This Month</p>
+                <p class="text-xl font-bold text-gray-900">{{ $monthCount ?? 0 }}</p>
+            @endif
         </div>
     </div>
 
     {{-- ── Filter Panel ──────────────────────────────────────────────────────── --}}
     <div class="mb-4 rounded-xl bg-white border border-gray-100 shadow-sm p-4">
         <form method="GET" action="{{ route('expenses.index') }}" id="filterForm">
+
+            {{-- Quick preset toggles --}}
+            <div class="mb-3 flex flex-wrap items-center gap-2">
+                <span class="text-xs font-medium text-gray-400">Quick:</span>
+                @foreach (['this_week' => 'This Week', 'this_month' => 'This Month'] as $presetKey => $presetLabel)
+                    <a href="{{ route('expenses.index') }}?preset={{ $presetKey }}"
+                       class="inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-medium transition-colors
+                              {{ ($filters['preset'] ?? '') === $presetKey
+                                 ? 'bg-blue-600 text-white border-blue-600'
+                                 : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50' }}">
+                        {{ $presetLabel }}
+                    </a>
+                @endforeach
+                @if(!empty($filters['preset']) || array_filter(array_diff_key($filters ?? [], ['preset' => ''])))
+                    <a href="{{ route('expenses.index') }}"
+                       class="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-0.5 text-xs text-gray-400 hover:bg-gray-50 transition-colors">
+                        All Time
+                    </a>
+                @endif
+            </div>
+
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
 
                 {{-- Search --}}
@@ -113,9 +141,108 @@
                         Clear
                     </a>
                 @endif
+
+                {{-- Export Excel --}}
+                <a href="{{ route('expenses.export') }}?{{ http_build_query(array_filter($filters ?? [])) }}"
+                   class="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                    </svg>
+                    Export Excel
+                </a>
             </div>
         </form>
     </div>
+
+    {{-- ── Category Summary ─────────────────────────────────────────────────── --}}
+    @if(($categorySummary ?? collect())->isNotEmpty())
+    <div class="mb-4 rounded-xl bg-white border border-gray-100 shadow-sm">
+
+        {{-- Header --}}
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-5 py-3">
+            <div>
+                <h3 class="text-sm font-semibold text-gray-800">Category Summary</h3>
+                @php
+                    $periodLabel = '';
+                    $f = $filters ?? [];
+                    if (!empty($f['date_from']) && !empty($f['date_to'])) {
+                        $periodLabel = \Carbon\Carbon::parse($f['date_from'])->format('d M Y')
+                                     . ' – '
+                                     . \Carbon\Carbon::parse($f['date_to'])->format('d M Y');
+                    } elseif (!empty($f['date_from'])) {
+                        $periodLabel = 'From ' . \Carbon\Carbon::parse($f['date_from'])->format('d M Y');
+                    } elseif (!empty($f['date_to'])) {
+                        $periodLabel = 'Up to ' . \Carbon\Carbon::parse($f['date_to'])->format('d M Y');
+                    } else {
+                        $periodLabel = 'All Time';
+                    }
+                @endphp
+                <p class="text-xs text-gray-400">{{ $periodLabel }}</p>
+            </div>
+            <div class="text-right">
+                <p class="text-xs text-gray-400">Period Total</p>
+                <p class="text-base font-bold text-gray-900">Rs.{{ number_format($filteredTotal ?? 0, 2) }}</p>
+            </div>
+        </div>
+
+        {{-- Summary table --}}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-100 bg-gray-50/60">
+                        <th class="px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Category</th>
+                        <th class="px-5 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-gray-500">Entries</th>
+                        <th class="px-5 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Total (Rs.)</th>
+                        <th class="px-5 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 w-32">Share</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    @foreach($categorySummary as $row)
+                        @php
+                            $share = ($filteredTotal ?? 0) > 0
+                                ? ($row->total_amount / $filteredTotal) * 100
+                                : 0;
+                        @endphp
+                        <tr class="hover:bg-gray-50/40">
+                            <td class="px-5 py-2.5">
+                                <span class="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 border border-indigo-100">
+                                    {{ $row->category?->name ?? '—' }}
+                                </span>
+                            </td>
+                            <td class="px-5 py-2.5 text-center text-gray-500">{{ $row->entry_count }}</td>
+                            <td class="px-5 py-2.5 text-right font-semibold text-rose-600">
+                                Rs.{{ number_format($row->total_amount, 2) }}
+                            </td>
+                            <td class="px-5 py-2.5">
+                                <div class="flex items-center justify-end gap-2">
+                                    <div class="h-1.5 w-20 overflow-hidden rounded-full bg-gray-100">
+                                        <div class="h-full rounded-full bg-indigo-400"
+                                             style="width: {{ number_format($share, 1) }}%"></div>
+                                    </div>
+                                    <span class="w-10 text-right text-xs text-gray-500">
+                                        {{ number_format($share, 1) }}%
+                                    </span>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+                <tfoot>
+                    <tr class="border-t-2 border-gray-200 bg-gray-50">
+                        <td class="px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-700">Total</td>
+                        <td class="px-5 py-2.5 text-center text-xs font-bold text-gray-700">
+                            {{ ($categorySummary ?? collect())->sum('entry_count') }}
+                        </td>
+                        <td class="px-5 py-2.5 text-right text-xs font-bold text-rose-600">
+                            Rs.{{ number_format($filteredTotal ?? 0, 2) }}
+                        </td>
+                        <td class="px-5 py-2.5 text-right text-xs text-gray-400">100%</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    @endif
 
     {{-- ── Expenses Table ────────────────────────────────────────────────────── --}}
     <div class="rounded-xl bg-white border border-gray-100 shadow-sm">
