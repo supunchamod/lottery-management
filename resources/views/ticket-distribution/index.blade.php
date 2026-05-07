@@ -1325,17 +1325,23 @@ function distGrid(initialGrid, currentDate, loadFromDateUrl, copyToDateUrl, init
 
         // ── Totals ─────────────────────────────────────────────────────────
         rowTotal(assistantId) {
+            if (this.noSales[assistantId]) return 0;
             const row = this.grid[assistantId] ?? {};
             return Object.values(row).reduce((s, v) => s + (parseInt(v) || 0), 0);
         },
 
         colTotal(lotteryId) {
-            return Object.values(this.grid).reduce((s, row) => s + (parseInt(row[lotteryId]) || 0), 0);
+            return Object.entries(this.grid).reduce((s, [aId, row]) => {
+                if (this.noSales[aId]) return s;
+                return s + (parseInt(row[lotteryId]) || 0);
+            }, 0);
         },
 
         grandTotal() {
-            return Object.values(this.grid).reduce((s, row) =>
-                s + Object.values(row).reduce((rs, v) => rs + (parseInt(v) || 0), 0), 0);
+            return Object.entries(this.grid).reduce((s, [aId, row]) => {
+                if (this.noSales[aId]) return s;
+                return s + Object.values(row).reduce((rs, v) => rs + (parseInt(v) || 0), 0);
+            }, 0);
         },
 
         boardGrandTotal() {
@@ -1427,9 +1433,9 @@ function distGrid(initialGrid, currentDate, loadFromDateUrl, copyToDateUrl, init
 
                 if (diff === 0) continue;
 
-                // Collect unlocked assistants with their current qty for this lottery
+                // Collect unlocked, non-no-sale assistants with their current qty for this lottery
                 const candidates = Object.keys(this.grid)
-                    .filter(aId => !this.lockedRows[aId])
+                    .filter(aId => !this.lockedRows[aId] && !this.noSales[aId])
                     .map(aId => ({
                         aId,
                         qty: parseInt((this.grid[aId] || {})[lId]) || 0
