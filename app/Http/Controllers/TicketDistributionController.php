@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\TicketDistributionExport;
-use App\Models\DailySale;
+use App\Models\DailySaleRecord;
 use App\Models\DailyTicketNote;
 use App\Models\DailyTicketStock;
 use App\Models\Lottery;
@@ -12,6 +12,7 @@ use App\Models\SubSeller;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
 class TicketDistributionController extends Controller
@@ -139,34 +140,87 @@ class TicketDistributionController extends Controller
                     }
                 }
 
-                // ── 3. Daily Sales — always evaluated, never skipped ──────────
+                // ── 3. DailySaleRecord (daily_sales_records) — always evaluated ──
+                //
+                // NOTE: The Daily Sales Entry UI reads from `daily_sales_records`
+                // via DailySaleRecord, NOT from `daily_sales` via DailySale.
+                // The key columns are:
+                //   tickets_issued_qty  — total ticket count
+                //   value               — total monetary value (sum of qty × price)
+                //   balance             — value minus cash+winnings already entered
+                //
+                Log::info('[TicketDist] Processing assistant', [
+                    'date'          => $date,
+                    'assistant_id'  => $assistantId,
+                    'is_handed_over'=> $isHandedOver,
+                    'is_no_sales'   => $isNoSales,
+                    'grid_keys'     => array_keys($grid[$assistantId] ?? []),
+                ]);
+
                 if ($isHandedOver && !$isNoSales) {
-                    // Calculate the monetary value of all tickets distributed
-                    $ticketsIssuedVal = 0.0;
+                    // Tally the total ticket count and total monetary value
+                    // across all lotteries distributed to this assistant today.
+                    $totalQty   = 0;
+                    $totalValue = 0.0;
                     foreach ($grid[$assistantId] ?? [] as $lotteryId => $qty) {
-                        $ticketsIssuedVal += ((int) ($qty ?? 0)) * (float) ($lotteryPrices[$lotteryId] ?? 0);
+                        $qty         = (int) ($qty ?? 0);
+                        $totalQty   += $qty;
+                        $totalValue += $qty * (float) ($lotteryPrices[$lotteryId] ?? 0);
                     }
 
-                    // Preserve existing deduction fields so balance stays accurate
-                    $existing      = DailySale::where(['date' => $date, 'assistant_id' => $assistantId])->first();
-                    $returnsVal    = (float) ($existing?->returns_val    ?? 0);
-                    $winningVal    = (float) ($existing?->winning_val    ?? 0);
-                    $cashCollected = (float) ($existing?->cash_collected ?? 0);
-                    $balance       = $ticketsIssuedVal - ($returnsVal + $winningVal + $cashCollected);
+                    Log::info('[TicketDist] Handed over — upserting DailySaleRecord', [
+                        'date'         => $date,
+                        'assistant_id' => $assistantId,
+                        'total_qty'    => $totalQty,
+                        'total_value'  => $totalValue,
+                    ]);
 
-                    DailySale::updateOrCreate(
-                        ['date' => $date, 'assistant_id' => $assistantId],
-                        ['tickets_issued_val' => $ticketsIssuedVal, 'balance' => $balance]
-                    );
+                    // Fetch (or build) the DailySaleRecord, preserving cash/winning
+                    // data the operator may have already entered in Daily Sales Entry.
+                    $rec = DailySaleRecord::firstOrNew([
+                        'date'         => $date,
+                        'assistant_id' => $assistantId,
+                    ]);
+
+                    // cw = cash + total_winning (already entered in Daily Sales Entry)
+                    $existingCw = (float) ($rec->cw ?? 0);
+
+                    $rec->tickets_issued_qty = $totalQty;
+                    $rec->value              = $totalValue;
+                    $rec->balance            = $totalValue - $existingCw;
+
+                    // Leave unit_price at 0 — multiple lotteries with different prices
+                    // cannot be collapsed to a single price. The operator can set it
+                    // manually in the Daily Sales Entry screen if needed.
+                    if (! $rec->exists) {
+                        $rec->unit_price = 0;
+                    }
+
+                    $rec->save();
+
+                    Log::info('[TicketDist] DailySaleRecord saved', [
+                        'record_id' => $rec->id,
+                        'qty'       => $rec->tickets_issued_qty,
+                        'value'     => $rec->value,
+                        'balance'   => $rec->balance,
+                    ]);
                 } else {
-                    // Checkbox unchecked (or no-sales): zero out tickets_issued_val
-                    // and recompute balance — only if a record already exists.
-                    $existing = DailySale::where(['date' => $date, 'assistant_id' => $assistantId])->first();
-                    if ($existing) {
-                        $balance = 0 - ((float) $existing->returns_val + (float) $existing->winning_val + (float) $existing->cash_collected);
-                        $existing->tickets_issued_val = 0;
-                        $existing->balance            = $balance;
-                        $existing->save();
+                    // Checkbox unchecked (or no-sales): zero out qty/value on any
+                    // existing DailySaleRecord — do NOT create one if absent.
+                    $rec = DailySaleRecord::where([
+                        'date'         => $date,
+                        'assistant_id' => $assistantId,
+                    ])->first();
+
+                    if ($rec) {
+                        Log::info('[TicketDist] Not handed over — zeroing DailySaleRecord', [
+                            'date'         => $date,
+                            'assistant_id' => $assistantId,
+                        ]);
+                        $rec->tickets_issued_qty = 0;
+                        $rec->value              = 0;
+                        $rec->balance            = 0 - (float) ($rec->cw ?? 0);
+                        $rec->save();
                     }
                 }
             }
