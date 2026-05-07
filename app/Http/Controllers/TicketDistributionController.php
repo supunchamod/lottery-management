@@ -105,7 +105,7 @@ class TicketDistributionController extends Controller
                 $isHandedOver = ($handedOverMap[$assistantId] ?? '0') === '1';
                 $remarks      = trim($remarksMap[$assistantId] ?? '');
 
-                // Persist or clear the note record
+                // ── 1. Persist or clear the note record ───────────────────────
                 if ($isNoSales || $isHandedOver || $remarks !== '') {
                     DailyTicketNote::updateOrCreate(
                         ['date' => $date, 'assistant_id' => $assistantId],
@@ -115,41 +115,59 @@ class TicketDistributionController extends Controller
                     DailyTicketNote::where(['date' => $date, 'assistant_id' => $assistantId])->delete();
                 }
 
-                // No-sales: wipe all lottery rows for this assistant and skip qty processing
+                // ── 2. Ticket stock rows ───────────────────────────────────────
                 if ($isNoSales) {
+                    // No-sales: wipe all lottery rows for this assistant
                     DailyTicketStock::where(['date' => $date, 'assistant_id' => $assistantId])->delete();
-                    continue;
-                }
+                } else {
+                    // Normal qty upsert / delete
+                    foreach ($grid[$assistantId] ?? [] as $lotteryId => $qty) {
+                        $qty = (int) ($qty ?? 0);
 
-                // Normal qty upsert / delete
-                foreach ($grid[$assistantId] ?? [] as $lotteryId => $qty) {
-                    $qty = (int) ($qty ?? 0);
-
-                    if ($qty > 0) {
-                        DailyTicketStock::updateOrCreate(
-                            ['date' => $date, 'assistant_id' => $assistantId, 'lottery_id' => $lotteryId],
-                            ['quantity' => $qty]
-                        );
-                    } else {
-                        DailyTicketStock::where([
-                            'date'         => $date,
-                            'assistant_id' => $assistantId,
-                            'lottery_id'   => $lotteryId,
-                        ])->delete();
+                        if ($qty > 0) {
+                            DailyTicketStock::updateOrCreate(
+                                ['date' => $date, 'assistant_id' => $assistantId, 'lottery_id' => $lotteryId],
+                                ['quantity' => $qty]
+                            );
+                        } else {
+                            DailyTicketStock::where([
+                                'date'         => $date,
+                                'assistant_id' => $assistantId,
+                                'lottery_id'   => $lotteryId,
+                            ])->delete();
+                        }
                     }
                 }
 
-                // When handed over, populate the Daily Sales record with the total ticket value
-                if ($isHandedOver) {
-                    $ticketsIssuedVal = collect($grid[$assistantId] ?? [])
-                        ->reduce(function ($carry, $qty, $lotteryId) use ($lotteryPrices) {
-                            return $carry + ((int) ($qty ?? 0)) * (float) ($lotteryPrices[$lotteryId] ?? 0);
-                        }, 0.0);
+                // ── 3. Daily Sales — always evaluated, never skipped ──────────
+                if ($isHandedOver && !$isNoSales) {
+                    // Calculate the monetary value of all tickets distributed
+                    $ticketsIssuedVal = 0.0;
+                    foreach ($grid[$assistantId] ?? [] as $lotteryId => $qty) {
+                        $ticketsIssuedVal += ((int) ($qty ?? 0)) * (float) ($lotteryPrices[$lotteryId] ?? 0);
+                    }
+
+                    // Preserve existing deduction fields so balance stays accurate
+                    $existing      = DailySale::where(['date' => $date, 'assistant_id' => $assistantId])->first();
+                    $returnsVal    = (float) ($existing?->returns_val    ?? 0);
+                    $winningVal    = (float) ($existing?->winning_val    ?? 0);
+                    $cashCollected = (float) ($existing?->cash_collected ?? 0);
+                    $balance       = $ticketsIssuedVal - ($returnsVal + $winningVal + $cashCollected);
 
                     DailySale::updateOrCreate(
                         ['date' => $date, 'assistant_id' => $assistantId],
-                        ['tickets_issued_val' => $ticketsIssuedVal]
+                        ['tickets_issued_val' => $ticketsIssuedVal, 'balance' => $balance]
                     );
+                } else {
+                    // Checkbox unchecked (or no-sales): zero out tickets_issued_val
+                    // and recompute balance — only if a record already exists.
+                    $existing = DailySale::where(['date' => $date, 'assistant_id' => $assistantId])->first();
+                    if ($existing) {
+                        $balance = 0 - ((float) $existing->returns_val + (float) $existing->winning_val + (float) $existing->cash_collected);
+                        $existing->tickets_issued_val = 0;
+                        $existing->balance            = $balance;
+                        $existing->save();
+                    }
                 }
             }
         });

@@ -360,12 +360,12 @@
         @foreach($assistants as $a)
             @foreach($lotteries as $l)
                 <input type="hidden"
-                       :name="`qty[{{ $a->id }}][{{ $l->id }}]`"
+                       name="qty[{{ $a->id }}][{{ $l->id }}]"
                        :value="grid[{{ $a->id }}][{{ $l->id }}] || 0">
             @endforeach
-            <input type="hidden" :name="`no_sales[{{ $a->id }}]`"    :value="noSales[{{ $a->id }}] ? '1' : '0'">
-            <input type="hidden" :name="`handed_over[{{ $a->id }}]`" :value="handedOver[{{ $a->id }}] ? '1' : '0'">
-            <input type="hidden" :name="`remarks[{{ $a->id }}]`"     :value="remarks[{{ $a->id }}] || ''">
+            <input type="hidden" name="no_sales[{{ $a->id }}]"    :value="noSales[{{ $a->id }}] ? '1' : '0'">
+            <input type="hidden" name="handed_over[{{ $a->id }}]" :value="handedOver[{{ $a->id }}] ? '1' : '0'">
+            <input type="hidden" name="remarks[{{ $a->id }}]"     :value="remarks[{{ $a->id }}] || ''">
         @endforeach
 
         {{-- ── Toolbar ──────────────────────────────────────────────────── --}}
