@@ -72,6 +72,7 @@ Route::middleware('auth')->group(function () {
     // Expenses
     Route::get   ('/expenses',            [PageController::class, 'expensesIndex'])->name('expenses.index');
     Route::get   ('/expenses/export',     [PageController::class, 'expensesExport'])->name('expenses.export');
+    Route::get   ('/expenses/summary',    [PageController::class, 'expensesSummary'])->name('expenses.summary');
     Route::post  ('/expenses',            [PageController::class, 'expensesStore'])->name('expenses.store');
     Route::put   ('/expenses/{expense}',  [PageController::class, 'expensesUpdate'])->name('expenses.update');
     Route::delete('/expenses/{expense}',  [PageController::class, 'expensesDestroy'])->name('expenses.destroy');

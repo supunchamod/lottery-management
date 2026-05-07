@@ -331,9 +331,11 @@
     @php
         $f = $filters ?? [];
         if (!empty($f['date_from']) && !empty($f['date_to'])) {
-            $analysisPeriod = \Carbon\Carbon::parse($f['date_from'])->format('d M Y')
-                            . ' – '
-                            . \Carbon\Carbon::parse($f['date_to'])->format('d M Y');
+            $from = \Carbon\Carbon::parse($f['date_from']);
+            $to   = \Carbon\Carbon::parse($f['date_to']);
+            $analysisPeriod = $from->isSameDay($to)
+                ? $from->format('d M Y')
+                : $from->format('d M Y') . ' – ' . $to->format('d M Y');
         } elseif (!empty($f['date_from'])) {
             $analysisPeriod = 'From ' . \Carbon\Carbon::parse($f['date_from'])->format('d M Y');
         } elseif (!empty($f['date_to'])) {
@@ -347,18 +349,20 @@
          class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm p-4"
          onclick="if(event.target===this) closeAnalysisModal()">
 
-        <div class="w-full max-w-2xl rounded-2xl bg-white shadow-2xl flex flex-col max-h-[90vh]">
+        <div class="w-full max-w-3xl rounded-2xl bg-white shadow-2xl flex flex-col max-h-[90vh]">
 
-            {{-- Modal header --}}
+            {{-- ── Header ─────────────────────────────────────────────────── --}}
             <div class="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-4">
                 <div>
                     <h3 class="text-base font-semibold text-gray-900">Category-wise Expense Analysis</h3>
-                    <p class="mt-0.5 text-xs text-gray-400">{{ $analysisPeriod }}</p>
+                    <p id="analysisPeriodLabel" class="mt-0.5 text-xs text-gray-400">{{ $analysisPeriod }}</p>
                 </div>
                 <div class="flex items-center gap-3 shrink-0">
                     <div class="text-right">
                         <p class="text-xs text-gray-400">Grand Total</p>
-                        <p class="text-lg font-bold text-rose-600">Rs.{{ number_format($filteredTotal ?? 0, 2) }}</p>
+                        <p id="analysisHeaderTotal" class="text-lg font-bold text-rose-600">
+                            Rs.{{ number_format($filteredTotal ?? 0, 2) }}
+                        </p>
                     </div>
                     <button onclick="closeAnalysisModal()"
                             class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
@@ -369,72 +373,105 @@
                 </div>
             </div>
 
-            {{-- Modal body: scrollable table --}}
-            <div class="overflow-y-auto flex-1">
-                @if(($categorySummary ?? collect())->isEmpty())
-                    <p class="py-16 text-center text-sm text-gray-400">No expense data matches the current filters.</p>
-                @else
-                    <table class="w-full text-sm">
-                        <thead class="sticky top-0 z-10">
-                            <tr class="border-b border-gray-100 bg-gray-50">
-                                <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">#</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Category</th>
-                                <th class="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-500">Entries</th>
-                                <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Total (Rs.)</th>
-                                <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 w-36">Share</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-50">
-                            @foreach($categorySummary as $i => $row)
-                                @php
-                                    $share = ($filteredTotal ?? 0) > 0
-                                        ? ($row->total_amount / $filteredTotal) * 100
-                                        : 0;
-                                @endphp
-                                <tr class="hover:bg-violet-50/40 transition-colors">
-                                    <td class="px-6 py-3 text-xs text-gray-400">{{ $i + 1 }}</td>
-                                    <td class="px-6 py-3">
-                                        <span class="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 border border-indigo-100">
-                                            {{ $row->category?->name ?? '—' }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-3 text-center text-gray-500">{{ $row->entry_count }}</td>
-                                    <td class="px-6 py-3 text-right font-semibold text-rose-600 tabular-nums">
-                                        Rs.{{ number_format($row->total_amount, 2) }}
-                                    </td>
-                                    <td class="px-6 py-3">
-                                        <div class="flex items-center justify-end gap-2">
-                                            <div class="h-1.5 w-20 overflow-hidden rounded-full bg-gray-100">
-                                                <div class="h-full rounded-full bg-violet-400 transition-all"
-                                                     style="width: {{ number_format($share, 1) }}%"></div>
-                                            </div>
-                                            <span class="w-10 text-right text-xs tabular-nums text-gray-500">
-                                                {{ number_format($share, 1) }}%
-                                            </span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                        <tfoot>
-                            <tr class="border-t-2 border-gray-200 bg-gray-50/80">
-                                <td class="px-6 py-3 text-xs font-bold uppercase tracking-wide text-gray-700" colspan="2">Grand Total</td>
-                                <td class="px-6 py-3 text-center text-xs font-bold text-gray-700">
-                                    {{ ($categorySummary ?? collect())->sum('entry_count') }}
-                                </td>
-                                <td class="px-6 py-3 text-right text-sm font-bold text-rose-600 tabular-nums">
-                                    Rs.{{ number_format($filteredTotal ?? 0, 2) }}
-                                </td>
-                                <td class="px-6 py-3 text-right text-xs text-gray-400">100%</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                @endif
+            {{-- ── Filter strip ─────────────────────────────────────────────── --}}
+            <div class="border-b border-gray-100 bg-gray-50/50 px-6 py-3 space-y-2.5">
+
+                {{-- Preset quick buttons --}}
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="shrink-0 text-xs font-medium text-gray-400">Quick:</span>
+                    @foreach(['today' => 'Today', 'this_week' => 'This Week', 'this_month' => 'This Month'] as $pk => $pl)
+                        <button id="modal_preset_{{ $pk }}"
+                                onclick="setModalPreset('{{ $pk }}')"
+                                class="inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-medium transition-colors
+                                       {{ ($filters['preset'] ?? '') === $pk
+                                          ? 'bg-violet-600 text-white border-violet-600'
+                                          : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50' }}">
+                            {{ $pl }}
+                        </button>
+                    @endforeach
+                </div>
+
+                {{-- Custom date range --}}
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="shrink-0 text-xs font-medium text-gray-400">Custom:</span>
+                    <input type="date" id="modal_date_from"
+                           value="{{ $filters['date_from'] ?? '' }}"
+                           class="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-700
+                                  focus:outline-none focus:ring-2 focus:ring-violet-300 transition">
+                    <span class="text-xs text-gray-400">–</span>
+                    <input type="date" id="modal_date_to"
+                           value="{{ $filters['date_to'] ?? '' }}"
+                           class="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-700
+                                  focus:outline-none focus:ring-2 focus:ring-violet-300 transition">
+                    <button onclick="applyModalDateRange()"
+                            class="rounded-lg bg-violet-600 px-3 py-1 text-xs font-semibold text-white
+                                   hover:bg-violet-700 transition-colors">
+                        Apply
+                    </button>
+                </div>
+
             </div>
 
-            {{-- Modal footer --}}
+            {{-- ── Scrollable table ─────────────────────────────────────────── --}}
+            <div class="overflow-y-auto flex-1">
+                <table class="w-full text-sm">
+                    <thead class="sticky top-0 z-10">
+                        <tr class="border-b border-gray-100 bg-gray-50">
+                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">#</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Category</th>
+                            <th class="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-500">Entries</th>
+                            <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Total (Rs.)</th>
+                            <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 w-36">Share</th>
+                        </tr>
+                    </thead>
+                    <tbody id="analysisTbody" class="divide-y divide-gray-50">
+                        @forelse($categorySummary ?? [] as $i => $row)
+                            @php $share = ($filteredTotal ?? 0) > 0 ? ($row->total_amount / $filteredTotal) * 100 : 0; @endphp
+                            <tr class="hover:bg-violet-50/40 transition-colors">
+                                <td class="px-6 py-3 text-xs text-gray-400">{{ $i + 1 }}</td>
+                                <td class="px-6 py-3">
+                                    <span class="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 border border-indigo-100">
+                                        {{ $row->category?->name ?? '—' }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-3 text-center text-gray-500">{{ $row->entry_count }}</td>
+                                <td class="px-6 py-3 text-right font-semibold text-rose-600 tabular-nums">
+                                    Rs.{{ number_format($row->total_amount, 2) }}
+                                </td>
+                                <td class="px-6 py-3">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <div class="h-1.5 w-20 overflow-hidden rounded-full bg-gray-100">
+                                            <div class="h-full rounded-full bg-violet-400" style="width: {{ number_format($share, 1) }}%"></div>
+                                        </div>
+                                        <span class="w-10 text-right text-xs tabular-nums text-gray-500">{{ number_format($share, 1) }}%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="py-12 text-center text-sm text-gray-400">No expense data matches the current filters.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                    <tfoot>
+                        <tr class="border-t-2 border-gray-200 bg-gray-50/80">
+                            <td class="px-6 py-3 text-xs font-bold uppercase tracking-wide text-gray-700" colspan="2">Grand Total</td>
+                            <td id="analysisTotalCount" class="px-6 py-3 text-center text-xs font-bold text-gray-700">
+                                {{ ($categorySummary ?? collect())->sum('entry_count') }}
+                            </td>
+                            <td id="analysisTotalAmount" class="px-6 py-3 text-right text-sm font-bold text-rose-600 tabular-nums">
+                                Rs.{{ number_format($filteredTotal ?? 0, 2) }}
+                            </td>
+                            <td class="px-6 py-3 text-right text-xs text-gray-400">100%</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            {{-- ── Footer ───────────────────────────────────────────────────── --}}
             <div class="flex items-center justify-between border-t border-gray-100 px-6 py-3">
-                <a href="{{ route('expenses.export') }}?{{ http_build_query(array_filter($filters ?? [])) }}"
+                <a id="modalExportLink"
+                   href="{{ route('expenses.export') }}?{{ http_build_query(array_filter($filters ?? [])) }}"
                    class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors">
                     <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
@@ -451,7 +488,27 @@
     </div>
 
     <script>
+        // ── Constants seeded from server ──────────────────────────────────────
+        const pageFilters  = @js($filters ?? []);
+        const summaryUrl   = '{{ route('expenses.summary') }}';
+        const exportBase   = '{{ route('expenses.export') }}';
+
+        // ── Modal filter state (synced to page filters on open) ───────────────
+        let modalPreset   = null;
+        let modalDateFrom = '';
+        let modalDateTo   = '';
+
+        // ── Open / close ──────────────────────────────────────────────────────
         function openAnalysisModal() {
+            // Sync modal controls to the current page filter state
+            modalPreset   = pageFilters.preset   || null;
+            modalDateFrom = pageFilters.date_from || '';
+            modalDateTo   = pageFilters.date_to   || '';
+
+            document.getElementById('modal_date_from').value = modalDateFrom;
+            document.getElementById('modal_date_to').value   = modalDateTo;
+            highlightPreset(modalPreset);
+
             const modal = document.getElementById('analysisModal');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
@@ -467,6 +524,127 @@
             if (e.key === 'Escape') closeAnalysisModal();
         });
 
+        // ── Preset quick-filter ───────────────────────────────────────────────
+        function setModalPreset(preset) {
+            modalPreset   = preset;
+            modalDateFrom = '';
+            modalDateTo   = '';
+            document.getElementById('modal_date_from').value = '';
+            document.getElementById('modal_date_to').value   = '';
+            highlightPreset(preset);
+            fetchSummary();
+        }
+
+        // ── Custom date range ─────────────────────────────────────────────────
+        function applyModalDateRange() {
+            const from = document.getElementById('modal_date_from').value;
+            const to   = document.getElementById('modal_date_to').value;
+            if (!from && !to) return;
+            modalPreset   = null;
+            modalDateFrom = from;
+            modalDateTo   = to;
+            highlightPreset(null);
+            fetchSummary();
+        }
+
+        // ── Highlight active preset button ────────────────────────────────────
+        function highlightPreset(active) {
+            ['today', 'this_week', 'this_month'].forEach(function (p) {
+                const btn = document.getElementById('modal_preset_' + p);
+                if (!btn) return;
+                const on = p === active;
+                btn.classList.toggle('bg-violet-600',    on);
+                btn.classList.toggle('text-white',        on);
+                btn.classList.toggle('border-violet-600', on);
+                btn.classList.toggle('bg-white',         !on);
+                btn.classList.toggle('text-gray-600',    !on);
+                btn.classList.toggle('border-gray-200',  !on);
+            });
+        }
+
+        // ── AJAX fetch & DOM update ───────────────────────────────────────────
+        async function fetchSummary() {
+            const tbody         = document.getElementById('analysisTbody');
+            const totalAmountEl = document.getElementById('analysisTotalAmount');
+            const totalCountEl  = document.getElementById('analysisTotalCount');
+            const periodLabelEl = document.getElementById('analysisPeriodLabel');
+            const headerTotalEl = document.getElementById('analysisHeaderTotal');
+            const exportLink    = document.getElementById('modalExportLink');
+
+            // Loading state
+            tbody.innerHTML =
+                '<tr><td colspan="5" class="py-10 text-center text-sm text-gray-400">' +
+                '<svg class="mx-auto mb-2 h-5 w-5 animate-spin text-violet-400" fill="none" viewBox="0 0 24 24">' +
+                '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>' +
+                '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>' +
+                'Loading…</td></tr>';
+
+            // Build query params: carry page-level non-date filters + modal date
+            const params = new URLSearchParams();
+            ['search', 'category_id', 'amount_min', 'amount_max'].forEach(function (k) {
+                if (pageFilters[k]) params.set(k, pageFilters[k]);
+            });
+            if (modalPreset) {
+                params.set('preset', modalPreset);
+            } else {
+                if (modalDateFrom) params.set('date_from', modalDateFrom);
+                if (modalDateTo)   params.set('date_to',   modalDateTo);
+            }
+
+            try {
+                const res = await fetch(summaryUrl + '?' + params.toString());
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+
+                // Update header + footer totals
+                if (periodLabelEl) periodLabelEl.textContent = data.period_label;
+                if (headerTotalEl) headerTotalEl.textContent = 'Rs.' + fmtAmt(data.filtered_total);
+                if (totalAmountEl) totalAmountEl.textContent = 'Rs.' + fmtAmt(data.filtered_total);
+                if (totalCountEl)  totalCountEl.textContent  = data.filtered_count;
+
+                // Update export link to reflect modal's current filter
+                if (exportLink) exportLink.href = exportBase + '?' + params.toString();
+
+                // Rebuild tbody
+                if (data.summary.length === 0) {
+                    tbody.innerHTML =
+                        '<tr><td colspan="5" class="py-12 text-center text-sm text-gray-400">' +
+                        'No expense data for this period.</td></tr>';
+                } else {
+                    tbody.innerHTML = data.summary.map(function (row, i) {
+                        const bar = '<div class="h-1.5 w-20 overflow-hidden rounded-full bg-gray-100">' +
+                                    '<div class="h-full rounded-full bg-violet-400" style="width:' + row.share + '%"></div></div>';
+                        return '<tr class="border-b border-gray-50 hover:bg-violet-50/40 transition-colors">' +
+                            '<td class="px-6 py-3 text-xs text-gray-400">' + (i + 1) + '</td>' +
+                            '<td class="px-6 py-3"><span class="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 border border-indigo-100">' +
+                                escHtml(row.category_name) + '</span></td>' +
+                            '<td class="px-6 py-3 text-center text-gray-500">' + row.entry_count + '</td>' +
+                            '<td class="px-6 py-3 text-right font-semibold text-rose-600 tabular-nums">Rs.' + fmtAmt(row.total_amount) + '</td>' +
+                            '<td class="px-6 py-3"><div class="flex items-center justify-end gap-2">' + bar +
+                                '<span class="w-10 text-right text-xs tabular-nums text-gray-500">' + row.share + '%</span>' +
+                            '</div></td>' +
+                            '</tr>';
+                    }).join('');
+                }
+
+            } catch (err) {
+                tbody.innerHTML =
+                    '<tr><td colspan="5" class="py-8 text-center text-sm text-red-400">' +
+                    'Failed to load data. Please try again.</td></tr>';
+            }
+        }
+
+        function fmtAmt(num) {
+            return Number(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function escHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        // ── Add / Edit / Delete modals ────────────────────────────────────────
         function openAddModal() {
             document.getElementById('expenseModal').classList.remove('hidden');
         }
@@ -477,10 +655,7 @@
             document.getElementById('edit_date').value        = date;
             document.getElementById('edit_amount').value      = amount;
             document.getElementById('edit_description').value = description;
-
-            const catSelect = document.getElementById('edit_category_id');
-            catSelect.value = categoryId ?? '';
-
+            document.getElementById('edit_category_id').value = categoryId ?? '';
             document.getElementById('editExpenseModal').classList.remove('hidden');
         }
 
@@ -495,7 +670,7 @@
                 confirmButtonColor: '#ef4444',
                 cancelButtonColor: '#64748b',
                 focusCancel: true,
-            }).then(function(result) {
+            }).then(function (result) {
                 if (result.isConfirmed) {
                     const form = document.getElementById('deleteExpenseForm');
                     form.action = '/expenses/' + id;

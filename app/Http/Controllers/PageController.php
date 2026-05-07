@@ -261,12 +261,62 @@ class PageController extends Controller
         };
     }
 
+    public function expensesSummary(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $filters = $request->only([
+            'search', 'date_from', 'date_to', 'category_id',
+            'amount_min', 'amount_max', 'preset',
+        ]);
+
+        if (!empty($filters['preset']) && empty($filters['date_from']) && empty($filters['date_to'])) {
+            match ($filters['preset']) {
+                'today'      => [$filters['date_from'], $filters['date_to']] = [
+                    now()->toDateString(), now()->toDateString(),
+                ],
+                'this_week'  => [$filters['date_from'], $filters['date_to']] = [
+                    now()->startOfWeek()->toDateString(), now()->toDateString(),
+                ],
+                'this_month' => [$filters['date_from'], $filters['date_to']] = [
+                    now()->startOfMonth()->toDateString(), now()->toDateString(),
+                ],
+                default => null,
+            };
+        }
+
+        $applyFilters = $this->buildExpenseFilters($filters);
+
+        $summaryQuery = Expense::query()
+            ->selectRaw('category_id, SUM(amount) as total_amount, COUNT(*) as entry_count')
+            ->groupBy('category_id');
+        $applyFilters($summaryQuery);
+        $summary = $summaryQuery->with('category')->orderByDesc('total_amount')->get();
+
+        $filteredTotal = (float) $summary->sum('total_amount');
+        $filteredCount = (int)   $summary->sum('entry_count');
+
+        return response()->json([
+            'summary' => $summary->map(fn ($row) => [
+                'category_name' => $row->category?->name ?? '—',
+                'entry_count'   => (int) $row->entry_count,
+                'total_amount'  => (float) $row->total_amount,
+                'share'         => $filteredTotal > 0
+                    ? round(($row->total_amount / $filteredTotal) * 100, 1)
+                    : 0.0,
+            ]),
+            'filtered_total' => $filteredTotal,
+            'filtered_count' => $filteredCount,
+            'period_label'   => $this->expensePeriodLabel($filters),
+        ]);
+    }
+
     private function expensePeriodLabel(array $filters): string
     {
         if (!empty($filters['date_from']) && !empty($filters['date_to'])) {
-            return \Carbon\Carbon::parse($filters['date_from'])->format('d M Y')
-                . ' – '
-                . \Carbon\Carbon::parse($filters['date_to'])->format('d M Y');
+            $from = \Carbon\Carbon::parse($filters['date_from']);
+            $to   = \Carbon\Carbon::parse($filters['date_to']);
+            return $from->isSameDay($to)
+                ? $from->format('d M Y')
+                : $from->format('d M Y') . ' – ' . $to->format('d M Y');
         }
         if (!empty($filters['date_from'])) {
             return 'From ' . \Carbon\Carbon::parse($filters['date_from'])->format('d M Y');
