@@ -309,7 +309,8 @@
         '{{ route('ticket-distribution.copy-to-date') }}',
         {{ json_encode($alpineNoSales) }},
         {{ json_encode($alpineRemarks) }},
-        {{ json_encode($assistants->pluck('name', 'id')->toArray()) }}
+        {{ json_encode($assistants->pluck('name', 'id')->toArray()) }},
+        {{ json_encode($alpineHandedOver) }}
      )"
      @keydown.window="handleArrow($event)"
      class="print:hidden">
@@ -362,8 +363,9 @@
                        :name="`qty[{{ $a->id }}][{{ $l->id }}]`"
                        :value="grid[{{ $a->id }}][{{ $l->id }}] || 0">
             @endforeach
-            <input type="hidden" :name="`no_sales[{{ $a->id }}]`" :value="noSales[{{ $a->id }}] ? '1' : '0'">
-            <input type="hidden" :name="`remarks[{{ $a->id }}]`"  :value="remarks[{{ $a->id }}] || ''">
+            <input type="hidden" :name="`no_sales[{{ $a->id }}]`"    :value="noSales[{{ $a->id }}] ? '1' : '0'">
+            <input type="hidden" :name="`handed_over[{{ $a->id }}]`" :value="handedOver[{{ $a->id }}] ? '1' : '0'">
+            <input type="hidden" :name="`remarks[{{ $a->id }}]`"     :value="remarks[{{ $a->id }}] || ''">
         @endforeach
 
         {{-- ── Toolbar ──────────────────────────────────────────────────── --}}
@@ -494,6 +496,10 @@
                             style="background:#0f172a;">
                             Total
                         </th>
+                        <th class="sticky top-0 z-40 px-3 py-3 text-center text-green-300 font-semibold whitespace-nowrap border-x border-slate-600"
+                            style="background:#0f172a; min-width:90px;">
+                            Handed Over
+                        </th>
                         <th class="sticky top-0 z-40 px-3 py-3 text-left text-slate-400 font-medium whitespace-nowrap border-x border-slate-600"
                             style="background:#0f172a; min-width:130px;">
                             Remarks
@@ -530,6 +536,8 @@
                         </td>
                         <td class="sticky top-[52px] z-40 border-x border-amber-300"
                             style="background:#fffbeb;"></td>
+                        <td class="sticky top-[52px] z-40 border-x border-amber-300"
+                            style="background:#fffbeb;"></td>
                     </tr>
 
                     <tr class="border-b-2 border-slate-600">
@@ -555,6 +563,9 @@
                         <td class="sticky top-[52px] z-40 border-x border-slate-600"
                             style="background:#1e293b;"
                             x-bind:style="adjustMode ? 'top:104px; background:#1e293b;' : 'top:52px; background:#1e293b;'"></td>
+                        <td class="sticky top-[52px] z-40 border-x border-slate-600"
+                            style="background:#1e293b;"
+                            x-bind:style="adjustMode ? 'top:104px; background:#1e293b;' : 'top:52px; background:#1e293b;'"></td>
                     </tr>
                 </thead>
 
@@ -577,7 +588,7 @@
                                     {{ $routeGroup['assistants']->count() }}
                                 </span>
                             </td>
-                            <td colspan="{{ count($lotteries) + 2 }}"
+                            <td colspan="{{ count($lotteries) + 3 }}"
                                 class="{{ $colors['headerBg'] }} border-x border-gray-300"></td>
                         </tr>
 
@@ -593,7 +604,8 @@
                                 x-show="matchesSearch({{ $a->id }})"
                                 x-bind:class="{
                                     '!bg-gray-100': noSales[{{ $a->id }}],
-                                    '{{ $rowHoverBg }} ring-1 ring-inset ring-blue-400': hoveredRow === {{ $a->id }} && !isLocked({{ $a->id }}) && !noSales[{{ $a->id }}],
+                                    '!bg-green-50 ring-1 ring-inset ring-green-400': handedOver[{{ $a->id }}] && !noSales[{{ $a->id }}] && !isLocked({{ $a->id }}),
+                                    '{{ $rowHoverBg }} ring-1 ring-inset ring-blue-400': hoveredRow === {{ $a->id }} && !isLocked({{ $a->id }}) && !noSales[{{ $a->id }}] && !handedOver[{{ $a->id }}],
                                     '!bg-amber-50 ring-1 ring-inset ring-amber-400': isLocked({{ $a->id }}) && !noSales[{{ $a->id }}]
                                 }"
                                 @mouseenter="hoveredRow = {{ $a->id }}"
@@ -666,6 +678,21 @@
                                     x-bind:class="rowTotal({{ $a->id }}) > 0 ? 'text-blue-700' : 'text-gray-300'"
                                     x-text="rowTotal({{ $a->id }}).toLocaleString()"></td>
 
+                                {{-- Handed Over checkbox cell --}}
+                                <td class="px-3 py-1.5 text-center border-x border-gray-200"
+                                    x-bind:class="handedOver[{{ $a->id }}] ? '!bg-green-50' : ''">
+                                    <label class="flex items-center justify-center gap-1.5 cursor-pointer select-none"
+                                           :title="handedOver[{{ $a->id }}] ? 'Tickets handed over — click to undo' : 'Mark tickets as handed over to this assistant'">
+                                        <input type="checkbox"
+                                               x-model="handedOver[{{ $a->id }}]"
+                                               @change="onHandedOverChange({{ $a->id }})"
+                                               class="h-4 w-4 rounded border-gray-300 text-green-600 cursor-pointer focus:ring-green-500 focus:ring-offset-0"
+                                               @click.stop>
+                                        <span x-show="handedOver[{{ $a->id }}]"
+                                              class="text-[10px] font-semibold text-green-700 leading-none">Done</span>
+                                    </label>
+                                </td>
+
                                 {{-- Remarks cell --}}
                                 <td class="px-2 py-1 border-x border-gray-200" style="min-width:130px;">
                                     <input type="text"
@@ -685,7 +712,7 @@
 
                     {{-- No search match --}}
                     <tr x-show="search && !hasAnyMatch()">
-                        <td colspan="{{ count($lotteries) + 3 }}"
+                        <td colspan="{{ count($lotteries) + 4 }}"
                             class="py-10 text-center text-sm text-gray-400">
                             <svg class="mx-auto mb-2 h-8 w-8 text-gray-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
@@ -709,6 +736,7 @@
                         <td class="px-3 py-2.5 text-center text-blue-700 border-x border-gray-200"
                             style="background:#f1f5f9;"
                             x-text="grandTotal().toLocaleString()"></td>
+                        <td class="border-x border-gray-200" style="background:#f1f5f9;"></td>
                         <td class="border-x border-gray-200" style="background:#f1f5f9;"></td>
                     </tr>
                 </tbody>
@@ -1054,16 +1082,16 @@ input.board-qty-cell[type=number] { -moz-appearance: textfield; }
 </style>
 
 <script>
-function distGrid(initialGrid, currentDate, loadFromDateUrl, copyToDateUrl, initialNoSales, initialRemarks, assistantNames) {
+function distGrid(initialGrid, currentDate, loadFromDateUrl, copyToDateUrl, initialNoSales, initialRemarks, assistantNames, initialHandedOver) {
     return {
         // ── State ──────────────────────────────────────────────────────────
-        grid:       initialGrid,
-        hoveredRow: null,
-        hoveredCol: null,
-        saving:     false,
-        isDirty:    false,
-        pendingUrl: null,
-        _formId:    'dist-form',
+        grid:        initialGrid,
+        hoveredRow:  null,
+        hoveredCol:  null,
+        saving:      false,
+        isDirty:     false,
+        pendingUrl:  null,
+        _formId:     'dist-form',
 
         // ── Load / Copy modals ─────────────────────────────────────────────
         loadModal: { open: false, date: '', loading: false },
@@ -1079,9 +1107,10 @@ function distGrid(initialGrid, currentDate, loadFromDateUrl, copyToDateUrl, init
             this.toast._timer  = setTimeout(() => { this.toast.show = false; }, 4000);
         },
 
-        // ── No Sales & Remarks ─────────────────────────────────────────────
-        noSales: initialNoSales || {},   // { [aId]: bool }
-        remarks:  initialRemarks  || {}, // { [aId]: string }
+        // ── No Sales, Handed Over & Remarks ───────────────────────────────────
+        noSales:     initialNoSales    || {},  // { [aId]: bool }
+        handedOver:  initialHandedOver || {},  // { [aId]: bool }
+        remarks:     initialRemarks    || {},  // { [aId]: string }
 
         // ── Search / filter ────────────────────────────────────────────────
         search:         '',
@@ -1277,6 +1306,11 @@ function distGrid(initialGrid, currentDate, loadFromDateUrl, copyToDateUrl, init
         onNoSalesChange(aId) {
             // Values are intentionally kept in Alpine state so unchecking restores them.
             // The controller wipes DB rows only when no_sales=1 is present at save time.
+            this.isDirty = true;
+        },
+
+        // ── Handed Over toggle ─────────────────────────────────────────────
+        onHandedOverChange(aId) {
             this.isDirty = true;
         },
 

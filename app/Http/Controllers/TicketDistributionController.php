@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\TicketDistributionExport;
+use App\Models\DailySale;
 use App\Models\DailyTicketNote;
 use App\Models\DailyTicketStock;
 use App\Models\Lottery;
@@ -39,14 +40,16 @@ class TicketDistributionController extends Controller
             $grid[$r->assistant_id][$r->lottery_id] = $r->quantity;
         }
 
-        // Load per-assistant notes (no_sales flag + remarks)
-        $notesCollection = DailyTicketNote::where('date', $date)->get()->keyBy('assistant_id');
-        $alpineNoSales   = [];
-        $alpineRemarks   = [];
+        // Load per-assistant notes (no_sales flag, handed_over flag, remarks)
+        $notesCollection   = DailyTicketNote::where('date', $date)->get()->keyBy('assistant_id');
+        $alpineNoSales     = [];
+        $alpineRemarks     = [];
+        $alpineHandedOver  = [];
         foreach ($assistants as $a) {
-            $note                   = $notesCollection[$a->id] ?? null;
-            $alpineNoSales[$a->id] = (bool) ($note->is_no_sales ?? false);
-            $alpineRemarks[$a->id] = $note->remarks ?? '';
+            $note                      = $notesCollection[$a->id] ?? null;
+            $alpineNoSales[$a->id]    = (bool) ($note->is_no_sales ?? false);
+            $alpineRemarks[$a->id]    = $note->remarks ?? '';
+            $alpineHandedOver[$a->id] = (bool) ($note->is_handed_over ?? false);
         }
 
         // PHP-side totals (also used to seed Alpine state)
@@ -62,7 +65,7 @@ class TicketDistributionController extends Controller
 
         return view('ticket-distribution.index', compact(
             'date', 'assistants', 'lotteries', 'grid', 'colTotals', 'rowTotals', 'grandTotal',
-            'notesCollection', 'alpineNoSales', 'alpineRemarks'
+            'notesCollection', 'alpineNoSales', 'alpineRemarks', 'alpineHandedOver'
         ));
     }
 
@@ -73,33 +76,40 @@ class TicketDistributionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'date'       => 'required|date',
-            'qty'        => 'nullable|array',
-            'qty.*.*'    => 'nullable|integer|min:0',
-            'no_sales'   => 'nullable|array',
-            'no_sales.*' => 'nullable|in:0,1',
-            'remarks'    => 'nullable|array',
-            'remarks.*'  => 'nullable|string|max:255',
+            'date'          => 'required|date',
+            'qty'           => 'nullable|array',
+            'qty.*.*'       => 'nullable|integer|min:0',
+            'no_sales'      => 'nullable|array',
+            'no_sales.*'    => 'nullable|in:0,1',
+            'handed_over'   => 'nullable|array',
+            'handed_over.*' => 'nullable|in:0,1',
+            'remarks'       => 'nullable|array',
+            'remarks.*'     => 'nullable|string|max:255',
         ]);
 
-        $date        = $request->input('date');
-        $grid        = $request->input('qty', []);
-        $noSalesMap  = $request->input('no_sales', []);
-        $remarksMap  = $request->input('remarks', []);
+        $date           = $request->input('date');
+        $grid           = $request->input('qty', []);
+        $noSalesMap     = $request->input('no_sales', []);
+        $handedOverMap  = $request->input('handed_over', []);
+        $remarksMap     = $request->input('remarks', []);
+
+        // Build a price map [lottery_id => unit_price] for ticket value calculation
+        $lotteryPrices = Lottery::pluck('unit_price', 'id');
 
         // Collect every assistant ID submitted across all inputs
-        $allIds = collect(array_keys($grid + $noSalesMap + $remarksMap))->map('intval')->unique()->all();
+        $allIds = collect(array_keys($grid + $noSalesMap + $handedOverMap + $remarksMap))->map('intval')->unique()->all();
 
-        DB::transaction(function () use ($date, $grid, $noSalesMap, $remarksMap, $allIds) {
+        DB::transaction(function () use ($date, $grid, $noSalesMap, $handedOverMap, $remarksMap, $allIds, $lotteryPrices) {
             foreach ($allIds as $assistantId) {
-                $isNoSales = ($noSalesMap[$assistantId] ?? '0') === '1';
-                $remarks   = trim($remarksMap[$assistantId] ?? '');
+                $isNoSales    = ($noSalesMap[$assistantId] ?? '0') === '1';
+                $isHandedOver = ($handedOverMap[$assistantId] ?? '0') === '1';
+                $remarks      = trim($remarksMap[$assistantId] ?? '');
 
                 // Persist or clear the note record
-                if ($isNoSales || $remarks !== '') {
+                if ($isNoSales || $isHandedOver || $remarks !== '') {
                     DailyTicketNote::updateOrCreate(
                         ['date' => $date, 'assistant_id' => $assistantId],
-                        ['is_no_sales' => $isNoSales, 'remarks' => $remarks ?: null]
+                        ['is_no_sales' => $isNoSales, 'is_handed_over' => $isHandedOver, 'remarks' => $remarks ?: null]
                     );
                 } else {
                     DailyTicketNote::where(['date' => $date, 'assistant_id' => $assistantId])->delete();
@@ -127,6 +137,19 @@ class TicketDistributionController extends Controller
                             'lottery_id'   => $lotteryId,
                         ])->delete();
                     }
+                }
+
+                // When handed over, populate the Daily Sales record with the total ticket value
+                if ($isHandedOver) {
+                    $ticketsIssuedVal = collect($grid[$assistantId] ?? [])
+                        ->reduce(function ($carry, $qty, $lotteryId) use ($lotteryPrices) {
+                            return $carry + ((int) ($qty ?? 0)) * (float) ($lotteryPrices[$lotteryId] ?? 0);
+                        }, 0.0);
+
+                    DailySale::updateOrCreate(
+                        ['date' => $date, 'assistant_id' => $assistantId],
+                        ['tickets_issued_val' => $ticketsIssuedVal]
+                    );
                 }
             }
         });
