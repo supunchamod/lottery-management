@@ -1275,14 +1275,8 @@ function distGrid(initialGrid, currentDate, loadFromDateUrl, copyToDateUrl, init
 
         // ── No Sales toggle ────────────────────────────────────────────────
         onNoSalesChange(aId) {
-            if (this.noSales[aId]) {
-                // Zero out all lottery quantities for this assistant
-                if (this.grid[aId]) {
-                    for (const lId of Object.keys(this.grid[aId])) {
-                        this.grid[aId][lId] = 0;
-                    }
-                }
-            }
+            // Values are intentionally kept in Alpine state so unchecking restores them.
+            // The controller wipes DB rows only when no_sales=1 is present at save time.
             this.isDirty = true;
         },
 
