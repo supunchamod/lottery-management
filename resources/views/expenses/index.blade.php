@@ -43,14 +43,14 @@
 
                 {{-- Search --}}
                 <div class="xl:col-span-2">
-                    <label class="mb-1 block text-xs font-medium text-gray-500">Search Description</label>
+                    <label class="mb-1 block text-xs font-medium text-gray-500">Search</label>
                     <div class="relative">
                         <svg class="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
                              fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z"/>
                         </svg>
                         <input type="text" name="search" value="{{ $filters['search'] ?? '' }}"
-                               placeholder="Search by description…"
+                               placeholder="Search by description or category…"
                                class="erp-input pl-8 text-sm">
                     </div>
                 </div>

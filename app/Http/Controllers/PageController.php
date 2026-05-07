@@ -110,9 +110,13 @@ class PageController extends Controller
     {
         $query = Expense::with('category')->orderByDesc('date')->orderByDesc('id');
 
-        $query->when($request->filled('search'), fn ($q) =>
-            $q->where('description', 'like', '%' . $request->search . '%')
-        );
+        $query->when($request->filled('search'), function ($q) use ($request) {
+            $term = '%' . $request->search . '%';
+            $q->where(function ($inner) use ($term) {
+                $inner->where('description', 'like', $term)
+                      ->orWhereHas('category', fn ($cat) => $cat->where('name', 'like', $term));
+            });
+        });
 
         $query->when($request->filled('date_from'), fn ($q) =>
             $q->whereDate('date', '>=', $request->date_from)
