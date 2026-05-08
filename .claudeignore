@@ -1,0 +1,65 @@
+# .claudeignore - Laravel Project
+
+# Dependencies
+/vendor/
+/node_modules/
+
+# Compiled Assets
+/public/hot
+/public/storage
+/public/build
+/public/css
+/public/js
+/public/mix-manifest.json
+
+# Environment & Config
+.env
+.env.*
+!.env.example
+
+# Storage
+/storage/*.key
+/storage/logs/
+/storage/framework/cache/
+/storage/framework/sessions/
+/storage/framework/testing/
+/storage/framework/views/
+
+# Bootstrap Cache
+/bootstrap/cache/
+/bootstrap/ssr/
+
+# IDE & System Files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build Files
+/dist/
+/build/
+
+# Testing
+.phpunit.result.cache
+.phpunit.cache
+/coverage/
+
+# Package Manager
+composer.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Git
+.git/
+.gitignore
+.gitattributes

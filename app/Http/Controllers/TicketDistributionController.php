@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\TicketDistributionExport;
+use App\Models\DailySaleRecord;
 use App\Models\DailyTicketNote;
 use App\Models\DailyTicketStock;
 use App\Models\Lottery;
@@ -11,6 +12,7 @@ use App\Models\SubSeller;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
 class TicketDistributionController extends Controller
@@ -39,14 +41,16 @@ class TicketDistributionController extends Controller
             $grid[$r->assistant_id][$r->lottery_id] = $r->quantity;
         }
 
-        // Load per-assistant notes (no_sales flag + remarks)
-        $notesCollection = DailyTicketNote::where('date', $date)->get()->keyBy('assistant_id');
-        $alpineNoSales   = [];
-        $alpineRemarks   = [];
+        // Load per-assistant notes (no_sales flag, handed_over flag, remarks)
+        $notesCollection   = DailyTicketNote::where('date', $date)->get()->keyBy('assistant_id');
+        $alpineNoSales     = [];
+        $alpineRemarks     = [];
+        $alpineHandedOver  = [];
         foreach ($assistants as $a) {
-            $note                   = $notesCollection[$a->id] ?? null;
-            $alpineNoSales[$a->id] = (bool) ($note->is_no_sales ?? false);
-            $alpineRemarks[$a->id] = $note->remarks ?? '';
+            $note                      = $notesCollection[$a->id] ?? null;
+            $alpineNoSales[$a->id]    = (bool) ($note->is_no_sales ?? false);
+            $alpineRemarks[$a->id]    = $note->remarks ?? '';
+            $alpineHandedOver[$a->id] = (bool) ($note->is_handed_over ?? false);
         }
 
         // PHP-side totals (also used to seed Alpine state)
@@ -62,7 +66,7 @@ class TicketDistributionController extends Controller
 
         return view('ticket-distribution.index', compact(
             'date', 'assistants', 'lotteries', 'grid', 'colTotals', 'rowTotals', 'grandTotal',
-            'notesCollection', 'alpineNoSales', 'alpineRemarks'
+            'notesCollection', 'alpineNoSales', 'alpineRemarks', 'alpineHandedOver'
         ));
     }
 
@@ -73,59 +77,150 @@ class TicketDistributionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'date'       => 'required|date',
-            'qty'        => 'nullable|array',
-            'qty.*.*'    => 'nullable|integer|min:0',
-            'no_sales'   => 'nullable|array',
-            'no_sales.*' => 'nullable|in:0,1',
-            'remarks'    => 'nullable|array',
-            'remarks.*'  => 'nullable|string|max:255',
+            'date'          => 'required|date',
+            'qty'           => 'nullable|array',
+            'qty.*.*'       => 'nullable|integer|min:0',
+            'no_sales'      => 'nullable|array',
+            'no_sales.*'    => 'nullable|in:0,1',
+            'handed_over'   => 'nullable|array',
+            'handed_over.*' => 'nullable|in:0,1',
+            'remarks'       => 'nullable|array',
+            'remarks.*'     => 'nullable|string|max:255',
         ]);
 
-        $date        = $request->input('date');
-        $grid        = $request->input('qty', []);
-        $noSalesMap  = $request->input('no_sales', []);
-        $remarksMap  = $request->input('remarks', []);
+        $date           = $request->input('date');
+        $grid           = $request->input('qty', []);
+        $noSalesMap     = $request->input('no_sales', []);
+        $handedOverMap  = $request->input('handed_over', []);
+        $remarksMap     = $request->input('remarks', []);
+
+        // Build a price map [lottery_id => unit_price] for ticket value calculation
+        $lotteryPrices = Lottery::pluck('unit_price', 'id');
 
         // Collect every assistant ID submitted across all inputs
-        $allIds = collect(array_keys($grid + $noSalesMap + $remarksMap))->map('intval')->unique()->all();
+        $allIds = collect(array_keys($grid + $noSalesMap + $handedOverMap + $remarksMap))->map('intval')->unique()->all();
 
-        DB::transaction(function () use ($date, $grid, $noSalesMap, $remarksMap, $allIds) {
+        DB::transaction(function () use ($date, $grid, $noSalesMap, $handedOverMap, $remarksMap, $allIds, $lotteryPrices) {
             foreach ($allIds as $assistantId) {
-                $isNoSales = ($noSalesMap[$assistantId] ?? '0') === '1';
-                $remarks   = trim($remarksMap[$assistantId] ?? '');
+                $isNoSales    = ($noSalesMap[$assistantId] ?? '0') === '1';
+                $isHandedOver = ($handedOverMap[$assistantId] ?? '0') === '1';
+                $remarks      = trim($remarksMap[$assistantId] ?? '');
 
-                // Persist or clear the note record
-                if ($isNoSales || $remarks !== '') {
+                // ── 1. Persist or clear the note record ───────────────────────
+                if ($isNoSales || $isHandedOver || $remarks !== '') {
                     DailyTicketNote::updateOrCreate(
                         ['date' => $date, 'assistant_id' => $assistantId],
-                        ['is_no_sales' => $isNoSales, 'remarks' => $remarks ?: null]
+                        ['is_no_sales' => $isNoSales, 'is_handed_over' => $isHandedOver, 'remarks' => $remarks ?: null]
                     );
                 } else {
                     DailyTicketNote::where(['date' => $date, 'assistant_id' => $assistantId])->delete();
                 }
 
-                // No-sales: wipe all lottery rows for this assistant and skip qty processing
+                // ── 2. Ticket stock rows ───────────────────────────────────────
                 if ($isNoSales) {
+                    // No-sales: wipe all lottery rows for this assistant
                     DailyTicketStock::where(['date' => $date, 'assistant_id' => $assistantId])->delete();
-                    continue;
+                } else {
+                    // Normal qty upsert / delete
+                    foreach ($grid[$assistantId] ?? [] as $lotteryId => $qty) {
+                        $qty = (int) ($qty ?? 0);
+
+                        if ($qty > 0) {
+                            DailyTicketStock::updateOrCreate(
+                                ['date' => $date, 'assistant_id' => $assistantId, 'lottery_id' => $lotteryId],
+                                ['quantity' => $qty]
+                            );
+                        } else {
+                            DailyTicketStock::where([
+                                'date'         => $date,
+                                'assistant_id' => $assistantId,
+                                'lottery_id'   => $lotteryId,
+                            ])->delete();
+                        }
+                    }
                 }
 
-                // Normal qty upsert / delete
-                foreach ($grid[$assistantId] ?? [] as $lotteryId => $qty) {
-                    $qty = (int) ($qty ?? 0);
+                // ── 3. DailySaleRecord (daily_sales_records) — always evaluated ──
+                //
+                // NOTE: The Daily Sales Entry UI reads from `daily_sales_records`
+                // via DailySaleRecord, NOT from `daily_sales` via DailySale.
+                // The key columns are:
+                //   tickets_issued_qty  — total ticket count
+                //   value               — total monetary value (sum of qty × price)
+                //   balance             — value minus cash+winnings already entered
+                //
+                Log::info('[TicketDist] Processing assistant', [
+                    'date'          => $date,
+                    'assistant_id'  => $assistantId,
+                    'is_handed_over'=> $isHandedOver,
+                    'is_no_sales'   => $isNoSales,
+                    'grid_keys'     => array_keys($grid[$assistantId] ?? []),
+                ]);
 
-                    if ($qty > 0) {
-                        DailyTicketStock::updateOrCreate(
-                            ['date' => $date, 'assistant_id' => $assistantId, 'lottery_id' => $lotteryId],
-                            ['quantity' => $qty]
-                        );
-                    } else {
-                        DailyTicketStock::where([
+                if ($isHandedOver && !$isNoSales) {
+                    // Tally the total ticket count and total monetary value
+                    // across all lotteries distributed to this assistant today.
+                    $totalQty   = 0;
+                    $totalValue = 0.0;
+                    foreach ($grid[$assistantId] ?? [] as $lotteryId => $qty) {
+                        $qty         = (int) ($qty ?? 0);
+                        $totalQty   += $qty;
+                        $totalValue += $qty * (float) ($lotteryPrices[$lotteryId] ?? 0);
+                    }
+
+                    Log::info('[TicketDist] Handed over — upserting DailySaleRecord', [
+                        'date'         => $date,
+                        'assistant_id' => $assistantId,
+                        'total_qty'    => $totalQty,
+                        'total_value'  => $totalValue,
+                    ]);
+
+                    // Fetch (or build) the DailySaleRecord, preserving cash/winning
+                    // data the operator may have already entered in Daily Sales Entry.
+                    $rec = DailySaleRecord::firstOrNew([
+                        'date'         => $date,
+                        'assistant_id' => $assistantId,
+                    ]);
+
+                    // cw = cash + total_winning (already entered in Daily Sales Entry)
+                    $existingCw = (float) ($rec->cw ?? 0);
+
+                    $rec->tickets_issued_qty = $totalQty;
+                    $rec->value              = $totalValue;
+                    $rec->balance            = $totalValue - $existingCw;
+
+                    // Leave unit_price at 0 — multiple lotteries with different prices
+                    // cannot be collapsed to a single price. The operator can set it
+                    // manually in the Daily Sales Entry screen if needed.
+                    if (! $rec->exists) {
+                        $rec->unit_price = 0;
+                    }
+
+                    $rec->save();
+
+                    Log::info('[TicketDist] DailySaleRecord saved', [
+                        'record_id' => $rec->id,
+                        'qty'       => $rec->tickets_issued_qty,
+                        'value'     => $rec->value,
+                        'balance'   => $rec->balance,
+                    ]);
+                } else {
+                    // Checkbox unchecked (or no-sales): zero out qty/value on any
+                    // existing DailySaleRecord — do NOT create one if absent.
+                    $rec = DailySaleRecord::where([
+                        'date'         => $date,
+                        'assistant_id' => $assistantId,
+                    ])->first();
+
+                    if ($rec) {
+                        Log::info('[TicketDist] Not handed over — zeroing DailySaleRecord', [
                             'date'         => $date,
                             'assistant_id' => $assistantId,
-                            'lottery_id'   => $lotteryId,
-                        ])->delete();
+                        ]);
+                        $rec->tickets_issued_qty = 0;
+                        $rec->value              = 0;
+                        $rec->balance            = 0 - (float) ($rec->cw ?? 0);
+                        $rec->save();
                     }
                 }
             }

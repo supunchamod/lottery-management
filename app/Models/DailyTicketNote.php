@@ -11,14 +11,16 @@ class DailyTicketNote extends Model
         'date',
         'assistant_id',
         'is_no_sales',
+        'is_handed_over',
         'remarks',
     ];
 
     protected function casts(): array
     {
         return [
-            'date'       => 'date',
-            'is_no_sales' => 'boolean',
+            'date'           => 'date',
+            'is_no_sales'    => 'boolean',
+            'is_handed_over' => 'boolean',
         ];
     }
 

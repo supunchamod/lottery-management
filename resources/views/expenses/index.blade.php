@@ -5,13 +5,22 @@
             <h2 class="text-xl font-bold text-gray-900">Expenses</h2>
             <p class="text-sm text-gray-500">Track and manage daily operational expenses.</p>
         </div>
-        <button onclick="openAddModal()"
-                class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-            </svg>
-            Add Expense
-        </button>
+        <div class="flex items-center gap-2">
+            <button onclick="openAnalysisModal()"
+                    class="flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-medium text-violet-700 hover:bg-violet-100 transition-colors">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                Analyze Expenses
+            </button>
+            <button onclick="openAddModal()"
+                    class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add Expense
+            </button>
+        </div>
     </div>
 
     @if(session('success'))
@@ -21,6 +30,7 @@
     @endif
 
     {{-- Stats --}}
+    @php $hasFilter = array_filter($filters ?? []); @endphp
     <div class="mb-5 grid grid-cols-3 gap-4">
         <div class="rounded-xl bg-white border border-gray-100 shadow-sm p-4">
             <p class="text-xs text-gray-400">This Month</p>
@@ -30,27 +40,54 @@
             <p class="text-xs text-gray-400">Today</p>
             <p class="text-xl font-bold text-gray-900">Rs.{{ number_format($todayTotal ?? 0, 2) }}</p>
         </div>
-        <div class="rounded-xl bg-white border border-gray-100 shadow-sm p-4">
-            <p class="text-xs text-gray-400">Entries This Month</p>
-            <p class="text-xl font-bold text-gray-900">{{ $monthCount ?? 0 }}</p>
+        <div class="rounded-xl bg-white border border-gray-100 shadow-sm p-4 {{ $hasFilter ? 'ring-2 ring-blue-100' : '' }}">
+            @if($hasFilter)
+                <p class="text-xs text-blue-500 font-medium">Filtered Entries</p>
+                <p class="text-xl font-bold text-gray-900">{{ $filteredCount ?? 0 }}</p>
+                <p class="text-xs text-gray-400 mt-0.5">Rs.{{ number_format($filteredTotal ?? 0, 2) }}</p>
+            @else
+                <p class="text-xs text-gray-400">Entries This Month</p>
+                <p class="text-xl font-bold text-gray-900">{{ $monthCount ?? 0 }}</p>
+            @endif
         </div>
     </div>
 
     {{-- ── Filter Panel ──────────────────────────────────────────────────────── --}}
     <div class="mb-4 rounded-xl bg-white border border-gray-100 shadow-sm p-4">
         <form method="GET" action="{{ route('expenses.index') }}" id="filterForm">
+
+            {{-- Quick preset toggles --}}
+            <div class="mb-3 flex flex-wrap items-center gap-2">
+                <span class="text-xs font-medium text-gray-400">Quick:</span>
+                @foreach (['this_week' => 'This Week', 'this_month' => 'This Month'] as $presetKey => $presetLabel)
+                    <a href="{{ route('expenses.index') }}?preset={{ $presetKey }}"
+                       class="inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-medium transition-colors
+                              {{ ($filters['preset'] ?? '') === $presetKey
+                                 ? 'bg-blue-600 text-white border-blue-600'
+                                 : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50' }}">
+                        {{ $presetLabel }}
+                    </a>
+                @endforeach
+                @if(!empty($filters['preset']) || array_filter(array_diff_key($filters ?? [], ['preset' => ''])))
+                    <a href="{{ route('expenses.index') }}"
+                       class="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-0.5 text-xs text-gray-400 hover:bg-gray-50 transition-colors">
+                        All Time
+                    </a>
+                @endif
+            </div>
+
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
 
                 {{-- Search --}}
                 <div class="xl:col-span-2">
-                    <label class="mb-1 block text-xs font-medium text-gray-500">Search Description</label>
+                    <label class="mb-1 block text-xs font-medium text-gray-500">Search</label>
                     <div class="relative">
                         <svg class="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
                              fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z"/>
                         </svg>
                         <input type="text" name="search" value="{{ $filters['search'] ?? '' }}"
-                               placeholder="Search by description…"
+                               placeholder="Search by description or category…"
                                class="erp-input pl-8 text-sm">
                     </div>
                 </div>
@@ -113,6 +150,15 @@
                         Clear
                     </a>
                 @endif
+
+                {{-- Export Excel --}}
+                <a href="{{ route('expenses.export') }}?{{ http_build_query(array_filter($filters ?? [])) }}"
+                   class="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                    </svg>
+                    Export Excel
+                </a>
             </div>
         </form>
     </div>
@@ -281,7 +327,324 @@
         @method('DELETE')
     </form>
 
+    {{-- ── Analysis Modal ───────────────────────────────────────────────────── --}}
+    @php
+        $f = $filters ?? [];
+        if (!empty($f['date_from']) && !empty($f['date_to'])) {
+            $from = \Carbon\Carbon::parse($f['date_from']);
+            $to   = \Carbon\Carbon::parse($f['date_to']);
+            $analysisPeriod = $from->isSameDay($to)
+                ? $from->format('d M Y')
+                : $from->format('d M Y') . ' – ' . $to->format('d M Y');
+        } elseif (!empty($f['date_from'])) {
+            $analysisPeriod = 'From ' . \Carbon\Carbon::parse($f['date_from'])->format('d M Y');
+        } elseif (!empty($f['date_to'])) {
+            $analysisPeriod = 'Up to ' . \Carbon\Carbon::parse($f['date_to'])->format('d M Y');
+        } else {
+            $analysisPeriod = 'All Time';
+        }
+    @endphp
+
+    <div id="analysisModal"
+         class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+         onclick="if(event.target===this) closeAnalysisModal()">
+
+        <div class="w-full max-w-3xl rounded-2xl bg-white shadow-2xl flex flex-col max-h-[90vh]">
+
+            {{-- ── Header ─────────────────────────────────────────────────── --}}
+            <div class="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-4">
+                <div>
+                    <h3 class="text-base font-semibold text-gray-900">Category-wise Expense Analysis</h3>
+                    <p id="analysisPeriodLabel" class="mt-0.5 text-xs text-gray-400">{{ $analysisPeriod }}</p>
+                </div>
+                <div class="flex items-center gap-3 shrink-0">
+                    <div class="text-right">
+                        <p class="text-xs text-gray-400">Grand Total</p>
+                        <p id="analysisHeaderTotal" class="text-lg font-bold text-rose-600">
+                            Rs.{{ number_format($filteredTotal ?? 0, 2) }}
+                        </p>
+                    </div>
+                    <button onclick="closeAnalysisModal()"
+                            class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            {{-- ── Filter strip ─────────────────────────────────────────────── --}}
+            <div class="border-b border-gray-100 bg-gray-50/50 px-6 py-3 space-y-2.5">
+
+                {{-- Preset quick buttons --}}
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="shrink-0 text-xs font-medium text-gray-400">Quick:</span>
+                    @foreach(['today' => 'Today', 'this_week' => 'This Week', 'this_month' => 'This Month'] as $pk => $pl)
+                        <button id="modal_preset_{{ $pk }}"
+                                onclick="setModalPreset('{{ $pk }}')"
+                                class="inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-medium transition-colors
+                                       {{ ($filters['preset'] ?? '') === $pk
+                                          ? 'bg-violet-600 text-white border-violet-600'
+                                          : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50' }}">
+                            {{ $pl }}
+                        </button>
+                    @endforeach
+                </div>
+
+                {{-- Custom date range --}}
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="shrink-0 text-xs font-medium text-gray-400">Custom:</span>
+                    <input type="date" id="modal_date_from"
+                           value="{{ $filters['date_from'] ?? '' }}"
+                           class="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-700
+                                  focus:outline-none focus:ring-2 focus:ring-violet-300 transition">
+                    <span class="text-xs text-gray-400">–</span>
+                    <input type="date" id="modal_date_to"
+                           value="{{ $filters['date_to'] ?? '' }}"
+                           class="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-700
+                                  focus:outline-none focus:ring-2 focus:ring-violet-300 transition">
+                    <button onclick="applyModalDateRange()"
+                            class="rounded-lg bg-violet-600 px-3 py-1 text-xs font-semibold text-white
+                                   hover:bg-violet-700 transition-colors">
+                        Apply
+                    </button>
+                </div>
+
+            </div>
+
+            {{-- ── Scrollable table ─────────────────────────────────────────── --}}
+            <div class="overflow-y-auto flex-1">
+                <table class="w-full text-sm">
+                    <thead class="sticky top-0 z-10">
+                        <tr class="border-b border-gray-100 bg-gray-50">
+                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">#</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Category</th>
+                            <th class="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-500">Entries</th>
+                            <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Total (Rs.)</th>
+                            <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 w-36">Share</th>
+                        </tr>
+                    </thead>
+                    <tbody id="analysisTbody" class="divide-y divide-gray-50">
+                        @forelse($categorySummary ?? [] as $i => $row)
+                            @php $share = ($filteredTotal ?? 0) > 0 ? ($row->total_amount / $filteredTotal) * 100 : 0; @endphp
+                            <tr class="hover:bg-violet-50/40 transition-colors">
+                                <td class="px-6 py-3 text-xs text-gray-400">{{ $i + 1 }}</td>
+                                <td class="px-6 py-3">
+                                    <span class="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 border border-indigo-100">
+                                        {{ $row->category?->name ?? '—' }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-3 text-center text-gray-500">{{ $row->entry_count }}</td>
+                                <td class="px-6 py-3 text-right font-semibold text-rose-600 tabular-nums">
+                                    Rs.{{ number_format($row->total_amount, 2) }}
+                                </td>
+                                <td class="px-6 py-3">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <div class="h-1.5 w-20 overflow-hidden rounded-full bg-gray-100">
+                                            <div class="h-full rounded-full bg-violet-400" style="width: {{ number_format($share, 1) }}%"></div>
+                                        </div>
+                                        <span class="w-10 text-right text-xs tabular-nums text-gray-500">{{ number_format($share, 1) }}%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="py-12 text-center text-sm text-gray-400">No expense data matches the current filters.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                    <tfoot>
+                        <tr class="border-t-2 border-gray-200 bg-gray-50/80">
+                            <td class="px-6 py-3 text-xs font-bold uppercase tracking-wide text-gray-700" colspan="2">Grand Total</td>
+                            <td id="analysisTotalCount" class="px-6 py-3 text-center text-xs font-bold text-gray-700">
+                                {{ ($categorySummary ?? collect())->sum('entry_count') }}
+                            </td>
+                            <td id="analysisTotalAmount" class="px-6 py-3 text-right text-sm font-bold text-rose-600 tabular-nums">
+                                Rs.{{ number_format($filteredTotal ?? 0, 2) }}
+                            </td>
+                            <td class="px-6 py-3 text-right text-xs text-gray-400">100%</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            {{-- ── Footer ───────────────────────────────────────────────────── --}}
+            <div class="flex items-center justify-between border-t border-gray-100 px-6 py-3">
+                <a id="modalExportLink"
+                   href="{{ route('expenses.export') }}?{{ http_build_query(array_filter($filters ?? [])) }}"
+                   class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                    </svg>
+                    Export Excel
+                </a>
+                <button onclick="closeAnalysisModal()"
+                        class="rounded-lg border border-gray-200 px-5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                    Close
+                </button>
+            </div>
+
+        </div>
+    </div>
+
     <script>
+        // ── Constants seeded from server ──────────────────────────────────────
+        const pageFilters  = @js($filters ?? []);
+        const summaryUrl   = '{{ route('expenses.summary') }}';
+        const exportBase   = '{{ route('expenses.export') }}';
+
+        // ── Modal filter state (synced to page filters on open) ───────────────
+        let modalPreset   = null;
+        let modalDateFrom = '';
+        let modalDateTo   = '';
+
+        // ── Open / close ──────────────────────────────────────────────────────
+        function openAnalysisModal() {
+            // Sync modal controls to the current page filter state
+            modalPreset   = pageFilters.preset   || null;
+            modalDateFrom = pageFilters.date_from || '';
+            modalDateTo   = pageFilters.date_to   || '';
+
+            document.getElementById('modal_date_from').value = modalDateFrom;
+            document.getElementById('modal_date_to').value   = modalDateTo;
+            highlightPreset(modalPreset);
+
+            const modal = document.getElementById('analysisModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeAnalysisModal() {
+            const modal = document.getElementById('analysisModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeAnalysisModal();
+        });
+
+        // ── Preset quick-filter ───────────────────────────────────────────────
+        function setModalPreset(preset) {
+            modalPreset   = preset;
+            modalDateFrom = '';
+            modalDateTo   = '';
+            document.getElementById('modal_date_from').value = '';
+            document.getElementById('modal_date_to').value   = '';
+            highlightPreset(preset);
+            fetchSummary();
+        }
+
+        // ── Custom date range ─────────────────────────────────────────────────
+        function applyModalDateRange() {
+            const from = document.getElementById('modal_date_from').value;
+            const to   = document.getElementById('modal_date_to').value;
+            if (!from && !to) return;
+            modalPreset   = null;
+            modalDateFrom = from;
+            modalDateTo   = to;
+            highlightPreset(null);
+            fetchSummary();
+        }
+
+        // ── Highlight active preset button ────────────────────────────────────
+        function highlightPreset(active) {
+            ['today', 'this_week', 'this_month'].forEach(function (p) {
+                const btn = document.getElementById('modal_preset_' + p);
+                if (!btn) return;
+                const on = p === active;
+                btn.classList.toggle('bg-violet-600',    on);
+                btn.classList.toggle('text-white',        on);
+                btn.classList.toggle('border-violet-600', on);
+                btn.classList.toggle('bg-white',         !on);
+                btn.classList.toggle('text-gray-600',    !on);
+                btn.classList.toggle('border-gray-200',  !on);
+            });
+        }
+
+        // ── AJAX fetch & DOM update ───────────────────────────────────────────
+        async function fetchSummary() {
+            const tbody         = document.getElementById('analysisTbody');
+            const totalAmountEl = document.getElementById('analysisTotalAmount');
+            const totalCountEl  = document.getElementById('analysisTotalCount');
+            const periodLabelEl = document.getElementById('analysisPeriodLabel');
+            const headerTotalEl = document.getElementById('analysisHeaderTotal');
+            const exportLink    = document.getElementById('modalExportLink');
+
+            // Loading state
+            tbody.innerHTML =
+                '<tr><td colspan="5" class="py-10 text-center text-sm text-gray-400">' +
+                '<svg class="mx-auto mb-2 h-5 w-5 animate-spin text-violet-400" fill="none" viewBox="0 0 24 24">' +
+                '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>' +
+                '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>' +
+                'Loading…</td></tr>';
+
+            // Build query params: carry page-level non-date filters + modal date
+            const params = new URLSearchParams();
+            ['search', 'category_id', 'amount_min', 'amount_max'].forEach(function (k) {
+                if (pageFilters[k]) params.set(k, pageFilters[k]);
+            });
+            if (modalPreset) {
+                params.set('preset', modalPreset);
+            } else {
+                if (modalDateFrom) params.set('date_from', modalDateFrom);
+                if (modalDateTo)   params.set('date_to',   modalDateTo);
+            }
+
+            try {
+                const res = await fetch(summaryUrl + '?' + params.toString());
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+
+                // Update header + footer totals
+                if (periodLabelEl) periodLabelEl.textContent = data.period_label;
+                if (headerTotalEl) headerTotalEl.textContent = 'Rs.' + fmtAmt(data.filtered_total);
+                if (totalAmountEl) totalAmountEl.textContent = 'Rs.' + fmtAmt(data.filtered_total);
+                if (totalCountEl)  totalCountEl.textContent  = data.filtered_count;
+
+                // Update export link to reflect modal's current filter
+                if (exportLink) exportLink.href = exportBase + '?' + params.toString();
+
+                // Rebuild tbody
+                if (data.summary.length === 0) {
+                    tbody.innerHTML =
+                        '<tr><td colspan="5" class="py-12 text-center text-sm text-gray-400">' +
+                        'No expense data for this period.</td></tr>';
+                } else {
+                    tbody.innerHTML = data.summary.map(function (row, i) {
+                        const bar = '<div class="h-1.5 w-20 overflow-hidden rounded-full bg-gray-100">' +
+                                    '<div class="h-full rounded-full bg-violet-400" style="width:' + row.share + '%"></div></div>';
+                        return '<tr class="border-b border-gray-50 hover:bg-violet-50/40 transition-colors">' +
+                            '<td class="px-6 py-3 text-xs text-gray-400">' + (i + 1) + '</td>' +
+                            '<td class="px-6 py-3"><span class="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 border border-indigo-100">' +
+                                escHtml(row.category_name) + '</span></td>' +
+                            '<td class="px-6 py-3 text-center text-gray-500">' + row.entry_count + '</td>' +
+                            '<td class="px-6 py-3 text-right font-semibold text-rose-600 tabular-nums">Rs.' + fmtAmt(row.total_amount) + '</td>' +
+                            '<td class="px-6 py-3"><div class="flex items-center justify-end gap-2">' + bar +
+                                '<span class="w-10 text-right text-xs tabular-nums text-gray-500">' + row.share + '%</span>' +
+                            '</div></td>' +
+                            '</tr>';
+                    }).join('');
+                }
+
+            } catch (err) {
+                tbody.innerHTML =
+                    '<tr><td colspan="5" class="py-8 text-center text-sm text-red-400">' +
+                    'Failed to load data. Please try again.</td></tr>';
+            }
+        }
+
+        function fmtAmt(num) {
+            return Number(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function escHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        // ── Add / Edit / Delete modals ────────────────────────────────────────
         function openAddModal() {
             document.getElementById('expenseModal').classList.remove('hidden');
         }
@@ -292,10 +655,7 @@
             document.getElementById('edit_date').value        = date;
             document.getElementById('edit_amount').value      = amount;
             document.getElementById('edit_description').value = description;
-
-            const catSelect = document.getElementById('edit_category_id');
-            catSelect.value = categoryId ?? '';
-
+            document.getElementById('edit_category_id').value = categoryId ?? '';
             document.getElementById('editExpenseModal').classList.remove('hidden');
         }
 
@@ -310,7 +670,7 @@
                 confirmButtonColor: '#ef4444',
                 cancelButtonColor: '#64748b',
                 focusCancel: true,
-            }).then(function(result) {
+            }).then(function (result) {
                 if (result.isConfirmed) {
                     const form = document.getElementById('deleteExpenseForm');
                     form.action = '/expenses/' + id;
