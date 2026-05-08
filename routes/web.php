@@ -115,6 +115,7 @@ Route::get ('/lotteries/{lottery}/edit', [PageController::class, 'lotteriesEdit'
     Route::get ('/ticket-distribution/export-excel',    [TicketDistributionController::class, 'exportExcel'])->name('ticket-distribution.export-excel');
     Route::post('/ticket-distribution/load-from-date',  [TicketDistributionController::class, 'loadFromDate'])->name('ticket-distribution.load-from-date');
     Route::post('/ticket-distribution/copy-to-date',    [TicketDistributionController::class, 'copyToDate'])->name('ticket-distribution.copy-to-date');
+    Route::get ('/ticket-distribution/assistant-collections', [TicketDistributionController::class, 'assistantCollections'])->name('ticket-distribution.assistant-collections');
 
     // Sub-sellers (nested under an assistant)
     Route::get   ('/ticket-distribution/{assistant}/sub-sellers',         [TicketDistributionController::class, 'subSellersIndex'])->name('ticket-distribution.sub-sellers.index');
