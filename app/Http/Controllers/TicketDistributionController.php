@@ -449,4 +449,46 @@ class TicketDistributionController extends Controller
 
         return back()->with('success', 'Sub-seller deactivated.');
     }
+
+    // ── Assistant Collections ─────────────────────────────────────────────────
+
+    /**
+     * Show all handed-over distributions with total tickets and amount due (Rs. 35/ticket).
+     */
+    public function assistantCollections(Request $request)
+    {
+        $from = $request->input('from', today()->startOfMonth()->toDateString());
+        $to   = $request->input('to',   today()->toDateString());
+
+        // Pre-load all ticket totals for the date range in one query
+        $ticketTotals = DailyTicketStock::select(
+                'date',
+                'assistant_id',
+                DB::raw('SUM(quantity) as total_tickets')
+            )
+            ->whereBetween('date', [$from, $to])
+            ->groupBy('date', 'assistant_id')
+            ->get()
+            ->keyBy(fn ($r) => $r->date . '_' . $r->assistant_id);
+
+        $records = DailyTicketNote::with('assistant')
+            ->where('is_handed_over', true)
+            ->whereBetween('date', [$from, $to])
+            ->orderBy('date', 'desc')
+            ->orderBy('assistant_id')
+            ->get()
+            ->map(function ($note) use ($ticketTotals) {
+                $key                 = $note->date . '_' . $note->assistant_id;
+                $note->total_tickets = (int) ($ticketTotals[$key]->total_tickets ?? 0);
+                $note->amount_due    = $note->total_tickets * 35;
+                return $note;
+            });
+
+        $grandTotalTickets = $records->sum('total_tickets');
+        $grandTotalAmount  = $records->sum('amount_due');
+
+        return view('ticket-distribution.assistant-collections', compact(
+            'records', 'from', 'to', 'grandTotalTickets', 'grandTotalAmount'
+        ));
+    }
 }
