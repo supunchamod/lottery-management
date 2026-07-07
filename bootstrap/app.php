@@ -12,7 +12,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'role' => \App\Http\Middleware\RoleMiddleware::class,
+            'role'    => \App\Http\Middleware\RoleMiddleware::class,
+            'feature' => \App\Http\Middleware\FeatureMiddleware::class,
         ]);
 
         // Redirect unauthenticated users to the login page.

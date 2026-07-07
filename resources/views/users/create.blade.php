@@ -15,7 +15,8 @@
         </div>
     </div>
 
-    <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-6">
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-6"
+         x-data="{ role: '{{ old('role', 'sub-admin') }}', checked: {{ json_encode(old('permissions', [])) }} }">
         <form method="POST" action="{{ route('users.store') }}" class="space-y-4">
             @csrf
 
@@ -43,9 +44,9 @@
 
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1.5">Role *</label>
-                <select name="role" class="erp-input w-full" required>
-                    <option value="sub-admin" {{ old('role', 'sub-admin') === 'sub-admin' ? 'selected' : '' }}>Sub-admin</option>
-                    <option value="admin"     {{ old('role') === 'admin'     ? 'selected' : '' }}>Admin</option>
+                <select name="role" x-model="role" class="erp-input w-full" required>
+                    <option value="sub-admin">Sub-admin</option>
+                    <option value="admin">Admin</option>
                 </select>
             </div>
 
@@ -59,6 +60,22 @@
                 <label class="block text-xs font-medium text-gray-600 mb-1.5">Confirm Password *</label>
                 <input type="password" name="password_confirmation"
                        class="erp-input w-full" placeholder="Repeat password" required>
+            </div>
+
+            <div x-show="role === 'sub-admin'" x-cloak class="border-t border-gray-100 pt-4">
+                <p class="text-xs font-semibold text-gray-700 mb-1">Feature Access</p>
+                <p class="text-xs text-gray-400 mb-3">Choose which features this sub-admin can use. You can change this anytime later.</p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    @foreach($permissions as $permission)
+                        <label class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                            <input type="checkbox" name="permissions[]" value="{{ $permission->id }}"
+                                   x-model="checked"
+                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            {{ $permission->label }}
+                        </label>
+                    @endforeach
+                </div>
             </div>
 
             <div class="mt-6 flex gap-3">

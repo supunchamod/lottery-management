@@ -96,6 +96,7 @@
         </a>
 
         {{-- Lottery Dropdown --}}
+        @if(auth()->user()->hasFeature('lotteries'))
         <div x-data="{ open: {{ request()->routeIs('lotteries.*') ? 'true' : 'false' }} }">
             <button @click="open = !open; if(collapsed) { collapsed = false }"
                     class="group flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150
@@ -133,30 +134,31 @@
                 </a>
             </div>
         </div>
+        @endif
 
         @php
             $isAdmin  = auth()->check() && auth()->user()->isAdmin();
             $navItems = [
-                ['route' => 'stock.index',               'label' => 'Stock',            'adminOnly' => false, 'icon' => 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4'],
-                ['route' => 'bundle-counter.index',      'label' => 'Bundle Counter',   'adminOnly' => false, 'icon' => 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M12 7h.01M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'],
-                
-                ['route' => 'assistants.index',          'label' => 'Sales Assistants',       'adminOnly' => false, 'icon' => 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z'],
-                ['route' => 'daily-sales.index',         'label' => 'Daily Sales',      'adminOnly' => false, 'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01'],
-                ['route' => 'bulk-deposits.index',       'label' => 'Bulk Deposits',    'adminOnly' => false, 'icon' => 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10'],
-                ['route' => 'ticket-distribution.index',               'label' => 'Ticket Dist.',         'adminOnly' => false, 'icon' => 'M4 6h16M4 10h16M4 14h16M4 18h16'],
-                ['route' => 'ticket-distribution.assistant-collections', 'label' => 'Assistant Collections', 'adminOnly' => false, 'icon' => 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z'],
-                ['route' => 'board-settlement.index',   'label' => 'Board Settlement', 'adminOnly' => false, 'icon' => 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z'],
-                ['route' => 'board-transactions.index', 'label' => 'Board Ledger',     'adminOnly' => false, 'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 12l2 2 4-4'],
-                ['route' => 'expenses.index',           'label' => 'Expenses',         'adminOnly' => false, 'icon' => 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z'],
-                ['route' => 'cheques.index',            'label' => 'Cheques',          'adminOnly' => false, 'icon' => 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z'],
-                ['route' => 'reports.index',            'label' => 'Reports',          'adminOnly' => true,  'icon' => 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
-                ['route' => 'activity-logs.index',      'label' => 'Activity Log',     'adminOnly' => true,  'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4'],
-                ['route' => 'users.index',              'label' => 'User Management',  'adminOnly' => true,  'icon' => 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z'],
+                ['route' => 'stock.index',               'label' => 'Stock',            'adminOnly' => false, 'feature' => 'stock',               'icon' => 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4'],
+                ['route' => 'bundle-counter.index',      'label' => 'Bundle Counter',   'adminOnly' => false, 'feature' => 'bundle-counter',      'icon' => 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M12 7h.01M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'],
+                ['route' => 'assistants.index',          'label' => 'Sales Assistants',       'adminOnly' => false, 'feature' => 'assistants',          'icon' => 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z'],
+                ['route' => 'daily-sales.index',         'label' => 'Daily Sales',      'adminOnly' => false, 'feature' => 'daily-sales',         'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01'],
+                ['route' => 'bulk-deposits.index',       'label' => 'Bulk Deposits',    'adminOnly' => false, 'feature' => 'bulk-deposits',       'icon' => 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10'],
+                ['route' => 'ticket-distribution.index',               'label' => 'Ticket Dist.',         'adminOnly' => false, 'feature' => 'ticket-distribution', 'icon' => 'M4 6h16M4 10h16M4 14h16M4 18h16'],
+                ['route' => 'ticket-distribution.assistant-collections', 'label' => 'Assistant Collections', 'adminOnly' => false, 'feature' => 'ticket-distribution', 'icon' => 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z'],
+                ['route' => 'board-settlement.index',   'label' => 'Board Settlement', 'adminOnly' => false, 'feature' => 'board-settlement',    'icon' => 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z'],
+                ['route' => 'board-transactions.index', 'label' => 'Board Ledger',     'adminOnly' => false, 'feature' => 'board-transactions',  'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 12l2 2 4-4'],
+                ['route' => 'expenses.index',           'label' => 'Expenses',         'adminOnly' => false, 'feature' => 'expenses',            'icon' => 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z'],
+                ['route' => 'cheques.index',            'label' => 'Cheques',          'adminOnly' => false, 'feature' => 'cheques',             'icon' => 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z'],
+                ['route' => 'reports.index',            'label' => 'Reports',          'adminOnly' => true,  'feature' => null,                  'icon' => 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
+                ['route' => 'activity-logs.index',      'label' => 'Activity Log',     'adminOnly' => true,  'feature' => null,                  'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4'],
+                ['route' => 'users.index',              'label' => 'User Management',  'adminOnly' => true,  'feature' => null,                  'icon' => 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z'],
             ];
         @endphp
 
         @foreach($navItems as $item)
             @if($item['adminOnly'] && !$isAdmin) @continue @endif
+            @if($item['feature'] && !auth()->user()->hasFeature($item['feature'])) @continue @endif
             @php $active = request()->routeIs($item['route']); @endphp
             <a href="{{ route($item['route']) }}"
                class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150

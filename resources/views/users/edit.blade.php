@@ -15,7 +15,8 @@
         </div>
     </div>
 
-    <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-6">
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-6"
+         x-data="{ role: '{{ old('role', $user->role) }}', checked: {{ json_encode(old('permissions', $activePermissionIds)) }} }">
         <form method="POST" action="{{ route('users.update', $user) }}" class="space-y-4">
             @csrf
             @method('PUT')
@@ -50,11 +51,27 @@
                     <input type="text" value="{{ ucfirst($user->role) }}" class="erp-input w-full bg-gray-50 text-gray-400" disabled>
                     <p class="text-xs text-gray-400 mt-1">You cannot change your own role.</p>
                 @else
-                    <select name="role" class="erp-input w-full">
-                        <option value="sub-admin" {{ old('role', $user->role) === 'sub-admin' ? 'selected' : '' }}>Sub-admin</option>
-                        <option value="admin"     {{ old('role', $user->role) === 'admin'     ? 'selected' : '' }}>Admin</option>
+                    <select name="role" x-model="role" class="erp-input w-full">
+                        <option value="sub-admin">Sub-admin</option>
+                        <option value="admin">Admin</option>
                     </select>
                 @endif
+            </div>
+
+            <div x-show="role === 'sub-admin'" x-cloak class="border-t border-gray-100 pt-4">
+                <p class="text-xs font-semibold text-gray-700 mb-1">Feature Access</p>
+                <p class="text-xs text-gray-400 mb-3">Toggle which features this sub-admin can currently use.</p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    @foreach($permissions as $permission)
+                        <label class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                            <input type="checkbox" name="permissions[]" value="{{ $permission->id }}"
+                                   x-model="checked"
+                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            {{ $permission->label }}
+                        </label>
+                    @endforeach
+                </div>
             </div>
 
             <div class="border-t border-gray-100 pt-4">

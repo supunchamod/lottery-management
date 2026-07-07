@@ -49,89 +49,114 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
     // Daily Sales
-    Route::get ('/daily-sales',          [DailySalesController::class, 'index'])->name('daily-sales.index');
-    Route::post('/daily-sales',          [DailySalesController::class, 'store'])->name('daily-sales.store');
-    Route::post('/daily-sales/entry',    [DailySalesController::class, 'storeSingle'])->name('daily-sales.entry');
-    Route::get ('/daily-sales/analysis', [DailySalesController::class, 'analysis'])->name('daily-sales.analysis');
+    Route::middleware('feature:daily-sales')->group(function () {
+        Route::get ('/daily-sales',          [DailySalesController::class, 'index'])->name('daily-sales.index');
+        Route::post('/daily-sales',          [DailySalesController::class, 'store'])->name('daily-sales.store');
+        Route::post('/daily-sales/entry',    [DailySalesController::class, 'storeSingle'])->name('daily-sales.entry');
+        Route::get ('/daily-sales/analysis', [DailySalesController::class, 'analysis'])->name('daily-sales.analysis');
+    });
 
     // Bulk Deposits
-    Route::get   ('/bulk-deposits',                           [BulkDepositController::class, 'index'])->name('bulk-deposits.index');
-    Route::get   ('/bulk-deposits/create',                    [BulkDepositController::class, 'create'])->name('bulk-deposits.create');
-    Route::post  ('/bulk-deposits',                           [BulkDepositController::class, 'store'])->name('bulk-deposits.store');
-    Route::get   ('/bulk-deposits/{bulkDeposit}/edit',        [BulkDepositController::class, 'edit'])->name('bulk-deposits.edit');
-    Route::put   ('/bulk-deposits/{bulkDeposit}',             [BulkDepositController::class, 'update'])->name('bulk-deposits.update');
-    Route::delete('/bulk-deposits/{bulkDeposit}',             [BulkDepositController::class, 'destroy'])->name('bulk-deposits.destroy');
-    Route::get   ('/bulk-deposits/{bulkDeposit}/distribute',  [BulkDepositController::class, 'distribute'])->name('bulk-deposits.distribute');
-    Route::post  ('/bulk-deposits/{bulkDeposit}/distribute',  [BulkDepositController::class, 'saveDistribution'])->name('bulk-deposits.save-distribution');
+    Route::middleware('feature:bulk-deposits')->group(function () {
+        Route::get   ('/bulk-deposits',                           [BulkDepositController::class, 'index'])->name('bulk-deposits.index');
+        Route::get   ('/bulk-deposits/create',                    [BulkDepositController::class, 'create'])->name('bulk-deposits.create');
+        Route::post  ('/bulk-deposits',                           [BulkDepositController::class, 'store'])->name('bulk-deposits.store');
+        Route::get   ('/bulk-deposits/{bulkDeposit}/edit',        [BulkDepositController::class, 'edit'])->name('bulk-deposits.edit');
+        Route::put   ('/bulk-deposits/{bulkDeposit}',             [BulkDepositController::class, 'update'])->name('bulk-deposits.update');
+        Route::delete('/bulk-deposits/{bulkDeposit}',             [BulkDepositController::class, 'destroy'])->name('bulk-deposits.destroy');
+        Route::get   ('/bulk-deposits/{bulkDeposit}/distribute',  [BulkDepositController::class, 'distribute'])->name('bulk-deposits.distribute');
+        Route::post  ('/bulk-deposits/{bulkDeposit}/distribute',  [BulkDepositController::class, 'saveDistribution'])->name('bulk-deposits.save-distribution');
+    });
 
     // Winnings
-    Route::get ('/winnings',        [PageController::class, 'winningsIndex'])->name('winnings.index');
-    Route::get ('/winnings/create', [PageController::class, 'winningsCreate'])->name('winnings.create');
-    Route::post('/winnings',        [PageController::class, 'winningsStore'])->name('winnings.store');
+    Route::middleware('feature:winnings')->group(function () {
+        Route::get ('/winnings',        [PageController::class, 'winningsIndex'])->name('winnings.index');
+        Route::get ('/winnings/create', [PageController::class, 'winningsCreate'])->name('winnings.create');
+        Route::post('/winnings',        [PageController::class, 'winningsStore'])->name('winnings.store');
+    });
 
     // Expenses
-    Route::get   ('/expenses',            [PageController::class, 'expensesIndex'])->name('expenses.index');
-    Route::get   ('/expenses/export',     [PageController::class, 'expensesExport'])->name('expenses.export');
-    Route::get   ('/expenses/summary',    [PageController::class, 'expensesSummary'])->name('expenses.summary');
-    Route::post  ('/expenses',            [PageController::class, 'expensesStore'])->name('expenses.store');
-    Route::put   ('/expenses/{expense}',  [PageController::class, 'expensesUpdate'])->name('expenses.update');
-    Route::delete('/expenses/{expense}',  [PageController::class, 'expensesDestroy'])->name('expenses.destroy');
+    Route::middleware('feature:expenses')->group(function () {
+        Route::get   ('/expenses',            [PageController::class, 'expensesIndex'])->name('expenses.index');
+        Route::get   ('/expenses/export',     [PageController::class, 'expensesExport'])->name('expenses.export');
+        Route::get   ('/expenses/summary',    [PageController::class, 'expensesSummary'])->name('expenses.summary');
+        Route::post  ('/expenses',            [PageController::class, 'expensesStore'])->name('expenses.store');
+        Route::put   ('/expenses/{expense}',  [PageController::class, 'expensesUpdate'])->name('expenses.update');
+        Route::delete('/expenses/{expense}',  [PageController::class, 'expensesDestroy'])->name('expenses.destroy');
+    });
 
     // Cheques
-    Route::get   ('/cheques',                [PageController::class, 'chequesIndex'])->name('cheques.index');
-    Route::get   ('/cheques/create',         [PageController::class, 'chequesCreate'])->name('cheques.create');
-    Route::post  ('/cheques',                [PageController::class, 'chequesStore'])->name('cheques.store');
-    Route::patch ('/cheques/{cheque}/clear', [PageController::class, 'chequesClear'])->name('cheques.clear');
+    Route::middleware('feature:cheques')->group(function () {
+        Route::get   ('/cheques',                [PageController::class, 'chequesIndex'])->name('cheques.index');
+        Route::get   ('/cheques/create',         [PageController::class, 'chequesCreate'])->name('cheques.create');
+        Route::post  ('/cheques',                [PageController::class, 'chequesStore'])->name('cheques.store');
+        Route::patch ('/cheques/{cheque}/clear', [PageController::class, 'chequesClear'])->name('cheques.clear');
+    });
 
     // Sales Assistants
-    Route::get ('/assistants',                    [PageController::class, 'assistantsIndex'])->name('assistants.index');
-    Route::get ('/assistants/create',             [PageController::class, 'assistantsCreate'])->name('assistants.create');
-    Route::post('/assistants',                    [PageController::class, 'assistantsStore'])->name('assistants.store');
-    Route::get ('/assistants/{assistant}/edit',   [PageController::class, 'assistantsEdit'])->name('assistants.edit');
-    Route::put ('/assistants/{assistant}',        [PageController::class, 'assistantsUpdate'])->name('assistants.update');
-    Route::get ('/assistants/{assistant}/ledger', [PageController::class, 'assistantsLedger'])->name('assistants.ledger');
-    Route::delete('/assistants/{assistant}', [PageController::class, 'assistantsDestroy'])->name('assistants.destroy');
+    Route::middleware('feature:assistants')->group(function () {
+        Route::get ('/assistants',                    [PageController::class, 'assistantsIndex'])->name('assistants.index');
+        Route::get ('/assistants/create',             [PageController::class, 'assistantsCreate'])->name('assistants.create');
+        Route::post('/assistants',                    [PageController::class, 'assistantsStore'])->name('assistants.store');
+        Route::get ('/assistants/{assistant}/edit',   [PageController::class, 'assistantsEdit'])->name('assistants.edit');
+        Route::put ('/assistants/{assistant}',        [PageController::class, 'assistantsUpdate'])->name('assistants.update');
+        Route::get ('/assistants/{assistant}/ledger', [PageController::class, 'assistantsLedger'])->name('assistants.ledger');
+        Route::delete('/assistants/{assistant}', [PageController::class, 'assistantsDestroy'])->name('assistants.destroy');
+    });
+
     // Lotteries
-    Route::get ('/lotteries',                [PageController::class, 'lotteriesIndex'])->name('lotteries.index');
-    Route::get ('/lotteries/create',         [PageController::class, 'lotteriesCreate'])->name('lotteries.create');
-    Route::post('/lotteries',                [PageController::class, 'lotteriesStore'])->name('lotteries.store');
-Route::get ('/lotteries/{lottery}/edit', [PageController::class, 'lotteriesEdit'])->name('lotteries.edit');
-    Route::put   ('/lotteries/{lottery}',    [PageController::class, 'lotteriesUpdate'])->name('lotteries.update');
-    Route::delete('/lotteries/{lottery}',    [PageController::class, 'lotteriesDestroy'])->name('lotteries.destroy');
+    Route::middleware('feature:lotteries')->group(function () {
+        Route::get ('/lotteries',                [PageController::class, 'lotteriesIndex'])->name('lotteries.index');
+        Route::get ('/lotteries/create',         [PageController::class, 'lotteriesCreate'])->name('lotteries.create');
+        Route::post('/lotteries',                [PageController::class, 'lotteriesStore'])->name('lotteries.store');
+        Route::get ('/lotteries/{lottery}/edit', [PageController::class, 'lotteriesEdit'])->name('lotteries.edit');
+        Route::put   ('/lotteries/{lottery}',    [PageController::class, 'lotteriesUpdate'])->name('lotteries.update');
+        Route::delete('/lotteries/{lottery}',    [PageController::class, 'lotteriesDestroy'])->name('lotteries.destroy');
+    });
 
     // Stock
-    Route::get ('/stock',        [PageController::class, 'stockIndex'])->name('stock.index');
-    Route::get ('/stock/create', [PageController::class, 'stockCreate'])->name('stock.create');
-    Route::post('/stock',        [PageController::class, 'stockStore'])->name('stock.store');
+    Route::middleware('feature:stock')->group(function () {
+        Route::get ('/stock',        [PageController::class, 'stockIndex'])->name('stock.index');
+        Route::get ('/stock/create', [PageController::class, 'stockCreate'])->name('stock.create');
+        Route::post('/stock',        [PageController::class, 'stockStore'])->name('stock.store');
+    });
 
     // Bundle Counter
-    Route::get ('/bundle-counter',      [PageController::class, 'bundleCounterIndex'])->name('bundle-counter.index');
-    Route::post('/bundle-counter/save', [PageController::class, 'bundleCounterStore'])->name('bundle-counter.store');
+    Route::middleware('feature:bundle-counter')->group(function () {
+        Route::get ('/bundle-counter',      [PageController::class, 'bundleCounterIndex'])->name('bundle-counter.index');
+        Route::post('/bundle-counter/save', [PageController::class, 'bundleCounterStore'])->name('bundle-counter.store');
+    });
 
     // Ticket Distribution
-    Route::get ('/ticket-distribution',                 [TicketDistributionController::class, 'index'])->name('ticket-distribution.index');
-    Route::post('/ticket-distribution',                 [TicketDistributionController::class, 'store'])->name('ticket-distribution.store');
-    Route::get ('/ticket-distribution/summary',         [TicketDistributionController::class, 'summary'])->name('ticket-distribution.summary');
-    Route::get ('/ticket-distribution/export-excel',    [TicketDistributionController::class, 'exportExcel'])->name('ticket-distribution.export-excel');
-    Route::post('/ticket-distribution/load-from-date',  [TicketDistributionController::class, 'loadFromDate'])->name('ticket-distribution.load-from-date');
-    Route::post('/ticket-distribution/copy-to-date',    [TicketDistributionController::class, 'copyToDate'])->name('ticket-distribution.copy-to-date');
-    Route::get ('/ticket-distribution/assistant-collections', [TicketDistributionController::class, 'assistantCollections'])->name('ticket-distribution.assistant-collections');
+    Route::middleware('feature:ticket-distribution')->group(function () {
+        Route::get ('/ticket-distribution',                 [TicketDistributionController::class, 'index'])->name('ticket-distribution.index');
+        Route::post('/ticket-distribution',                 [TicketDistributionController::class, 'store'])->name('ticket-distribution.store');
+        Route::get ('/ticket-distribution/summary',         [TicketDistributionController::class, 'summary'])->name('ticket-distribution.summary');
+        Route::get ('/ticket-distribution/export-excel',    [TicketDistributionController::class, 'exportExcel'])->name('ticket-distribution.export-excel');
+        Route::post('/ticket-distribution/load-from-date',  [TicketDistributionController::class, 'loadFromDate'])->name('ticket-distribution.load-from-date');
+        Route::post('/ticket-distribution/copy-to-date',    [TicketDistributionController::class, 'copyToDate'])->name('ticket-distribution.copy-to-date');
+        Route::get ('/ticket-distribution/assistant-collections', [TicketDistributionController::class, 'assistantCollections'])->name('ticket-distribution.assistant-collections');
 
-    // Sub-sellers (nested under an assistant)
-    Route::get   ('/ticket-distribution/{assistant}/sub-sellers',         [TicketDistributionController::class, 'subSellersIndex'])->name('ticket-distribution.sub-sellers.index');
-    Route::post  ('/ticket-distribution/sub-sellers',                     [TicketDistributionController::class, 'subSellersStore'])->name('ticket-distribution.sub-sellers.store');
-    Route::put   ('/ticket-distribution/sub-sellers/{subSeller}',         [TicketDistributionController::class, 'subSellersUpdate'])->name('ticket-distribution.sub-sellers.update');
-    Route::delete('/ticket-distribution/sub-sellers/{subSeller}/destroy', [TicketDistributionController::class, 'subSellersDestroy'])->name('ticket-distribution.sub-sellers.destroy');
+        // Sub-sellers (nested under an assistant)
+        Route::get   ('/ticket-distribution/{assistant}/sub-sellers',         [TicketDistributionController::class, 'subSellersIndex'])->name('ticket-distribution.sub-sellers.index');
+        Route::post  ('/ticket-distribution/sub-sellers',                     [TicketDistributionController::class, 'subSellersStore'])->name('ticket-distribution.sub-sellers.store');
+        Route::put   ('/ticket-distribution/sub-sellers/{subSeller}',         [TicketDistributionController::class, 'subSellersUpdate'])->name('ticket-distribution.sub-sellers.update');
+        Route::delete('/ticket-distribution/sub-sellers/{subSeller}/destroy', [TicketDistributionController::class, 'subSellersDestroy'])->name('ticket-distribution.sub-sellers.destroy');
+    });
 
     // Board Settlement
-    Route::get ('/board-settlement', [BoardSettlementController::class, 'index'])->name('board-settlement.index');
-    Route::post('/board-settlement', [BoardSettlementController::class, 'store'])->name('board-settlement.store');
+    Route::middleware('feature:board-settlement')->group(function () {
+        Route::get ('/board-settlement', [BoardSettlementController::class, 'index'])->name('board-settlement.index');
+        Route::post('/board-settlement', [BoardSettlementController::class, 'store'])->name('board-settlement.store');
+    });
 
     // Board Transaction Ledger
-    Route::get   ('/board-transactions',                    [BoardTransactionController::class, 'index'])->name('board-transactions.index');
-    Route::get   ('/board-transactions/create',             [BoardTransactionController::class, 'create'])->name('board-transactions.create');
-    Route::post  ('/board-transactions',                    [BoardTransactionController::class, 'store'])->name('board-transactions.store');
-    Route::delete('/board-transactions/{boardTransaction}', [BoardTransactionController::class, 'destroy'])->name('board-transactions.destroy');
+    Route::middleware('feature:board-transactions')->group(function () {
+        Route::get   ('/board-transactions',                    [BoardTransactionController::class, 'index'])->name('board-transactions.index');
+        Route::get   ('/board-transactions/create',             [BoardTransactionController::class, 'create'])->name('board-transactions.create');
+        Route::post  ('/board-transactions',                    [BoardTransactionController::class, 'store'])->name('board-transactions.store');
+        Route::delete('/board-transactions/{boardTransaction}', [BoardTransactionController::class, 'destroy'])->name('board-transactions.destroy');
+    });
 
     // ── Admin-only routes ─────────────────────────────────────────────────────
     Route::middleware('role:admin')->group(function () {
